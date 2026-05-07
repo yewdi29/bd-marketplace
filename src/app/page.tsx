@@ -1,10 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import Button from '@/components/ui/Button'
 import ListingCard from '@/components/ListingCard'
-import TierBadge from '@/components/TierBadge'
-import type { Listing } from '@/lib/types/database'
 import NewsletterForm from '@/components/NewsletterForm'
+import type { Listing } from '@/lib/types/database'
 
 const CATEGORIES = [
   { label: 'Drill Pipe', slug: 'drill_pipe', icon: '⛏' },
@@ -15,27 +13,6 @@ const CATEGORIES = [
   { label: 'Compressors', slug: 'compressor', icon: '💨' },
   { label: 'Mud Pumps', slug: 'mud_pump', icon: '🔩' },
   { label: 'Tanks & Vessels', slug: 'tank', icon: '🛢' },
-]
-
-const TIER_INFO = [
-  {
-    tier: 'green' as const,
-    label: 'Green Tier',
-    range: 'Under $100K',
-    description: 'Self-service listings. Direct buyer–seller contact. Instant listing activation.',
-  },
-  {
-    tier: 'yellow' as const,
-    label: 'Yellow Tier',
-    range: '$100K – $500K',
-    description: 'BD broker introduction. Deal facilitation. Commission-based transaction support.',
-  },
-  {
-    tier: 'red' as const,
-    label: 'Red Tier',
-    range: 'Over $500K',
-    description: 'Full white-glove service. Dedicated deal team. Escrow coordination available.',
-  },
 ]
 
 export default async function HomePage() {
@@ -57,64 +34,75 @@ export default async function HomePage() {
     .limit(8)
 
   return (
-    <>
-      {/* Hero */}
-      <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden">
-        {/* Background grid */}
-        <div
-          className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(200,168,75,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(200,168,75,0.3) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background" />
+    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
 
-        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 border border-gold/30 px-4 py-1.5">
-            <span className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" />
-            <span className="font-body text-xs text-gold tracking-widest uppercase">
-              The #1 Oil &amp; Gas Equipment Exchange
+      {/* Hero */}
+      <section className="py-8">
+        <div className="bg-white rounded-[20px] px-8 py-16 text-center shadow-card">
+
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 bg-orange-bg border border-orange-bdr rounded-pill px-4 py-1.5 mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange animate-pulse" />
+            <span className="font-mono text-[11px] font-bold text-orange uppercase tracking-wider">
+              Heavy Equipment Marketplace
             </span>
           </div>
 
-          <h1 className="font-display text-6xl sm:text-8xl lg:text-[120px] tracking-widest text-white leading-none">
-            BLACK
-            <br />
-            <span className="text-gold">DIAMOND</span>
+          {/* Headline */}
+          <h1
+            className="font-sans font-extrabold text-ink leading-[1.05] max-w-2xl mx-auto"
+            style={{ fontSize: '42px', letterSpacing: '-0.03em' }}
+          >
+            Buy, Sell &amp; Trade Oil &amp; Gas{' '}
+            <span className="text-orange">Equipment</span>
           </h1>
-          <p className="mt-6 font-display text-xl sm:text-2xl tracking-widest text-gray-400 uppercase">
-            Heavy Equipment Marketplace
+
+          {/* Subtext */}
+          <p className="mt-5 text-[15px] font-sans text-ink-2 max-w-lg mx-auto leading-[1.7]">
+            Drill pipe, rigs, BOP stacks, and more. Verified listings with expert broker support on high-value deals.
           </p>
 
-          <p className="mt-6 max-w-2xl mx-auto font-body text-base text-gray-500 leading-relaxed">
-            Buy and sell premium oil &amp; gas equipment. Drill pipe, rigs, BOP stacks, and more.
-            Verified listings. Expert broker support on high-value deals.
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/listings">
-              <Button variant="primary" size="lg" className="w-full sm:w-auto font-display tracking-widest">
-                BROWSE EQUIPMENT
-              </Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto font-display tracking-widest">
-                LIST YOUR EQUIPMENT
-              </Button>
-            </Link>
-          </div>
+          {/* Search bar */}
+          <form
+            action="/listings"
+            method="GET"
+            className="mt-8 max-w-xl mx-auto flex items-center bg-white border border-[#D4D5D7] rounded-pill px-2 py-2"
+            style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}
+          >
+            <select
+              name="category"
+              className="bg-transparent border-none text-sm font-sans font-medium text-ink px-3 focus:outline-none cursor-pointer shrink-0"
+            >
+              <option value="">All Equipment</option>
+              {CATEGORIES.map(c => (
+                <option key={c.slug} value={c.slug}>{c.label}</option>
+              ))}
+            </select>
+            <div className="w-px h-5 bg-[#E8E9EA] mx-1 shrink-0" />
+            <input
+              type="text"
+              name="q"
+              placeholder="Search equipment..."
+              className="flex-1 bg-transparent text-sm font-sans text-ink placeholder:text-ink-3 focus:outline-none px-3 min-w-0"
+            />
+            <button
+              type="submit"
+              className="shrink-0 px-6 py-2 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow"
+            >
+              Search
+            </button>
+          </form>
 
           {/* Stats */}
-          <div className="mt-16 grid grid-cols-3 gap-8 max-w-lg mx-auto">
+          <div className="mt-12 grid grid-cols-3 gap-8 max-w-sm mx-auto">
             {[
               { value: '500+', label: 'Active Listings' },
               { value: '$2B+', label: 'Equipment Value' },
               { value: '48H', label: 'Avg. Response' },
             ].map(stat => (
               <div key={stat.label} className="text-center">
-                <div className="font-display text-3xl text-gold tracking-wide">{stat.value}</div>
-                <div className="font-body text-xs text-gray-600 mt-1 uppercase tracking-wider">{stat.label}</div>
+                <div className="font-sans font-bold text-2xl text-ink">{stat.value}</div>
+                <div className="font-sans text-xs text-ink-3 mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -122,112 +110,87 @@ export default async function HomePage() {
       </section>
 
       {/* Categories */}
-      <section className="py-20 border-t border-surface-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <h2 className="font-display text-4xl tracking-widest text-white">BROWSE BY CATEGORY</h2>
-              <p className="mt-2 font-body text-sm text-gray-500">Find the exact equipment you need</p>
-            </div>
-            <Link href="/listings" className="hidden sm:block font-body text-sm text-gold hover:text-gold-light transition-colors">
-              View all →
-            </Link>
+      <section className="py-10">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Browse by Category</h2>
+            <p className="mt-1 text-sm font-sans text-ink-3">Find the exact equipment you need</p>
           </div>
+          <Link href="/listings" className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors">
+            View all →
+          </Link>
+        </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {CATEGORIES.map(cat => (
-              <Link
-                key={cat.slug}
-                href={`/listings?category=${cat.slug}`}
-                className="group p-4 border border-surface-border bg-surface hover:border-gold/50 hover:bg-surface-elevated transition-all duration-200"
-              >
-                <span className="text-2xl">{cat.icon}</span>
-                <p className="mt-2 font-body text-sm font-medium text-gray-300 group-hover:text-gold transition-colors">
-                  {cat.label}
-                </p>
-              </Link>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {CATEGORIES.map(cat => (
+            <Link
+              key={cat.slug}
+              href={`/listings?category=${cat.slug}`}
+              className="group bg-white border border-[#E8E9EA] hover:border-[#D4D5D7] rounded-[16px] p-5 transition-all duration-200 hover:-translate-y-0.5 shadow-card hover:shadow-card-hover"
+            >
+              <span className="text-2xl">{cat.icon}</span>
+              <p className="mt-3 font-sans text-sm font-semibold text-ink group-hover:text-orange transition-colors">
+                {cat.label}
+              </p>
+            </Link>
+          ))}
         </div>
       </section>
 
       {/* Featured Listings */}
       {featuredListings && featuredListings.length > 0 && (
-        <section className="py-20 border-t border-surface-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between mb-10">
-              <div>
-                <h2 className="font-display text-4xl tracking-widest text-white">FEATURED EQUIPMENT</h2>
-                <p className="mt-2 font-body text-sm text-gray-500">Hand-picked listings from verified sellers</p>
-              </div>
-              <Link href="/listings?featured=true" className="hidden sm:block font-body text-sm text-gold hover:text-gold-light transition-colors">
-                View all →
-              </Link>
+        <section className="py-10 border-t border-[#E8E9EA]">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Featured Equipment</h2>
+              <p className="mt-1 text-sm font-sans text-ink-3">Hand-picked listings from verified sellers</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(featuredListings as Listing[]).map(listing => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
-            </div>
+            <Link href="/listings?featured=true" className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors">
+              View all →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(featuredListings as Listing[]).map(listing => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
           </div>
         </section>
       )}
 
       {/* Recent Listings */}
       {recentListings && recentListings.length > 0 && (
-        <section className="py-20 border-t border-surface-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between mb-10">
-              <div>
-                <h2 className="font-display text-4xl tracking-widest text-white">RECENTLY LISTED</h2>
-                <p className="mt-2 font-body text-sm text-gray-500">Fresh inventory added this week</p>
-              </div>
-              <Link href="/listings" className="hidden sm:block font-body text-sm text-gold hover:text-gold-light transition-colors">
-                View all →
-              </Link>
+        <section className="py-10 border-t border-[#E8E9EA]">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Recently Listed</h2>
+              <p className="mt-1 text-sm font-sans text-ink-3">Fresh inventory added this week</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {(recentListings as Listing[]).map(listing => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
-            </div>
+            <Link href="/listings" className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors">
+              View all →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {(recentListings as Listing[]).map(listing => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
           </div>
         </section>
       )}
 
-      {/* Tier System */}
-      <section className="py-20 border-t border-surface-border bg-surface">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-4xl tracking-widest text-white">TRAFFIC LIGHT ROUTING</h2>
-            <p className="mt-3 font-body text-sm text-gray-500 max-w-xl mx-auto">
-              Every listing is automatically tiered by price, routing deals to the right level of broker support.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TIER_INFO.map(info => (
-              <div key={info.tier} className="border border-surface-border p-6 bg-background">
-                <TierBadge tier={info.tier} showLabel size="md" />
-                <p className="mt-3 font-body text-sm text-gray-400 leading-relaxed">{info.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Newsletter */}
-      <section className="py-20 border-t border-surface-border">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="font-display text-4xl tracking-widest text-white">STAY IN THE FIELD</h2>
-          <p className="mt-3 font-body text-sm text-gray-500 leading-relaxed">
+      <section className="py-10 border-t border-[#E8E9EA]">
+        <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
+          <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Stay in the Field</h2>
+          <p className="mt-3 text-[15px] font-sans text-ink-3 max-w-md mx-auto leading-relaxed">
             New listings, market intel, and equipment guides delivered to your inbox. No noise — just signal.
           </p>
-          <div className="mt-8">
+          <div className="mt-6 max-w-sm mx-auto">
             <NewsletterForm source="homepage" />
           </div>
         </div>
       </section>
-    </>
+
+      <div className="pb-16" />
+    </div>
   )
 }

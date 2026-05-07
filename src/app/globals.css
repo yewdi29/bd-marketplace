@@ -2,11 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --font-bebas: 'Bebas Neue', sans-serif;
-  --font-dm-sans: 'DM Sans', sans-serif;
+  /* Core palette */
+  --bg: #F7F8F9;
+  --white: #FFFFFF;
+  --border: #E8E9EA;
+  --border-2: #D4D5D7;
+  --text: #1A1D20;
+  --text-2: #4A4D52;
+  --text-3: #9A9DA2;
+
+  /* Orange — primary action only */
+  --orange: #FF6B35;
+  --orange-lt: #FF8855;
+  --orange-bg: #FFF2ED;
+  --orange-bdr: #FFD4C2;
+
+  /* Green — New Listing badge only */
+  --green: #A2FF9A;
+  --green-text: #1A5C18;
+  --green-bg: #F0FFF0;
+  --green-bdr: #C8F5C4;
+
+  /* Blue — map markers only */
+  --blue: #0066CC;
+  --blue-text: #004499;
+  --blue-bg: #E6F0FF;
+  --blue-bdr: #B3D1FF;
+
+  /* Gold — Premium badge only */
+  --gold: #D4A017;
+  --gold-text: #7A5C00;
+  --gold-bg: #FDF6E3;
+  --gold-bdr: #F0D98A;
+
+  /* Typography */
+  --font: 'Inter', system-ui, sans-serif;
+  --mono: 'Andale Mono', monospace;
+
+  /* Border radius */
+  --r: 10px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-pill: 100px;
 }
 
 html {
@@ -14,29 +54,28 @@ html {
 }
 
 body {
-  background-color: #0A0A0A;
-  color: #E5E5E5;
-  font-family: var(--font-dm-sans), 'DM Sans', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background-color: #C8A84B;
-  color: #0A0A0A;
+  background-color: var(--orange-bg);
+  color: var(--orange);
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0A0A0A;
+  background: var(--bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2A2A2A;
+  background: var(--border-2);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #C8A84B40;
+  background: var(--orange);
 }

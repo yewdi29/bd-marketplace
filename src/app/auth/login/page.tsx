@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 
 export default function LoginPage() {
@@ -29,25 +28,34 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/')
+    router.push('/dashboard')
     router.refresh()
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
+    <div className="min-h-[calc(100vh-82px)] flex items-center justify-center px-4 py-12 bg-bg">
       <div className="w-full max-w-md">
+
         {/* Header */}
-        <div className="text-center mb-10">
-          <Link href="/" className="font-display text-3xl tracking-widest text-gold">
-            BLACK DIAMOND
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
+            <div className="w-8 h-8 bg-ink flex items-center justify-center" style={{ borderRadius: '8px' }}>
+              <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none">
+                <path d="M8 1.5L2.5 6 8 14.5 13.5 6 8 1.5z" fill="white" />
+              </svg>
+            </div>
+            <span className="font-sans font-bold text-base tracking-tight text-ink">BLACK DIAMOND</span>
           </Link>
-          <h1 className="mt-4 font-display text-4xl tracking-widest text-white">SIGN IN</h1>
-          <p className="mt-2 font-body text-sm text-gray-500">
-            Access your marketplace account
+          <h1 className="font-sans font-extrabold text-[32px] text-ink" style={{ letterSpacing: '-0.03em' }}>
+            Welcome back
+          </h1>
+          <p className="mt-2 text-[15px] font-sans text-ink-2">
+            Sign in to your marketplace account
           </p>
         </div>
 
-        <div className="bg-surface border border-surface-border p-8">
+        {/* Card */}
+        <div className="bg-white rounded-[20px] p-8" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
           <form onSubmit={handleLogin} className="space-y-5">
             <Input
               id="email"
@@ -71,32 +79,30 @@ export default function LoginPage() {
             />
 
             {error && (
-              <div className="border border-red-500/30 bg-red-500/10 px-4 py-3">
-                <p className="text-sm font-body text-red-400">{error}</p>
+              <div className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-sans text-red-600">{error}</p>
               </div>
             )}
 
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              size="lg"
-              loading={loading}
-              className="w-full font-display tracking-widest"
+              disabled={loading}
+              className="w-full py-3 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow disabled:opacity-50"
             >
-              SIGN IN
-            </Button>
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
           </form>
 
           <div className="mt-6 text-center space-y-3">
             <Link
               href="/auth/forgot-password"
-              className="block font-body text-xs text-gray-600 hover:text-gold transition-colors"
+              className="block text-sm font-sans text-ink-3 hover:text-ink transition-colors"
             >
               Forgot your password?
             </Link>
-            <p className="font-body text-sm text-gray-500">
+            <p className="text-sm font-sans text-ink-3">
               No account?{' '}
-              <Link href="/auth/signup" className="text-gold hover:text-gold-light transition-colors">
+              <Link href="/auth/signup" className="font-semibold text-orange hover:text-orange-lt transition-colors">
                 Create one free
               </Link>
             </p>

@@ -2,19 +2,20 @@ import { ButtonHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'outline' | 'ghost' | 'danger'
+  variant?: 'primary' | 'dark' | 'outline' | 'ghost' | 'danger'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', loading, children, disabled, ...props }, ref) => {
-    const base = 'inline-flex items-center justify-center font-body font-semibold tracking-wide transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
+    const base = 'inline-flex items-center justify-center font-sans font-bold tracking-wide transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-pill'
 
     const variants = {
-      primary: 'bg-gold text-black hover:bg-gold-light active:bg-gold-dark',
-      outline: 'border border-gold text-gold hover:bg-gold hover:text-black',
-      ghost: 'text-gold hover:bg-gold/10',
+      primary: 'bg-orange text-white hover:bg-orange-lt shadow-orange-glow',
+      dark: 'bg-ink text-white hover:bg-ink/90',
+      outline: 'bg-white border border-[#D4D5D7] text-ink hover:border-orange hover:text-orange',
+      ghost: 'bg-transparent border border-[#D4D5D7] text-ink-2 hover:border-orange hover:text-orange',
       danger: 'bg-red-600 text-white hover:bg-red-700',
     }
 

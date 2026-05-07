@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Button from './ui/Button'
-import Input from './ui/Input'
 
 export default function NewsletterForm({ source }: { source?: string }) {
   const [email, setEmail] = useState('')
@@ -24,37 +22,39 @@ export default function NewsletterForm({ source }: { source?: string }) {
 
     if (res.ok) {
       setStatus('success')
-      setMessage("You're subscribed. We'll be in touch.")
+      setMessage("You're subscribed.")
       setEmail('')
     } else {
       setStatus('error')
-      setMessage(data.error ?? 'Something went wrong. Please try again.')
+      setMessage(data.error ?? 'Something went wrong.')
     }
   }
 
   if (status === 'success') {
     return (
-      <div className="border border-gold/30 bg-gold/5 px-6 py-4 text-center">
-        <p className="font-body text-sm text-gold">{message}</p>
-      </div>
+      <p className="text-sm font-sans text-orange">{message}</p>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-      <Input
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input
         type="email"
         placeholder="your@email.com"
         value={email}
         onChange={e => setEmail(e.target.value)}
         required
-        className="flex-1"
+        className="flex-1 bg-white border border-[#D4D5D7] text-ink placeholder:text-ink-3 px-4 py-2 text-sm font-sans rounded-pill focus:outline-none focus:border-orange transition-colors"
       />
-      <Button type="submit" variant="primary" size="md" loading={status === 'loading'}>
-        Subscribe
-      </Button>
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="px-5 py-2 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow disabled:opacity-50 shrink-0"
+      >
+        {status === 'loading' ? '...' : 'Subscribe'}
+      </button>
       {status === 'error' && (
-        <p className="text-xs text-red-400 font-body mt-1 w-full">{message}</p>
+        <p className="text-xs text-red-500 font-sans mt-1 w-full">{message}</p>
       )}
     </form>
   )

@@ -9,29 +9,50 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#0A0A0A',
-        gold: {
-          DEFAULT: '#C8A84B',
-          light: '#D4B86A',
-          dark: '#A8882B',
+        bg: '#F7F8F9',
+        ink: {
+          DEFAULT: '#1A1D20',
+          2: '#4A4D52',
+          3: '#9A9DA2',
         },
-        surface: {
-          DEFAULT: '#141414',
-          elevated: '#1C1C1C',
-          border: '#2A2A2A',
+        orange: {
+          DEFAULT: '#FF6B35',
+          lt: '#FF8855',
+          bg: '#FFF2ED',
+          bdr: '#FFD4C2',
         },
-        tier: {
-          green: '#22C55E',
-          yellow: '#EAB308',
-          red: '#EF4444',
+        'badge-green': {
+          DEFAULT: '#A2FF9A',
+          text: '#1A5C18',
+          bg: '#F0FFF0',
+          bdr: '#C8F5C4',
+        },
+        'badge-gold': {
+          DEFAULT: '#D4A017',
+          text: '#7A5C00',
+          bg: '#FDF6E3',
+          bdr: '#F0D98A',
+        },
+        'badge-blue': {
+          DEFAULT: '#0066CC',
+          text: '#004499',
+          bg: '#E6F0FF',
+          bdr: '#B3D1FF',
         },
       },
       fontFamily: {
-        display: ['var(--font-bebas)', 'Bebas Neue', 'sans-serif'],
-        body: ['var(--font-dm-sans)', 'DM Sans', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['Andale Mono', 'monospace'],
       },
-      letterSpacing: {
-        widest: '0.2em',
+      borderRadius: {
+        pill: '100px',
+      },
+      boxShadow: {
+        card: '0 1px 4px rgba(0,0,0,0.05)',
+        'card-hover': '0 8px 28px rgba(0,0,0,0.10)',
+        navbar: '0 2px 16px rgba(0,0,0,0.05)',
+        'orange-glow': '0 4px 16px rgba(255,107,53,0.30)',
+        search: '0 2px 12px rgba(0,0,0,0.07)',
       },
     },
   },
