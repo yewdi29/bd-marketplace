@@ -5,24 +5,11 @@
 ## Bugs
 Bugs that need to be fixed.
 
-### B001 — Sign In Dashboard Redirect
-- **Page:** Sign Up/In Page
-- **What happened:** When user signs up/in, it redirects them to home page
-- **What should happen:** Should redirect to User Dashboard where they can create/manage listings, and manage membership.
-- **Priority:** Medium
-
-### B002 — Sign Up Promo Box
-- **Page:** Sign Up Page
-- **What happened:** Users who create an account aren't appearing on the newsletter_subscribers table.
-- **What should happen:** Sign Up form should have a promo check box to add to newsletter database. This will add all users with accounts to our newsletter for promotional emials.
-- **Priority:** High
-
-### B003 — Company name not catching
-- **Page:** Sign Up Page
-- **What happened:** When users create a new account and fill in their company, supabase ins't populating the company field with their company name.
-- **What should happen:** The company name they fill in when signing up should populate over to the company field in supabase database.
-- **Priority:** High
-
+### B004 — Skip 'Check Eamil' Page
+- **Page:** 'Check Email' Page
+- **What happened:** When user creates a new account, the 'create new account' button redirects to a 'check email' page with a 'back to sign in' button.
+- **What should happen:** After the new user clicks the 'create an account', the system should automatically sign the user in and redirect the user to the dashboard automatically.
+- **Priority:** Resolved
 
 --------
 
@@ -85,3 +72,30 @@ Things not yet built that you want added.
 ### F002 — Language Toggle
 - **Description:** Have a language change feature where it can detect what country you're browsing from and suggest to change the language OR have a flag button on the top/bottom right of the screen giving the user the option to change the langauge manually.
 - **Priority:** Low
+
+### F003 — AI-powered listing submission
+- **Description:** Replace traditional listing form with a natural language
+  prompt field. Seller describes equipment conversationally. Claude API 
+  extracts structured fields, generates SEO meta description, optimizes 
+  title and tags. Seller reviews auto-populated fields before submitting.
+  This AI-powered submission interface will pop-up as an internal window with an
+  AI prompt field.
+- **API:** POST to /api/listings/generate — calls Claude API, returns 
+  structured listing JSON
+- **Priority:** Low
+
+### F004 — Listing lifecycle management
+- **Description:** Sellers can save drafts, unpublish active listings, 
+  archive, and mark as sold. Sold listings display on public seller 
+  profile page for reputation building and SEO value.
+- **New page:** /sellers/[id] — public seller profile with active 
+  and sold listings
+- **Status flow:** draft → pending_review → active → sold/unpublished/archived
+- **Priority:** Low
+
+
+--------
+
+## Project To-Do's
+[ ] Figure out best listing pricing structure for memberships. (Free=3, Pro=15, Max=30) + perks.
+[ ] 

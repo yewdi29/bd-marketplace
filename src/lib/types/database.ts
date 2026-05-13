@@ -21,6 +21,10 @@ export interface User {
   company_name: string | null
   phone: string | null
   avatar_url: string | null
+  city: string | null
+  state: string | null
+  country: string | null
+  signup_ip_location: string | null
   role: UserRole
   plan: MembershipPlan
   created_at: string

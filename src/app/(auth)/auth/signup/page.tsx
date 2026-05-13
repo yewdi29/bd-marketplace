@@ -6,6 +6,16 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 
+const COUNTRIES = [
+  'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Colombia', 'Venezuela', 'Ecuador', 'Peru', 'Trinidad and Tobago',
+  'United Kingdom', 'Norway', 'Netherlands', 'Germany', 'France', 'Italy', 'Spain', 'Denmark', 'Romania', 'Poland',
+  'Russia', 'Kazakhstan', 'Azerbaijan', 'Turkmenistan', 'Uzbekistan',
+  'Saudi Arabia', 'United Arab Emirates', 'Qatar', 'Kuwait', 'Iraq', 'Iran', 'Oman', 'Bahrain', 'Yemen',
+  'Nigeria', 'Angola', 'Libya', 'Algeria', 'Egypt', 'Ghana', 'Mozambique', 'Congo', 'Gabon', 'Cameroon', 'Equatorial Guinea', 'South Sudan', 'Sudan',
+  'Australia', 'Indonesia', 'Malaysia', 'Papua New Guinea', 'India', 'China', 'Vietnam', 'Myanmar',
+  'Other',
+]
+
 export default function SignupPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -14,10 +24,12 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [country, setCountry] = useState('')
   const [newsletter, setNewsletter] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -28,19 +40,16 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          company_name: companyName,
-        },
-      },
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, fullName, companyName, city, state, country }),
     })
 
-    if (error) {
-      setError(error.message)
+    const data = await res.json()
+
+    if (!res.ok) {
+      setError(data.error ?? 'Something went wrong. Please try again.')
       setLoading(false)
       return
     }
@@ -53,30 +62,20 @@ export default function SignupPage() {
       })
     }
 
-    setSuccess(true)
-    setLoading(false)
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (signInError) {
+      setError(signInError.message)
+      setLoading(false)
+      return
+    }
+
+    router.push('/dashboard')
+    router.refresh()
   }
 
-  if (success) {
-    return (
-      <div className="min-h-[calc(100vh-82px)] flex items-center justify-center px-4 bg-bg">
-        <div className="w-full max-w-md text-center bg-white rounded-[20px] p-10" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <div className="text-4xl mb-4">✅</div>
-          <h2 className="font-sans font-extrabold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Check your email</h2>
-          <p className="mt-3 text-[15px] font-sans text-ink-2 leading-relaxed">
-            We sent a confirmation link to <strong className="text-ink">{email}</strong>.
-            Click it to activate your account.
-          </p>
-          <Link
-            href="/auth/login"
-            className="mt-6 inline-block px-6 py-2.5 text-sm font-bold text-ink border border-[#D4D5D7] rounded-pill hover:border-orange hover:text-orange transition-colors"
-          >
-            Back to Sign In
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  const selectClass =
+    'w-full px-4 py-2.5 text-[15px] font-sans text-ink bg-white border border-[#D4D5D7] rounded-[10px] outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors appearance-none cursor-pointer'
 
   return (
     <div className="min-h-[calc(100vh-82px)] flex items-center justify-center px-4 py-12 bg-bg">
@@ -142,6 +141,53 @@ export default function SignupPage() {
               autoComplete="new-password"
               minLength={8}
             />
+
+            {/* Location fields */}
+            <div>
+              <label htmlFor="country" className="block text-sm font-semibold text-ink mb-1.5">
+                Country <span className="text-orange">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="country"
+                  value={country}
+                  onChange={e => setCountry(e.target.value)}
+                  required
+                  className={selectClass}
+                >
+                  <option value="" disabled>Select your country</option>
+                  {COUNTRIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                id="state"
+                type="text"
+                label="State / Province"
+                placeholder="Texas"
+                value={state}
+                onChange={e => setState(e.target.value)}
+                required
+                autoComplete="address-level1"
+              />
+              <Input
+                id="city"
+                type="text"
+                label="City"
+                placeholder="Houston"
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                required
+                autoComplete="address-level2"
+              />
+            </div>
 
             {/* Newsletter checkbox */}
             <label className="flex items-start gap-3 cursor-pointer">

@@ -1,8 +1,13 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
-import { createClient } from '@/lib/supabase/server'
-import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: {
@@ -19,23 +24,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const navUser = user?.email ? { email: user.email } : null
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen flex flex-col bg-bg text-ink">
-        <Navbar user={navUser} />
-        <main className="flex-1 pt-[82px]">
-          {children}
-        </main>
-        <Footer />
+    <html lang="en" className={inter.variable}>
+      <body className="min-h-screen bg-bg text-ink font-sans">
+        {children}
       </body>
     </html>
   )

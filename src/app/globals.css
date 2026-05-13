@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 :root {
   /* Core palette */
   --bg: #F7F8F9;
@@ -39,7 +37,7 @@
   --gold-bdr: #F0D98A;
 
   /* Typography */
-  --font: 'Inter', system-ui, sans-serif;
+  --font: var(--font-inter), system-ui, sans-serif;
   --mono: 'Andale Mono', monospace;
 
   /* Border radius */
