@@ -14,22 +14,26 @@ export async function POST(request: NextRequest) {
     request.headers.get('x-real-ip') ??
     null
 
+  // Use anon key so Supabase sends the confirmation email via signUp().
+  // admin.createUser() does not fire the confirmation email reliably.
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const { error } = await supabase.auth.admin.createUser({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
-    email_confirm: false,
-    user_metadata: {
-      full_name: fullName,
-      company_name: companyName ?? null,
-      city,
-      state,
-      country,
-      signup_ip_location: ip,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      data: {
+        full_name: fullName,
+        company_name: companyName ?? null,
+        city,
+        state,
+        country,
+        signup_ip_location: ip,
+      },
     },
   })
 
