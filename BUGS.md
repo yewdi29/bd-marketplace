@@ -5,11 +5,11 @@
 ## Bugs
 Bugs that need to be fixed.
 
-### B004 — Skip 'Check Eamil' Page
-- **Page:** 'Check Email' Page
-- **What happened:** When user creates a new account, the 'create new account' button redirects to a 'check email' page with a 'back to sign in' button.
-- **What should happen:** After the new user clicks the 'create an account', the system should automatically sign the user in and redirect the user to the dashboard automatically.
-- **Priority:** Resolved
+### B005 — Make all signup fields required
+- **Page:** Sign up page
+- **What happened:** User can continue creating an account without requiring company name.
+- **What should happen:** Company name must be required. All field names should have a red asterisks.
+- **Priority:** High
 
 --------
 
@@ -98,4 +98,8 @@ Things not yet built that you want added.
 
 ## Project To-Do's
 [ ] Figure out best listing pricing structure for memberships. (Free=3, Pro=15, Max=30) + perks.
+    - Basic ($2000) 
+    - Pro ($7500)
+    - Premium ($12,000)
+    - Global reach unlocked with premium, lower tiers limited to local country. Track reach based on IP location.
 [ ] 

@@ -1,29 +1,46 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
+import NavLinks from '@/components/ui/NavLinks'
 
-interface NavbarProps {
-  user?: { email: string } | null
-}
-
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar() {
+  const [authUser, setAuthUser] = useState<ProfileUser | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient()
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.refresh()
-  }
+  useEffect(() => {
+    const supabase = createClient()
 
-  function isActive(href: string) {
-    return pathname === href || pathname.startsWith(href + '/')
-  }
+    async function loadProfile(userId: string, email: string) {
+      const [profileRes, countRes] = await Promise.all([
+        supabase.from('users').select('full_name, company_name, plan').eq('id', userId).single(),
+        supabase
+          .from('listings')
+          .select('id', { count: 'exact', head: true })
+          .eq('seller_id', userId)
+          .neq('status', 'removed'),
+      ])
+      setAuthUser({
+        email,
+        full_name: profileRes.data?.full_name ?? null,
+        company_name: profileRes.data?.company_name ?? null,
+        plan: profileRes.data?.plan ?? 'free',
+        listing_count: countRes.count ?? 0,
+      })
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadProfile(session.user.id, session.user.email ?? '')
+      } else {
+        setAuthUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <header
@@ -41,60 +58,23 @@ export default function Navbar({ user }: NavbarProps) {
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <div
-            className="w-7 h-7 bg-ink flex items-center justify-center shrink-0"
-            style={{ borderRadius: '7px' }}
-          >
+          <div className="w-7 h-7 bg-ink flex items-center justify-center shrink-0" style={{ borderRadius: '7px' }}>
             <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
               <path d="M8 1.5L2.5 6 8 14.5 13.5 6 8 1.5z" fill="white" />
             </svg>
           </div>
-          <span className="font-sans font-bold text-sm tracking-tight text-ink">
-            BLACK DIAMOND
-          </span>
+          <span className="font-sans font-bold text-sm tracking-tight text-ink">BLACK DIAMOND</span>
         </Link>
 
         {/* Desktop nav links */}
         <nav className="hidden md:flex items-center gap-1">
-          {[
-            { label: 'Browse Equipment', href: '/listings' },
-            { label: 'Knowledge Base', href: '/knowledge-base' },
-          ].map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`px-3.5 py-1.5 text-sm font-medium rounded-pill transition-all duration-150 ${
-                isActive(link.href)
-                  ? 'bg-white text-ink shadow-card'
-                  : 'text-ink-2 hover:text-ink hover:bg-white/70'
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          <NavLinks isSignedIn={!!authUser} variant="public" />
         </nav>
 
-        {/* Desktop auth actions */}
+        {/* Desktop right side */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
-          {user ? (
-            <>
-              <Link
-                href="/dashboard"
-                className={`px-3.5 py-1.5 text-sm font-medium rounded-pill transition-all ${
-                  isActive('/dashboard')
-                    ? 'bg-white text-ink shadow-card'
-                    : 'text-ink-2 hover:text-ink hover:bg-white/70'
-                }`}
-              >
-                Dashboard
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-1.5 text-sm font-bold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-orange hover:text-orange transition-colors"
-              >
-                Sign Out
-              </button>
-            </>
+          {authUser ? (
+            <ProfileDropdown user={authUser} />
           ) : (
             <>
               <Link
@@ -105,7 +85,8 @@ export default function Navbar({ user }: NavbarProps) {
               </Link>
               <Link
                 href="/auth/signup"
-                className="px-4 py-1.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow"
+                className="px-4 py-1.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
+                style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
               >
                 List Equipment
               </Link>
@@ -134,28 +115,30 @@ export default function Navbar({ user }: NavbarProps) {
           className="md:hidden absolute top-full left-0 right-0 mt-1 bg-white border border-[#E8E9EA] p-4 flex flex-col gap-2"
           style={{ borderRadius: '16px', boxShadow: '0 8px 28px rgba(0,0,0,0.10)' }}
         >
-          <Link href="/listings" className="px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink rounded-[10px] hover:bg-bg transition-colors" onClick={() => setMenuOpen(false)}>
-            Browse Equipment
-          </Link>
-          <Link href="/knowledge-base" className="px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink rounded-[10px] hover:bg-bg transition-colors" onClick={() => setMenuOpen(false)}>
-            Knowledge Base
-          </Link>
+          <NavLinks isSignedIn={!!authUser} variant="dashboard" onNavigate={() => setMenuOpen(false)} />
           <div className="border-t border-[#E8E9EA] my-1" />
-          {user ? (
-            <>
-              <Link href="/dashboard" className="px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink rounded-[10px] hover:bg-bg transition-colors" onClick={() => setMenuOpen(false)}>
-                Dashboard
-              </Link>
-              <button onClick={() => { handleSignOut(); setMenuOpen(false) }} className="px-4 py-2 text-sm font-bold text-ink border border-[#D4D5D7] rounded-pill text-left">
-                Sign Out
-              </button>
-            </>
+          {authUser ? (
+            <Link
+              href="/dashboard"
+              onClick={() => setMenuOpen(false)}
+              className="px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink rounded-[10px] hover:bg-bg transition-colors"
+            >
+              My Dashboard
+            </Link>
           ) : (
             <div className="flex gap-2">
-              <Link href="/auth/login" onClick={() => setMenuOpen(false)} className="flex-1 px-4 py-2 text-sm font-bold text-center text-ink border border-[#D4D5D7] rounded-pill hover:border-orange hover:text-orange transition-colors">
+              <Link
+                href="/auth/login"
+                onClick={() => setMenuOpen(false)}
+                className="flex-1 px-4 py-2 text-sm font-bold text-center text-ink border border-[#D4D5D7] rounded-pill hover:border-orange hover:text-orange transition-colors"
+              >
                 Sign In
               </Link>
-              <Link href="/auth/signup" onClick={() => setMenuOpen(false)} className="flex-1 px-4 py-2 text-sm font-bold text-center text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors">
+              <Link
+                href="/auth/signup"
+                onClick={() => setMenuOpen(false)}
+                className="flex-1 px-4 py-2 text-sm font-bold text-center text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
+              >
                 List Equipment
               </Link>
             </div>
