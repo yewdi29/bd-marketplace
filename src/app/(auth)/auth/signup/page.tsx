@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 
 const COUNTRIES = [
@@ -18,7 +17,6 @@ const COUNTRIES = [
 
 export default function SignupPage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -33,6 +31,10 @@ export default function SignupPage() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
+    if (!companyName.trim()) {
+      setError('Company name is required.')
+      return
+    }
     if (password.length < 8) {
       setError('Password must be at least 8 characters.')
       return
@@ -62,16 +64,7 @@ export default function SignupPage() {
       })
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (signInError) {
-      setError(signInError.message)
-      setLoading(false)
-      return
-    }
-
-    router.push('/dashboard')
-    router.refresh()
+    router.push('/auth/check-email')
   }
 
   const selectClass =
@@ -119,6 +112,8 @@ export default function SignupPage() {
               placeholder="Permian Basin Drilling Co."
               value={companyName}
               onChange={e => setCompanyName(e.target.value)}
+              required
+              autoComplete="organization"
             />
             <Input
               id="email"
@@ -143,6 +138,29 @@ export default function SignupPage() {
             />
 
             {/* Location fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                id="city"
+                type="text"
+                label="City"
+                placeholder="Houston"
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                required
+                autoComplete="address-level2"
+              />
+              <Input
+                id="state"
+                type="text"
+                label="State / Province"
+                placeholder="Texas"
+                value={state}
+                onChange={e => setState(e.target.value)}
+                required
+                autoComplete="address-level1"
+              />
+            </div>
+
             <div>
               <label htmlFor="country" className="block text-sm font-semibold text-ink mb-1.5">
                 Country <span className="text-orange">*</span>
@@ -164,29 +182,6 @@ export default function SignupPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                id="state"
-                type="text"
-                label="State / Province"
-                placeholder="Texas"
-                value={state}
-                onChange={e => setState(e.target.value)}
-                required
-                autoComplete="address-level1"
-              />
-              <Input
-                id="city"
-                type="text"
-                label="City"
-                placeholder="Houston"
-                value={city}
-                onChange={e => setCity(e.target.value)}
-                required
-                autoComplete="address-level2"
-              />
             </div>
 
             {/* Newsletter checkbox */}

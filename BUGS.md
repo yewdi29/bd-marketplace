@@ -5,11 +5,9 @@
 ## Bugs
 Bugs that need to be fixed.
 
-### B005 — Make all signup fields required
+### ~~B005 — Make all signup fields required~~ ✅ Fixed
 - **Page:** Sign up page
-- **What happened:** User can continue creating an account without requiring company name.
-- **What should happen:** Company name must be required. All field names should have a red asterisks.
-- **Priority:** High
+- **Fix:** Added `required` prop to Company Name field. Updated `Input` component to auto-render red asterisk on any field with `required`. Added client-side guard in `handleSignup` for empty company name.
 
 --------
 
