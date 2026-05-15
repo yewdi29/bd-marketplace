@@ -22,10 +22,27 @@ export async function PATCH(
   )
 
   const { data: listing } = await adminClient
-    .from('listings').select('seller_id').eq('id', params.id).single()
+    .from('listings')
+    .select('seller_id, title, category, price, condition, location_city, location_state')
+    .eq('id', params.id)
+    .single()
 
   if (!listing || listing.seller_id !== user.id)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Validate required fields before going live
+  if (
+    !listing.title || listing.title === 'Untitled Draft' ||
+    !listing.category || listing.category === 'other' ||
+    !listing.condition ||
+    !listing.location_city ||
+    !listing.location_state
+  ) {
+    return NextResponse.json(
+      { error: 'Listing is missing required fields. Complete all fields in the form before publishing.' },
+      { status: 400 }
+    )
+  }
 
   const { error } = await adminClient
     .from('listings')

@@ -100,8 +100,11 @@ create table public.listings (
   condition        text,                   -- 'new', 'like_new', 'good', 'fair', 'parts_only'
   price            numeric(15,2) not null,
   price_negotiable boolean default false,
+  price_visible    boolean not null default true,  -- if false, shows "Contact for price"
   location_city    text,
   location_state   text,
+  tags             text[],
+  video_url        text,
   status           listing_status not null default 'pending_review',
   tier             listing_tier,           -- set automatically by trigger on insert
   featured         boolean default false,

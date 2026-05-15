@@ -301,4 +301,5 @@ Public listing cards show **no tier indicators**. Tier routing happens invisibly
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v1.1 | May 2026 | New Listing modal — 4-step flow (Describe, Review & Refine, Photos & Video, Publish). Full-screen overlay with backdrop blur, 720px white card, orange breadcrumb progress, discard confirmation overlay, drag-to-reorder photo grid, price visible toggle, preview card in step 4. |
 | v1.0 | May 2026 | Initial design system established. Light mode, orange + green + science blue + gold palette, Aeonik/Inter typography, pill buttons, frosted glass navbar. |

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/utils'
+import NewListingModal from '@/components/listings/NewListingModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -391,7 +392,9 @@ export default function DashboardPage() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [manageListing, setManageListing] = useState<MyListing | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [showNewListing, setShowNewListing] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -434,13 +437,18 @@ export default function DashboardPage() {
     }
   }
 
+  function showToast(message: string) {
+    setToast(message)
+    setTimeout(() => setToast(null), 4000)
+  }
+
   function handleNewListing() {
     const nonRemovedCount = listings.length
     if (plan === 'free' && nonRemovedCount >= 3) {
       setShowUpgrade(true)
       return
     }
-    router.push('/dashboard/listings/new')
+    setShowNewListing(true)
   }
 
   // Filter counts
@@ -581,6 +589,33 @@ export default function DashboardPage() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100]">
           <div className="bg-ink text-white text-xs font-mono px-4 py-2 rounded-pill" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}>
             Updating...
+          </div>
+        </div>
+      )}
+
+      {/* New Listing Modal */}
+      {showNewListing && (
+        <NewListingModal
+          onClose={() => setShowNewListing(false)}
+          onSuccess={(message) => {
+            setShowNewListing(false)
+            fetchData()
+            if (message) showToast(message)
+          }}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] pointer-events-none">
+          <div
+            className="flex items-center gap-2 bg-ink text-white text-sm font-sans px-5 py-3 rounded-pill"
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.25)' }}
+          >
+            <svg className="w-4 h-4 text-[#A2FF9A] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            {toast}
           </div>
         </div>
       )}
