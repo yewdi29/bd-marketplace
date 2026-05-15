@@ -43,8 +43,11 @@ export interface Listing {
   condition: string | null
   price: number
   price_negotiable: boolean
+  price_visible: boolean
   location_city: string | null
   location_state: string | null
+  tags: string[] | null
+  video_url: string | null
   status: ListingStatus
   tier: ListingTier | null
   featured: boolean
