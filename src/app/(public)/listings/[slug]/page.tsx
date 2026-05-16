@@ -156,7 +156,14 @@ export default async function ListingDetailPage({ params }: Props) {
   const priceVisible = l.price_visible !== false // default true if column missing
   const isNew = isNewListing(l.created_at)
 
-  // Build specs — only include rows where the value exists
+  // Dynamic specs from AI-generated JSONB field — only non-empty values
+  const aiSpecs: { label: string; value: string | number }[] = l.specs
+    ? Object.entries(l.specs)
+        .filter(([, v]) => v != null && String(v).trim() !== '')
+        .map(([k, v]) => ({ label: k, value: String(v) }))
+    : []
+
+  // Build specs — structured fields first, then dynamic AI specs
   const specs: { label: string; value: string | number }[] = [
     l.year ? { label: 'Year', value: l.year } : null,
     l.manufacturer ? { label: 'Manufacturer', value: l.manufacturer } : null,
@@ -166,6 +173,7 @@ export default async function ListingDetailPage({ params }: Props) {
     (l.location_city || l.location_state)
       ? { label: 'Location', value: [l.location_city, l.location_state].filter(Boolean).join(', ') }
       : null,
+    ...aiSpecs,
   ].filter((s): s is { label: string; value: string | number } => s !== null)
 
   // JSON-LD Product schema
@@ -230,12 +238,30 @@ export default async function ListingDetailPage({ params }: Props) {
               <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3 mb-2">
                 {catLabel(l.category)}
               </p>
-              <h1
-                className="font-sans font-bold text-ink leading-tight"
-                style={{ fontSize: '20px', letterSpacing: '-0.02em' }}
-              >
-                {l.title}
-              </h1>
+              {/* Title + Price on same row (B015) */}
+              <div className="flex items-start justify-between gap-4">
+                <h1
+                  className="font-sans font-bold text-ink leading-tight flex-1 min-w-0"
+                  style={{ fontSize: '20px', letterSpacing: '-0.02em' }}
+                >
+                  {l.title}
+                </h1>
+                {priceVisible && l.price > 0 ? (
+                  <span
+                    className="font-mono font-medium shrink-0"
+                    style={{ fontSize: '20px', letterSpacing: '-0.02em', color: '#FF6B35' }}
+                  >
+                    {formatPriceFull(l.price)}
+                  </span>
+                ) : (
+                  <span
+                    className="font-sans font-semibold italic shrink-0"
+                    style={{ fontSize: '15px', color: '#FF6B35' }}
+                  >
+                    Contact for price
+                  </span>
+                )}
+              </div>
 
               <div className="border-t border-[#E8E9EA] my-4" />
 
@@ -269,24 +295,6 @@ export default async function ListingDetailPage({ params }: Props) {
                 )}
               </div>
 
-              <div className="border-t border-[#E8E9EA] my-4" />
-
-              {/* Price */}
-              {priceVisible && l.price > 0 ? (
-                <span
-                  className="font-mono font-medium text-ink"
-                  style={{ fontSize: '30px', letterSpacing: '-0.02em' }}
-                >
-                  {formatPriceFull(l.price)}
-                </span>
-              ) : (
-                <span
-                  className="font-sans font-semibold text-ink-2 italic"
-                  style={{ fontSize: '20px' }}
-                >
-                  Contact for price
-                </span>
-              )}
             </div>
 
             {/* Specs card */}

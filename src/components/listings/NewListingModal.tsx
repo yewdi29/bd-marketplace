@@ -957,7 +957,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               {step > 1 ? (
                 <button
                   onClick={handleBack}
@@ -970,20 +970,33 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
                 <div />
               )}
 
-              <button
-                onClick={handleNext}
-                disabled={nextDisabled}
-                className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors disabled:opacity-40"
-                style={{ boxShadow: nextDisabled ? 'none' : '0 4px 16px rgba(255,107,53,0.30)' }}
-              >
-                {generating && (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+              <div className="flex items-center gap-2">
+                {/* Save as Draft — available from step 2 onwards (B017) */}
+                {step >= 2 && (
+                  <button
+                    onClick={handleSaveAsDraft}
+                    disabled={stepLoading || !listingId}
+                    className="px-4 py-2.5 text-sm font-bold text-ink border border-[#D4D5D7] rounded-pill hover:border-ink transition-colors disabled:opacity-40"
+                  >
+                    Save as Draft
+                  </button>
                 )}
-                {nextLabel}
-              </button>
+
+                <button
+                  onClick={handleNext}
+                  disabled={nextDisabled}
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors disabled:opacity-40"
+                  style={{ boxShadow: nextDisabled ? 'none' : '0 4px 16px rgba(255,107,53,0.30)' }}
+                >
+                  {generating && (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                  {nextLabel}
+                </button>
+              </div>
             </div>
           )}
         </div>

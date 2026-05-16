@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/utils'
 import NewListingModal from '@/components/listings/NewListingModal'
+import EditListingModal from '@/components/listings/EditListingModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ interface MyListing {
   primary_image_url: string | null
 }
 
-type FilterTab = 'all' | 'active' | 'draft' | 'pending_review' | 'sold'
+type FilterTab = 'all' | 'active' | 'draft' | 'sold'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,182 +62,78 @@ function SkeletonCard() {
   )
 }
 
-// ─── Manage Modal ─────────────────────────────────────────────────────────────
+// ─── On-card manage overlay (B010) ────────────────────────────────────────────
 
-interface ActionItem {
+interface CardAction {
   label: string
-  subtitle: string
   icon: React.ReactNode
   onClick: () => void
   danger?: boolean
 }
 
-function ManageModal({
+function CardOverlay({
   listing,
   onClose,
   onAction,
+  onEdit,
 }: {
   listing: MyListing
   onClose: () => void
   onAction: (id: string, action: string) => Promise<void>
+  onEdit: (id: string) => void
 }) {
-  const router = useRouter()
-  const badge = statusBadge(listing.status)
-
-  const actions: ActionItem[] = (() => {
+  const actions: CardAction[] = (() => {
     switch (listing.status) {
       case 'active':
         return [
-          {
-            label: 'Edit Listing',
-            subtitle: 'Update details, photos, or price',
-            icon: <PencilIcon />,
-            onClick: () => { onClose(); router.push(`/dashboard/listings/${listing.id}/edit`) },
-          },
-          {
-            label: 'Unpublish',
-            subtitle: 'Hide from marketplace, keep draft',
-            icon: <EyeOffIcon />,
-            onClick: async () => { await onAction(listing.id, 'unpublish'); onClose() },
-          },
-          {
-            label: 'Mark as Sold',
-            subtitle: 'Close the listing — equipment sold',
-            icon: <CheckCircleIcon />,
-            onClick: async () => { await onAction(listing.id, 'sold'); onClose() },
-          },
+          { label: 'Edit Listing', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
+          { label: 'Unpublish', icon: <EyeOffIcon />, onClick: async () => { await onAction(listing.id, 'unpublish'); onClose() } },
+          { label: 'Mark as Sold', icon: <CheckCircleIcon />, onClick: async () => { await onAction(listing.id, 'sold'); onClose() } },
         ]
       case 'draft':
         return [
-          {
-            label: 'Continue Editing',
-            subtitle: 'Resume where you left off',
-            icon: <PencilIcon />,
-            onClick: () => { onClose(); router.push(`/dashboard/listings/${listing.id}/edit`) },
-          },
-          {
-            label: 'Delete Draft',
-            subtitle: 'Permanently remove this draft',
-            icon: <TrashIcon />,
-            onClick: async () => { await onAction(listing.id, 'archive'); onClose() },
-            danger: true,
-          },
+          { label: 'Edit Draft', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
+          { label: 'Delete Draft', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
         ]
       case 'sold':
         return [
-          {
-            label: 'View Listing',
-            subtitle: 'See the public listing page',
-            icon: <ExternalLinkIcon />,
-            onClick: () => { onClose(); router.push(`/listings/${listing.slug}`) },
-          },
-          {
-            label: 'Relist as Active',
-            subtitle: 'Make available in marketplace again',
-            icon: <RefreshIcon />,
-            onClick: async () => { await onAction(listing.id, 'publish'); onClose() },
-          },
-          {
-            label: 'Unpublish',
-            subtitle: 'Move back to draft/pending state',
-            icon: <EyeOffIcon />,
-            onClick: async () => { await onAction(listing.id, 'unpublish'); onClose() },
-          },
-          {
-            label: 'Archive',
-            subtitle: 'Permanently remove this listing',
-            icon: <TrashIcon />,
-            onClick: async () => { await onAction(listing.id, 'archive'); onClose() },
-            danger: true,
-          },
+          { label: 'Relist', icon: <RefreshIcon />, onClick: async () => { await onAction(listing.id, 'publish'); onClose() } },
+          { label: 'Archive', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
         ]
       case 'pending_review':
         return [
-          {
-            label: 'Edit Listing',
-            subtitle: 'Update details before publishing',
-            icon: <PencilIcon />,
-            onClick: () => { onClose(); router.push(`/dashboard/listings/${listing.id}/edit`) },
-          },
-          {
-            label: 'Republish',
-            subtitle: 'Make live in the marketplace',
-            icon: <CheckCircleIcon />,
-            onClick: async () => { await onAction(listing.id, 'publish'); onClose() },
-          },
-          {
-            label: 'Mark as Sold',
-            subtitle: 'Close the listing — equipment sold',
-            icon: <CheckCircleIcon />,
-            onClick: async () => { await onAction(listing.id, 'sold'); onClose() },
-          },
-          {
-            label: 'Archive',
-            subtitle: 'Permanently remove this listing',
-            icon: <TrashIcon />,
-            onClick: async () => { await onAction(listing.id, 'archive'); onClose() },
-            danger: true,
-          },
+          { label: 'Edit Listing', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
+          { label: 'Republish', icon: <CheckCircleIcon />, onClick: async () => { await onAction(listing.id, 'publish'); onClose() } },
+          { label: 'Archive', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
         ]
     }
   })()
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} />
-      <div
-        className="relative bg-white flex flex-col overflow-hidden"
-        style={{ width: '360px', borderRadius: '20px', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '90vh' }}
-        onClick={e => e.stopPropagation()}
+    <div
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 p-3 rounded-[16px]"
+      style={{ background: 'rgba(20,22,26,0.82)', backdropFilter: 'blur(3px)' }}
+    >
+      {actions.map(action => (
+        <button
+          key={action.label}
+          onClick={action.onClick}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-[10px] text-sm font-semibold transition-colors ${
+            action.danger
+              ? 'bg-[#3D1515] text-[#FCA5A5] hover:bg-[#521C1C]'
+              : 'bg-white/10 text-white hover:bg-white/20'
+          }`}
+        >
+          <span className="w-4 h-4 shrink-0">{action.icon}</span>
+          {action.label}
+        </button>
+      ))}
+      <button
+        onClick={onClose}
+        className="mt-1 text-xs text-white/50 hover:text-white/80 transition-colors"
       >
-        {/* Modal header */}
-        <div className="px-5 py-4 border-b border-[#E8E9EA] flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">Manage Listing</p>
-            <p className="text-sm font-semibold text-ink truncate">{listing.title}</p>
-            <div className="flex items-center gap-2 mt-1.5">
-              <span
-                className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-bold rounded-pill border"
-                style={{ background: badge.bg, color: badge.text, borderColor: badge.border }}
-              >
-                {badge.label}
-              </span>
-              <span className="text-xs font-mono text-ink-3">{formatPrice(listing.price)}</span>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-bg text-ink-3 hover:text-ink transition-colors mt-0.5"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Actions */}
-        <div className="p-3 flex flex-col gap-1.5 overflow-y-auto">
-          {actions.map(action => (
-            <button
-              key={action.label}
-              onClick={action.onClick}
-              className={`w-full flex items-center gap-3 p-3 text-left border rounded-[12px] transition-colors ${
-                action.danger
-                  ? 'border-[#FECACA] hover:bg-[#FFF5F5] text-[#DC2626]'
-                  : 'border-[#E8E9EA] hover:bg-bg text-ink'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0 ${action.danger ? 'bg-[#FEE2E2]' : 'bg-bg'}`}>
-                <span className={action.danger ? 'text-[#DC2626]' : 'text-ink-2'}>{action.icon}</span>
-              </div>
-              <div className="min-w-0">
-                <p className={`text-sm font-semibold ${action.danger ? 'text-[#DC2626]' : 'text-ink'}`}>{action.label}</p>
-                <p className={`text-xs mt-0.5 ${action.danger ? 'text-[#F87171]' : 'text-ink-3'}`}>{action.subtitle}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+        Cancel
+      </button>
     </div>
   )
 }
@@ -331,49 +228,100 @@ function RefreshIcon() {
 
 // ─── Listing Card ─────────────────────────────────────────────────────────────
 
-function ListingCard({ listing, onManage }: { listing: MyListing; onManage: (l: MyListing) => void }) {
+function ListingCard({
+  listing,
+  onManage,
+  isManaging,
+  onCloseManage,
+  onAction,
+  onEdit,
+}: {
+  listing: MyListing
+  onManage: (l: MyListing) => void
+  isManaging: boolean
+  onCloseManage: () => void
+  onAction: (id: string, action: string) => Promise<void>
+  onEdit: (id: string) => void
+}) {
   const badge = statusBadge(listing.status)
+  const isNavigable = listing.status === 'active' && !!listing.slug
+
+  function handleCardClick() {
+    if (isManaging) return
+    if (isNavigable) window.open(`/listings/${listing.slug}`, '_blank')
+  }
+
   return (
     <div
-      className="bg-white rounded-[16px] overflow-hidden cursor-pointer group transition-shadow"
+      className="bg-white rounded-[16px] overflow-hidden relative group transition-shadow"
       style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.10)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)')}
     >
-      {/* Image */}
-      <div className="w-full h-[140px] bg-[#F0F0F0] relative overflow-hidden">
-        {listing.primary_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={listing.primary_image_url}
-            alt={listing.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-10 h-10 text-ink-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+      {/* On-card manage overlay (B010) */}
+      {isManaging && (
+        <CardOverlay
+          listing={listing}
+          onClose={onCloseManage}
+          onAction={onAction}
+          onEdit={onEdit}
+        />
+      )}
+
+      {/* Clickable area — navigates to public listing (B008) */}
+      <div
+        className={isNavigable && !isManaging ? 'cursor-pointer' : ''}
+        onClick={handleCardClick}
+      >
+        {/* Image */}
+        <div className="w-full h-[140px] bg-[#F0F0F0] relative overflow-hidden">
+          {listing.primary_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={listing.primary_image_url}
+              alt={listing.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <svg className="w-10 h-10 text-ink-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+          {/* Status badge */}
+          <div className="absolute top-2 left-2">
+            <span
+              className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-bold rounded-pill border"
+              style={{ background: badge.bg, color: badge.text, borderColor: badge.border }}
+            >
+              {badge.label}
+            </span>
           </div>
-        )}
-        {/* Status badge overlay */}
-        <div className="absolute top-2 left-2">
-          <span
-            className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-bold rounded-pill border"
-            style={{ background: badge.bg, color: badge.text, borderColor: badge.border }}
-          >
-            {badge.label}
-          </span>
+          {/* External link hint for active listings */}
+          {isNavigable && !isManaging && (
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="w-6 h-6 bg-black/40 rounded-full flex items-center justify-center">
+                <ExternalLinkIcon />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="p-3 pb-2">
+          <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">{formatCategory(listing.category)}</p>
+          <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-2">{listing.title}</p>
+          <p className="font-mono text-sm font-bold text-ink mb-0">
+            {listing.price > 0 ? formatPrice(listing.price) : <span className="font-sans text-xs text-ink-3 italic font-normal">Contact for price</span>}
+          </p>
         </div>
       </div>
 
-      {/* Info */}
-      <div className="p-3">
-        <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">{formatCategory(listing.category)}</p>
-        <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-2">{listing.title}</p>
-        <p className="font-mono text-sm font-bold text-ink mb-3">{formatPrice(listing.price)}</p>
+      {/* Manage button — stops propagation so card click doesn't fire */}
+      <div className="px-3 pb-3 pt-2">
         <button
-          onClick={() => onManage(listing)}
+          onClick={e => { e.stopPropagation(); onManage(listing) }}
           className="w-full py-1.5 text-xs font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
         >
           Manage
@@ -391,6 +339,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [manageListing, setManageListing] = useState<MyListing | null>(null)
+  const [editListingId, setEditListingId] = useState<string | null>(null)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [showNewListing, setShowNewListing] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -451,21 +400,21 @@ export default function DashboardPage() {
     setShowNewListing(true)
   }
 
-  // Filter counts
+  // Filter counts — drafts tab includes both 'draft' and 'pending_review' (B012)
   const activeCount = listings.filter(l => l.status === 'active').length
-  const draftCount = listings.filter(l => l.status === 'draft').length
-  const unpublishedCount = listings.filter(l => l.status === 'pending_review').length
+  const draftCount = listings.filter(l => l.status === 'draft' || l.status === 'pending_review').length
   const soldCount = listings.filter(l => l.status === 'sold').length
 
   const filtered = activeFilter === 'all'
     ? listings
-    : listings.filter(l => l.status === activeFilter)
+    : activeFilter === 'draft'
+      ? listings.filter(l => l.status === 'draft' || l.status === 'pending_review')
+      : listings.filter(l => l.status === activeFilter)
 
   const filterTabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: listings.length },
     { key: 'active', label: 'Active', count: activeCount },
     { key: 'draft', label: 'Drafts', count: draftCount },
-    { key: 'pending_review', label: 'Unpublished', count: unpublishedCount },
     { key: 'sold', label: 'Sold', count: soldCount },
   ]
 
@@ -551,7 +500,7 @@ export default function DashboardPage() {
             </>
           ) : (
             <>
-              <h3 className="font-sans font-bold text-base text-ink mb-1">No {activeFilter === 'pending_review' ? 'unpublished' : activeFilter} listings</h3>
+              <h3 className="font-sans font-bold text-base text-ink mb-1">No {activeFilter} listings</h3>
               <p className="text-sm text-ink-3">Switch to a different filter to see your listings.</p>
             </>
           )}
@@ -563,19 +512,21 @@ export default function DashboardPage() {
               key={listing.id}
               listing={listing}
               onManage={setManageListing}
+              isManaging={manageListing?.id === listing.id}
+              onCloseManage={() => setManageListing(null)}
+              onAction={handleAction}
+              onEdit={id => { setManageListing(null); setEditListingId(id) }}
             />
           ))}
         </div>
       )}
 
-      {/* Manage Modal */}
-      {manageListing && (
-        <ManageModal
-          listing={manageListing}
-          onClose={() => setManageListing(null)}
-          onAction={async (id, action) => {
-            await handleAction(id, action)
-          }}
+      {/* Edit Listing Modal (B011) */}
+      {editListingId && (
+        <EditListingModal
+          listingId={editListingId}
+          onClose={() => setEditListingId(null)}
+          onSaved={() => { fetchData(); showToast('Listing updated') }}
         />
       )}
 

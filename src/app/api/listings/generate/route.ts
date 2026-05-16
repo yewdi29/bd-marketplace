@@ -10,7 +10,7 @@ The user will describe a piece of equipment in plain language. Extract all relev
 Use exactly these field names and value constraints:
 
 {
-  "title": "Concise, descriptive equipment title (max 80 characters)",
+  "title": "Equipment title following this exact pattern: [Manufacturer] [Model] [Equipment Type] — [Key Spec]. Max 80 characters. The key spec after the em dash must be the single most important differentiator — size, grade, PSI rating, or condition if nothing else is available. If manufacturer is unknown, use the equipment type as the first word. Never use generic sales words like 'Quality', 'Excellent', 'Available', or 'For Sale'. Always include manufacturer if mentioned. Always include model or grade if mentioned. Title must read like a professional equipment catalog entry, not a sales pitch. Examples: 'National 12-P-160 Drilling Rig — Full Package', 'Cameron Type U BOP Stack — 13⅝\" 5000 PSI', 'Gardner Denver PZ-11 Triplex Pump — Good Condition', '5\" Grade S-135 Drill Pipe — 19.5 lbs/ft Range 2'.",
   "category": "One of exactly: drilling_rig | drill_pipe | drill_collar | blowout_preventer | wellhead | pumping_unit | artificial_lift | wireline | coiled_tubing | completion_equipment | production_equipment | compressor | separator | tank | flowline | electrical | safety | rental_tools | other",
   "manufacturer": "Manufacturer or brand name, or null if unknown",
   "model": "Model number or name, or null if unknown",
@@ -21,7 +21,8 @@ Use exactly these field names and value constraints:
   "location_state": "US state two-letter abbreviation (e.g. TX), or null if not mentioned",
   "description": "Professional 3–5 sentence listing description for the public marketplace page. Highlight key specs, condition, and end with a call to action. Optimized for oil and gas buyers.",
   "meta_description": "Single sentence, 130–160 characters, SEO meta description for search engines.",
-  "tags": ["array", "of", "relevant", "keyword", "strings"]
+  "tags": ["array", "of", "relevant", "keyword", "strings"],
+  "specs": {"Size": "5\"", "Grade": "S-135"} (flat key-value object of all equipment specs mentioned — use human-readable keys like "Size", "Grade", "Weight per foot", "Connection type", "Range", "Horsepower", "Pressure rating", "Capacity", "API standard", "OD", "ID", "Wall thickness", "Drive type", "Stroke length", "Hook load", "Drawworks", "BHP", "RPM" etc. Only include specs the seller actually mentioned, never invent or assume values. Use null if no additional specs beyond the basic fields were mentioned.)
 }`
 
 interface ClaudeGenerated {
@@ -37,6 +38,7 @@ interface ClaudeGenerated {
   description: string
   meta_description: string
   tags: string[]
+  specs: Record<string, string> | null
 }
 
 // POST /api/listings/generate
@@ -141,6 +143,7 @@ export async function POST(request: NextRequest) {
       description: generated.description ?? null,
       meta_description: generated.meta_description ?? null,
       tags: generated.tags ?? [],
+      specs: generated.specs ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', listing_id)

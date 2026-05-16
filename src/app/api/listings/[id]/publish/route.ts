@@ -3,6 +3,16 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80)
+}
+
 export async function PATCH(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -44,9 +54,12 @@ export async function PATCH(
     )
   }
 
+  // Regenerate slug from the final title so drafts don't keep 'untitled-draft-xxx'
+  const slug = `${slugify(listing.title)}-${params.id.slice(0, 8)}`
+
   const { error } = await adminClient
     .from('listings')
-    .update({ status: 'active', updated_at: new Date().toISOString() })
+    .update({ status: 'active', slug, updated_at: new Date().toISOString() })
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

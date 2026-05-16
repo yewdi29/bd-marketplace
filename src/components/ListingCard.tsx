@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { Listing } from '@/lib/types/database'
@@ -68,9 +70,13 @@ export default function ListingCard({ listing }: ListingCardProps) {
           <h3 className="font-sans text-[15px] font-semibold text-ink leading-snug line-clamp-2 flex-1">
             {listing.title}
           </h3>
-          <span className="font-mono text-[15px] font-medium text-ink tracking-tight shrink-0">
-            {formatPrice(listing.price)}
-          </span>
+          {listing.price_visible !== false && listing.price > 0 ? (
+            <span className="font-mono text-[15px] font-medium text-ink tracking-tight shrink-0">
+              {formatPrice(listing.price)}
+            </span>
+          ) : (
+            <span className="text-[12px] font-sans text-ink-3 italic shrink-0">Contact for price</span>
+          )}
         </div>
 
         {/* Location + Condition */}

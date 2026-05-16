@@ -47,6 +47,7 @@ export interface Listing {
   location_city: string | null
   location_state: string | null
   tags: string[] | null
+  specs: Record<string, string> | null
   video_url: string | null
   status: ListingStatus
   tier: ListingTier | null

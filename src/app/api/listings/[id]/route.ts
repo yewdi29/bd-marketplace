@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     'title', 'category', 'manufacturer', 'model', 'year', 'condition',
     'price', 'price_visible', 'price_negotiable',
     'location_city', 'location_state',
-    'description', 'tags', 'video_url', 'status',
+    'description', 'tags', 'specs', 'video_url', 'status',
   ]
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
