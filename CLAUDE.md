@@ -17,6 +17,16 @@ Black Diamond Marketplace is a Next.js 14 / TypeScript / Supabase heavy equipmen
 
 ---
 
+## Critical Working Rules
+- Never create git worktrees under any circumstances
+- Never create new branches without explicit user instruction
+- Always work directly on the main branch
+- All changes go directly to the actual project files
+- Never create nested folders or duplicate file structures
+- Push to GitHub only when explicitly instructed by the user
+
+---
+
 ## Before Touching Any UI
 
 1. **Read `DESIGN_SYSTEM.md` first** — every color, font, spacing, and component decision is documented there. Do not deviate from it.
