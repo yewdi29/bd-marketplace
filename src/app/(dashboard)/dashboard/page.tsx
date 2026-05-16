@@ -43,7 +43,7 @@ function statusBadge(status: ListingStatus): { bg: string; text: string; border:
     case 'pending_review':
       return { bg: '#FDF6E3', text: '#7A5C00', border: '#F0D98A', label: 'Unpublished' }
     case 'sold':
-      return { bg: '#E6F0FF', text: '#0066CC', border: '#B3D1FF', label: 'Sold' }
+      return { bg: '#FFF0F0', text: '#CC0000', border: '#FFCCCC', label: 'Sold' }
   }
 }
 
@@ -112,17 +112,18 @@ function CardOverlay({
   return (
     <div
       className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 p-3 rounded-[16px]"
-      style={{ background: 'rgba(20,22,26,0.82)', backdropFilter: 'blur(3px)' }}
+      style={{ background: 'rgba(255,255,255,0.50)', backdropFilter: 'blur(8px)' }}
     >
       {actions.map(action => (
         <button
           key={action.label}
           onClick={action.onClick}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-[10px] text-sm font-semibold transition-colors ${
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-semibold border transition-colors ${
             action.danger
-              ? 'bg-[#3D1515] text-[#FCA5A5] hover:bg-[#521C1C]'
-              : 'bg-white/10 text-white hover:bg-white/20'
+              ? 'border-[#FFCCCC] hover:opacity-80'
+              : 'bg-white text-[#1A1D20] border-[#D4D5D7] hover:border-[#9A9DA2]'
           }`}
+          style={action.danger ? { background: '#FFF0F0', color: '#CC0000' } : undefined}
         >
           <span className="w-4 h-4 shrink-0">{action.icon}</span>
           {action.label}
@@ -130,7 +131,8 @@ function CardOverlay({
       ))}
       <button
         onClick={onClose}
-        className="mt-1 text-xs text-white/50 hover:text-white/80 transition-colors"
+        className="w-full flex items-center justify-center px-3 py-2 rounded-pill text-sm font-semibold border border-[#E8E9EA] transition-colors hover:border-[#D4D5D7]"
+        style={{ background: '#F7F8F9', color: '#4A4D52' }}
       >
         Cancel
       </button>
@@ -301,7 +303,7 @@ function ListingCard({
           {/* External link hint for active listings */}
           {isNavigable && !isManaging && (
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="w-6 h-6 bg-black/40 rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 bg-white border border-[#E8E9EA] rounded-full flex items-center justify-center text-[#1A1D20] hover:border-[#9A9DA2] transition-colors">
                 <ExternalLinkIcon />
               </div>
             </div>
@@ -519,6 +521,14 @@ export default function DashboardPage() {
             />
           ))}
         </div>
+      )}
+
+      {/* Click-outside backdrop — dismisses the card manage overlay */}
+      {manageListing && (
+        <div
+          className="fixed inset-0 z-[5]"
+          onClick={() => setManageListing(null)}
+        />
       )}
 
       {/* Edit Listing Modal (B011) */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -63,7 +63,14 @@ const CONDITIONS = [
   { value: 'parts_only', label: 'Parts Only' },
 ]
 
+const MAX_PHOTOS = 20
+
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface PhotoState {
+  id: string
+  url: string
+}
 
 interface EditForm {
   title: string
@@ -127,12 +134,19 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // Fetch current listing data on mount (read via anon client — no mutations)
+  // Photo state
+  const [photos, setPhotos] = useState<PhotoState[]>([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dropIdx, setDropIdx] = useState<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Fetch listing data + existing images on mount
   useEffect(() => {
     async function fetchListing() {
       const { data, error: fetchError } = await supabase
         .from('listings')
-        .select('title, category, manufacturer, model, year, condition, price, price_visible, location_city, location_state, description')
+        .select('title, category, manufacturer, model, year, condition, price, price_visible, location_city, location_state, description, listing_images(id, url, sort_order, is_primary)')
         .eq('id', listingId)
         .single()
 
@@ -155,11 +169,67 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
         location_state: data.location_state ?? '',
         description: data.description ?? '',
       })
+
+      // Sort images: primary first, then by sort_order
+      const imgs = ((data.listing_images ?? []) as { id: string; url: string; sort_order: number; is_primary: boolean }[])
+        .sort((a, b) => {
+          if (a.is_primary && !b.is_primary) return -1
+          if (!a.is_primary && b.is_primary) return 1
+          return a.sort_order - b.sort_order
+        })
+      setPhotos(imgs.map(i => ({ id: i.id, url: i.url })))
       setLoading(false)
     }
     fetchListing()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId])
+
+  // ── Photo handlers ──────────────────────────────────────────────────────────
+
+  async function handleFileSelect(files: FileList) {
+    const remaining = MAX_PHOTOS - photos.length
+    const toUpload = Array.from(files).slice(0, remaining)
+    if (toUpload.length === 0) return
+
+    setUploadingPhoto(true)
+    for (const file of toUpload) {
+      const fd = new FormData()
+      fd.append('file', file)
+      try {
+        const res = await fetch(`/api/listings/${listingId}/images`, { method: 'POST', body: fd })
+        const data = await res.json() as { image?: { id: string; url: string }; error?: string }
+        if (data.image) {
+          setPhotos(prev => [...prev, { id: data.image!.id, url: data.image!.url }])
+        }
+      } catch {
+        // Continue with remaining files
+      }
+    }
+    setUploadingPhoto(false)
+  }
+
+  async function handleDeletePhoto(imageId: string) {
+    const res = await fetch(`/api/listings/${listingId}/images/${imageId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setPhotos(prev => prev.filter(p => p.id !== imageId))
+    }
+  }
+
+  function handleDrop(targetIdx: number) {
+    if (dragIdx === null || dragIdx === targetIdx) {
+      setDragIdx(null)
+      setDropIdx(null)
+      return
+    }
+    const reordered = [...photos]
+    const [moved] = reordered.splice(dragIdx, 1)
+    reordered.splice(targetIdx, 0, moved)
+    setPhotos(reordered)
+    setDragIdx(null)
+    setDropIdx(null)
+  }
+
+  // ── Save ───────────────────────────────────────────────────────────────────
 
   async function handleSave() {
     if (!form) return
@@ -167,26 +237,42 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     setError('')
 
     try {
-      const res = await fetch(`/api/listings/${listingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: form.title,
-          category: form.category,
-          manufacturer: form.manufacturer || null,
-          model: form.model || null,
-          year: form.year ? parseInt(form.year) : null,
-          condition: form.condition,
-          price: parseFloat(form.price) || 0,
-          price_visible: form.price_visible,
-          location_city: form.location_city || null,
-          location_state: form.location_state || null,
-          description: form.description || null,
+      // Run field update and image order update in parallel
+      const requests: Promise<Response>[] = [
+        fetch(`/api/listings/${listingId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: form.title,
+            category: form.category,
+            manufacturer: form.manufacturer || null,
+            model: form.model || null,
+            year: form.year ? parseInt(form.year) : null,
+            condition: form.condition,
+            price: parseFloat(form.price) || 0,
+            price_visible: form.price_visible,
+            location_city: form.location_city || null,
+            location_state: form.location_state || null,
+            description: form.description || null,
+          }),
         }),
-      })
+      ]
 
-      if (!res.ok) {
-        const d = await res.json() as { error?: string }
+      // Persist reordered photos if there are any
+      if (photos.length > 0) {
+        requests.push(
+          fetch(`/api/listings/${listingId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_order: photos.map(p => p.id) }),
+          })
+        )
+      }
+
+      const results = await Promise.all(requests)
+      const failed = results.find(r => !r.ok)
+      if (failed) {
+        const d = await failed.json() as { error?: string }
         setError(d.error ?? 'Save failed. Please try again.')
         return
       }
@@ -199,6 +285,8 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
       setSaving(false)
     }
   }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -241,7 +329,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
           ) : !form ? (
             <p className="text-sm text-red-500">{error || 'Failed to load listing.'}</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {error && (
                 <div className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3">
                   <p className="text-sm font-sans text-red-600">{error}</p>
@@ -398,6 +486,108 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                   placeholder="Detailed equipment description for buyers…"
                 />
               </FormField>
+
+              {/* ── Photos section ── */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={labelCls}>Photos</label>
+                  <span className="text-xs font-mono text-ink-3">{photos.length} / {MAX_PHOTOS} photos</span>
+                </div>
+
+                {/* Existing + new thumbnail grid */}
+                {photos.length > 0 && (
+                  <div
+                    className="grid gap-2 mb-3"
+                    style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}
+                  >
+                    {photos.map((photo, idx) => (
+                      <div
+                        key={photo.id}
+                        draggable
+                        onDragStart={() => setDragIdx(idx)}
+                        onDragOver={e => { e.preventDefault(); setDropIdx(idx) }}
+                        onDrop={() => handleDrop(idx)}
+                        onDragEnd={() => { setDragIdx(null); setDropIdx(null) }}
+                        className="relative aspect-square rounded-[10px] overflow-hidden group cursor-grab border-2 transition-colors"
+                        style={{
+                          borderColor: dropIdx === idx && dragIdx !== idx ? '#FF6B35' : 'transparent',
+                          opacity: dragIdx === idx ? 0.5 : 1,
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photo.url} alt="" className="w-full h-full object-cover" />
+
+                        {/* Primary star badge */}
+                        {idx === 0 && (
+                          <div className="absolute top-1 left-1 w-5 h-5 bg-orange rounded-full flex items-center justify-center shadow-sm">
+                            <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                          </div>
+                        )}
+
+                        {/* Delete button */}
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDeletePhoto(photo.id) }}
+                          className="absolute top-1 right-1 w-5 h-5 bg-ink/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-ink"
+                        >
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload zone */}
+                {photos.length < MAX_PHOTOS && (
+                  <div
+                    className="border-2 border-dashed border-[#D4D5D7] rounded-[14px] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange hover:bg-orange/[0.02] transition-colors"
+                    style={{ minHeight: photos.length === 0 ? '140px' : '72px', padding: '16px' }}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault()
+                      if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files)
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png, image/jpeg"
+                      multiple
+                      className="hidden"
+                      onChange={e => { if (e.target.files) handleFileSelect(e.target.files) }}
+                    />
+                    {uploadingPhoto ? (
+                      <div className="flex items-center gap-2 text-ink-3">
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        <span className="text-sm font-sans">Uploading…</span>
+                      </div>
+                    ) : (
+                      <>
+                        <svg className="w-6 h-6 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-sm font-sans text-ink-2 text-center">
+                          <span className="font-semibold text-orange">Click to browse</span> or drag &amp; drop
+                        </p>
+                        {photos.length === 0 && (
+                          <p className="text-xs text-ink-3">PNG, JPG — up to {MAX_PHOTOS} photos</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {photos.length > 0 && (
+                  <p className="text-xs text-ink-3 mt-1.5">Drag to reorder — first photo is the cover image</p>
+                )}
+              </div>
             </div>
           )}
         </div>
