@@ -175,10 +175,7 @@ export default async function ListingsPage({
           </p>
 
           {listings && listings.length > 0 ? (
-            <div
-              className="grid gap-4"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(listings as Listing[]).map(listing => (
                 <ListingCard key={listing.id} listing={listing} />
               ))}

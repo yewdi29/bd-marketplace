@@ -9,9 +9,22 @@ interface ListingCardProps {
   listing: Listing
 }
 
+function isNewListing(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000
+}
+
 export default function ListingCard({ listing }: ListingCardProps) {
   const primaryImage = listing.listing_images?.find(img => img.is_primary) ?? listing.listing_images?.[0]
   const href = `/listings/${listing.slug ?? listing.id}`
+  const isNew = isNewListing(listing.created_at)
+
+  // Price visibility: only show "Contact for price" when price_visible is explicitly false
+  const contactForPrice = listing.price_visible === false
+  const showPrice = !contactForPrice && listing.price > 0
+
+  // Location pill: "City, State, United States"
+  const locationParts = [listing.location_city, listing.location_state].filter(Boolean)
+  const locationText = locationParts.length > 0 ? [...locationParts, 'United States'].join(', ') : null
 
   return (
     <Link
@@ -25,7 +38,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
             src={primaryImage.url}
             alt={primaryImage.alt_text ?? listing.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -35,82 +48,59 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </div>
         )}
 
-        {/* Save button */}
-        <button
-          className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}
-          onClick={e => e.preventDefault()}
-          aria-label="Save listing"
-        >
-          <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
-
-        {/* Badges row */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {listing.featured && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill bg-orange-bg border border-orange-bdr text-[11px] font-mono font-bold text-orange">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange" />
-              BD Verified
-            </span>
-          )}
-        </div>
+        {/* New Listing badge — only if listed within last 7 days */}
+        {isNew && (
+          <span
+            className="absolute top-2 left-2 font-mono font-bold"
+            style={{
+              background: '#FFF2ED',
+              border: '1px solid #FF6B35',
+              color: '#FF6B35',
+              fontSize: '10px',
+              borderRadius: '100px',
+              padding: '3px 10px',
+            }}
+          >
+            New Listing
+          </span>
+        )}
       </div>
 
-      {/* Content */}
+      {/* Card body */}
       <div className="p-4">
         {/* Category */}
-        <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3 mb-1.5">
+        <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1.5">
           {listing.category.replace(/_/g, ' ')}
         </p>
 
-        {/* Title + Price on same row */}
-        <div className="flex items-start justify-between gap-2 mb-1.5">
-          <h3 className="font-sans text-[15px] font-semibold text-ink leading-snug line-clamp-2 flex-1">
-            {listing.title}
-          </h3>
-          {listing.price_visible !== false && listing.price > 0 ? (
-            <span className="font-mono text-[15px] font-medium text-ink tracking-tight shrink-0">
-              {formatPrice(listing.price)}
-            </span>
-          ) : (
-            <span className="text-[12px] font-sans text-ink-3 italic shrink-0">Contact for price</span>
-          )}
-        </div>
+        {/* Title */}
+        <h3
+          className="font-sans font-semibold text-ink line-clamp-2 mb-1.5"
+          style={{ fontSize: '13px', lineHeight: 1.4 }}
+        >
+          {listing.title}
+        </h3>
 
-        {/* Location + Condition */}
-        <div className="flex items-center gap-2 text-[13px] font-sans text-ink-3">
-          {(listing.location_city || listing.location_state) && (
-            <span>{[listing.location_city, listing.location_state].filter(Boolean).join(', ')}</span>
-          )}
-          {(listing.location_city || listing.location_state) && listing.condition && (
-            <span className="text-[#E8E9EA]">·</span>
-          )}
-          {listing.condition && (
-            <span className="capitalize">{listing.condition.replace(/_/g, ' ')}</span>
-          )}
-        </div>
+        {/* Price */}
+        <p className="font-mono font-medium text-orange mb-3" style={{ fontSize: '15px' }}>
+          {contactForPrice ? 'Contact for price' : showPrice ? formatPrice(listing.price) : null}
+        </p>
 
-        {/* Tags row */}
-        {(listing.manufacturer || listing.year || listing.price_negotiable) && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {listing.manufacturer && (
-              <span className="px-2 py-0.5 bg-bg border border-[#E8E9EA] rounded-pill text-[11px] font-sans text-ink-3">
-                {listing.manufacturer}
-              </span>
-            )}
-            {listing.year && (
-              <span className="px-2 py-0.5 bg-bg border border-[#E8E9EA] rounded-pill text-[11px] font-sans text-ink-3">
-                {listing.year}
-              </span>
-            )}
-            {listing.price_negotiable && (
-              <span className="px-2 py-0.5 bg-bg border border-[#E8E9EA] rounded-pill text-[11px] font-sans text-ink-3">
-                Negotiable
-              </span>
-            )}
-          </div>
+        {/* Location pill */}
+        {locationText && (
+          <span
+            className="inline-block font-sans"
+            style={{
+              background: '#F7F8F9',
+              border: '1px solid #E8E9EA',
+              color: '#4A4D52',
+              fontSize: '11px',
+              borderRadius: '100px',
+              padding: '3px 10px',
+            }}
+          >
+            {locationText}
+          </span>
         )}
       </div>
     </Link>

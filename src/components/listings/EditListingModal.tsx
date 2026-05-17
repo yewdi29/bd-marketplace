@@ -116,10 +116,13 @@ function SelectWrapper({ children }: { children: React.ReactNode }) {
   )
 }
 
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className={labelCls}>{label}</label>
+      <label className={labelCls}>
+        {label}
+        {required && <span className="ml-0.5 text-[#CC0000]">*</span>}
+      </label>
       {children}
     </div>
   )
@@ -132,7 +135,13 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
   const [form, setForm] = useState<EditForm | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [listingStatus, setListingStatus] = useState('')
   const [error, setError] = useState('')
+  const [publishError, setPublishError] = useState('')
+
+  // Price error
+  const [priceError, setPriceError] = useState('')
 
   // Photo state
   const [photos, setPhotos] = useState<PhotoState[]>([])
@@ -146,7 +155,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     async function fetchListing() {
       const { data, error: fetchError } = await supabase
         .from('listings')
-        .select('title, category, manufacturer, model, year, condition, price, price_visible, location_city, location_state, description, listing_images(id, url, sort_order, is_primary)')
+        .select('title, category, manufacturer, model, year, condition, price, price_visible, location_city, location_state, description, status, listing_images(id, url, sort_order, is_primary)')
         .eq('id', listingId)
         .single()
 
@@ -178,6 +187,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
           return a.sort_order - b.sort_order
         })
       setPhotos(imgs.map(i => ({ id: i.id, url: i.url })))
+      setListingStatus(data.status ?? '')
       setLoading(false)
     }
     fetchListing()
@@ -229,54 +239,59 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     setDropIdx(null)
   }
 
-  // ── Save ───────────────────────────────────────────────────────────────────
+  // ── Shared patch helper ────────────────────────────────────────────────────
 
-  async function handleSave() {
-    if (!form) return
-    setSaving(true)
-    setError('')
+  async function patchListingFields(): Promise<{ ok: boolean; errorMsg?: string }> {
+    if (!form) return { ok: false, errorMsg: 'No form data.' }
 
-    try {
-      // Run field update and image order update in parallel
-      const requests: Promise<Response>[] = [
+    const requests: Promise<Response>[] = [
+      fetch(`/api/listings/${listingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          category: form.category,
+          manufacturer: form.manufacturer || null,
+          model: form.model || null,
+          year: form.year ? parseInt(form.year) : null,
+          condition: form.condition,
+          price: parseFloat(form.price) || 0,
+          price_visible: form.price_visible,
+          location_city: form.location_city || null,
+          location_state: form.location_state || null,
+          description: form.description || null,
+        }),
+      }),
+    ]
+
+    if (photos.length > 0) {
+      requests.push(
         fetch(`/api/listings/${listingId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: form.title,
-            category: form.category,
-            manufacturer: form.manufacturer || null,
-            model: form.model || null,
-            year: form.year ? parseInt(form.year) : null,
-            condition: form.condition,
-            price: parseFloat(form.price) || 0,
-            price_visible: form.price_visible,
-            location_city: form.location_city || null,
-            location_state: form.location_state || null,
-            description: form.description || null,
-          }),
-        }),
-      ]
+          body: JSON.stringify({ image_order: photos.map(p => p.id) }),
+        })
+      )
+    }
 
-      // Persist reordered photos if there are any
-      if (photos.length > 0) {
-        requests.push(
-          fetch(`/api/listings/${listingId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_order: photos.map(p => p.id) }),
-          })
-        )
-      }
+    const results = await Promise.all(requests)
+    const failed = results.find(r => !r.ok)
+    if (failed) {
+      const d = await failed.json() as { error?: string }
+      return { ok: false, errorMsg: d.error ?? 'Save failed. Please try again.' }
+    }
+    return { ok: true }
+  }
 
-      const results = await Promise.all(requests)
-      const failed = results.find(r => !r.ok)
-      if (failed) {
-        const d = await failed.json() as { error?: string }
-        setError(d.error ?? 'Save failed. Please try again.')
-        return
-      }
+  // ── Save draft (no price required) ─────────────────────────────────────────
 
+  async function handleSaveDraft() {
+    if (!form) return
+    setSaving(true)
+    setError('')
+    try {
+      const { ok, errorMsg } = await patchListingFields()
+      if (!ok) { setError(errorMsg ?? 'Save failed.'); return }
       onSaved()
       onClose()
     } catch {
@@ -286,7 +301,68 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     }
   }
 
+  // ── Save changes (active listing — price required) ─────────────────────────
+
+  async function handleSave() {
+    if (!form) return
+
+    if (!form.price || parseFloat(form.price) <= 0) {
+      setPriceError('Price is required to publish your listing.')
+      return
+    }
+    setPriceError('')
+
+    setSaving(true)
+    setError('')
+    try {
+      const { ok, errorMsg } = await patchListingFields()
+      if (!ok) { setError(errorMsg ?? 'Save failed.'); return }
+      onSaved()
+      onClose()
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Publish draft ──────────────────────────────────────────────────────────
+
+  async function handlePublish() {
+    if (!form) return
+    setPublishing(true)
+    setError('')
+    setPublishError('')
+    try {
+      const { ok, errorMsg } = await patchListingFields()
+      if (!ok) { setError(errorMsg ?? 'Save failed.'); return }
+
+      const res = await fetch(`/api/listings/${listingId}/publish`, { method: 'PATCH' })
+      if (!res.ok) {
+        const d = await res.json() as { error?: string }
+        setPublishError('Listing is missing required fields. Complete all fields marked with an asterisk (*) before publishing.')
+        return
+      }
+
+      onSaved()
+      onClose()
+    } catch {
+      setPublishError('Network error. Please try again.')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  const canPublish = !!(
+    form &&
+    form.title && form.title !== 'Untitled Draft' &&
+    form.category &&
+    parseFloat(form.price) > 0 &&
+    (form.location_city || form.location_state) &&
+    photos.length >= 1
+  )
 
   return (
     <div
@@ -302,9 +378,11 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
         {/* Header */}
         <div className="shrink-0 px-8 pt-6 pb-4 border-b border-[#E8E9EA] flex items-center justify-between">
           <div>
-            <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-0.5">Edit Listing</p>
+            <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-0.5">
+              {listingStatus === 'draft' ? 'Draft Listing' : 'Edit Listing'}
+            </p>
             <h2 className="font-sans font-bold text-lg text-ink" style={{ letterSpacing: '-0.02em' }}>
-              Update details
+              {listingStatus === 'draft' ? 'Edit Draft' : 'Update details'}
             </h2>
           </div>
           <button
@@ -336,161 +414,12 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                 </div>
               )}
 
-              {/* Title */}
-              <FormField label="Title">
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={e => setForm(f => f ? { ...f, title: e.target.value } : f)}
-                  className={inputCls}
-                  placeholder="Equipment title"
-                />
-              </FormField>
-
-              {/* Category + Condition */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Category">
-                  <SelectWrapper>
-                    <select
-                      value={form.category}
-                      onChange={e => setForm(f => f ? { ...f, category: e.target.value } : f)}
-                      className={selectCls}
-                    >
-                      <option value="">Select category</option>
-                      {CATEGORIES.map(c => (
-                        <option key={c.value} value={c.value}>{c.label}</option>
-                      ))}
-                    </select>
-                  </SelectWrapper>
-                </FormField>
-                <FormField label="Condition">
-                  <SelectWrapper>
-                    <select
-                      value={form.condition}
-                      onChange={e => setForm(f => f ? { ...f, condition: e.target.value } : f)}
-                      className={selectCls}
-                    >
-                      <option value="">Select condition</option>
-                      {CONDITIONS.map(c => (
-                        <option key={c.value} value={c.value}>{c.label}</option>
-                      ))}
-                    </select>
-                  </SelectWrapper>
-                </FormField>
-              </div>
-
-              {/* Manufacturer + Model */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Manufacturer">
-                  <input
-                    type="text"
-                    value={form.manufacturer}
-                    onChange={e => setForm(f => f ? { ...f, manufacturer: e.target.value } : f)}
-                    className={inputCls}
-                    placeholder="e.g. National, Cameron"
-                  />
-                </FormField>
-                <FormField label="Model">
-                  <input
-                    type="text"
-                    value={form.model}
-                    onChange={e => setForm(f => f ? { ...f, model: e.target.value } : f)}
-                    className={inputCls}
-                    placeholder="e.g. 12P-160"
-                  />
-                </FormField>
-              </div>
-
-              {/* Year */}
-              <FormField label="Year">
-                <input
-                  type="number"
-                  value={form.year}
-                  onChange={e => setForm(f => f ? { ...f, year: e.target.value } : f)}
-                  className={`${inputCls} font-mono`}
-                  placeholder="e.g. 2018"
-                  min={1900}
-                  max={new Date().getFullYear() + 1}
-                />
-              </FormField>
-
-              {/* Price */}
-              <FormField label="Price (USD)">
-                <div className="relative mb-2.5">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
-                  <input
-                    type="number"
-                    value={form.price}
-                    onChange={e => setForm(f => f ? { ...f, price: e.target.value } : f)}
-                    className={`${inputCls} pl-7 font-mono`}
-                    placeholder="0"
-                    min={0}
-                  />
-                </div>
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => f ? { ...f, price_visible: !f.price_visible } : f)}
-                    className="relative inline-flex shrink-0 cursor-pointer"
-                    style={{ width: '36px', height: '20px' }}
-                  >
-                    <div
-                      className="w-full h-full rounded-pill transition-colors"
-                      style={{ background: form.price_visible ? '#FF6B35' : '#D4D5D7' }}
-                    />
-                    <div
-                      className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform"
-                      style={{ transform: form.price_visible ? 'translateX(18px)' : 'translateX(2px)' }}
-                    />
-                  </button>
-                  <span className="text-sm text-ink-2">
-                    {form.price_visible ? 'Price visible to buyers' : 'Show "Contact for price" instead'}
-                  </span>
-                </label>
-              </FormField>
-
-              {/* Location */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="City">
-                  <input
-                    type="text"
-                    value={form.location_city}
-                    onChange={e => setForm(f => f ? { ...f, location_city: e.target.value } : f)}
-                    className={inputCls}
-                    placeholder="e.g. Midland"
-                  />
-                </FormField>
-                <FormField label="State">
-                  <SelectWrapper>
-                    <select
-                      value={form.location_state}
-                      onChange={e => setForm(f => f ? { ...f, location_state: e.target.value } : f)}
-                      className={selectCls}
-                    >
-                      <option value="">Select state</option>
-                      {US_STATES.map(s => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
-                    </select>
-                  </SelectWrapper>
-                </FormField>
-              </div>
-
-              {/* Description */}
-              <FormField label="Description">
-                <textarea
-                  value={form.description}
-                  onChange={e => setForm(f => f ? { ...f, description: e.target.value } : f)}
-                  className={`${inputCls} resize-none leading-relaxed`}
-                  style={{ minHeight: '120px' }}
-                  placeholder="Detailed equipment description for buyers…"
-                />
-              </FormField>
-
-              {/* ── Photos section ── */}
+              {/* ── Photos section — first so seller sees media immediately ── */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className={labelCls}>Photos</label>
+                  <label className={labelCls}>
+                    Photos<span className="ml-0.5 text-[#CC0000]">*</span>
+                  </label>
                   <span className="text-xs font-mono text-ink-3">{photos.length} / {MAX_PHOTOS} photos</span>
                 </div>
 
@@ -588,6 +517,170 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                   <p className="text-xs text-ink-3 mt-1.5">Drag to reorder — first photo is the cover image</p>
                 )}
               </div>
+
+              {/* Title */}
+              <FormField label="Title" required>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={e => setForm(f => f ? { ...f, title: e.target.value } : f)}
+                  className={inputCls}
+                  placeholder="Equipment title"
+                />
+              </FormField>
+
+              {/* Category + Condition */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Category" required>
+                  <SelectWrapper>
+                    <select
+                      value={form.category}
+                      onChange={e => setForm(f => f ? { ...f, category: e.target.value } : f)}
+                      className={selectCls}
+                    >
+                      <option value="">Select category</option>
+                      {CATEGORIES.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </SelectWrapper>
+                </FormField>
+                <FormField label="Condition" required>
+                  <SelectWrapper>
+                    <select
+                      value={form.condition}
+                      onChange={e => setForm(f => f ? { ...f, condition: e.target.value } : f)}
+                      className={selectCls}
+                    >
+                      <option value="">Select condition</option>
+                      {CONDITIONS.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </SelectWrapper>
+                </FormField>
+              </div>
+
+              {/* Manufacturer + Model */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Manufacturer">
+                  <input
+                    type="text"
+                    value={form.manufacturer}
+                    onChange={e => setForm(f => f ? { ...f, manufacturer: e.target.value } : f)}
+                    className={inputCls}
+                    placeholder="e.g. National, Cameron"
+                  />
+                </FormField>
+                <FormField label="Model">
+                  <input
+                    type="text"
+                    value={form.model}
+                    onChange={e => setForm(f => f ? { ...f, model: e.target.value } : f)}
+                    className={inputCls}
+                    placeholder="e.g. 12P-160"
+                  />
+                </FormField>
+              </div>
+
+              {/* Year */}
+              <FormField label="Year">
+                <input
+                  type="number"
+                  value={form.year}
+                  onChange={e => setForm(f => f ? { ...f, year: e.target.value } : f)}
+                  className={`${inputCls} font-mono`}
+                  placeholder="e.g. 2018"
+                  min={1900}
+                  max={new Date().getFullYear() + 1}
+                />
+              </FormField>
+
+              {/* Price */}
+              <FormField label="Price (USD)" required>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
+                  <input
+                    type="number"
+                    value={form.price}
+                    onChange={e => {
+                      setForm(f => f ? { ...f, price: e.target.value } : f)
+                      if (priceError) setPriceError('')
+                    }}
+                    className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
+                    placeholder="0"
+                    min={0}
+                  />
+                </div>
+                {/* Helper text */}
+                <p style={{ fontSize: '12px', color: '#9A9DA2', lineHeight: 1.5, marginTop: '6px' }}>
+                  A listed price significantly improves your listing&apos;s visibility in search results. If you prefer not to display it publicly, toggle &ldquo;Contact for price&rdquo; below.
+                </p>
+                {/* Inline price error */}
+                {priceError && (
+                  <p className="text-orange font-sans" style={{ fontSize: '12px', marginTop: '4px' }}>
+                    {priceError}
+                  </p>
+                )}
+                <label className="flex items-center gap-3 cursor-pointer select-none mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => f ? { ...f, price_visible: !f.price_visible } : f)}
+                    className="relative inline-flex shrink-0 cursor-pointer"
+                    style={{ width: '36px', height: '20px' }}
+                  >
+                    <div
+                      className="w-full h-full rounded-pill transition-colors"
+                      style={{ background: form.price_visible ? '#FF6B35' : '#D4D5D7' }}
+                    />
+                    <div
+                      className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform"
+                      style={{ transform: form.price_visible ? 'translateX(18px)' : 'translateX(2px)' }}
+                    />
+                  </button>
+                  <span className="text-sm text-ink-2">
+                    {form.price_visible ? 'Price visible to buyers' : 'Show "Contact for price" instead'}
+                  </span>
+                </label>
+              </FormField>
+
+              {/* Location */}
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="City" required>
+                  <input
+                    type="text"
+                    value={form.location_city}
+                    onChange={e => setForm(f => f ? { ...f, location_city: e.target.value } : f)}
+                    className={inputCls}
+                    placeholder="e.g. Midland"
+                  />
+                </FormField>
+                <FormField label="State" required>
+                  <SelectWrapper>
+                    <select
+                      value={form.location_state}
+                      onChange={e => setForm(f => f ? { ...f, location_state: e.target.value } : f)}
+                      className={selectCls}
+                    >
+                      <option value="">Select state</option>
+                      {US_STATES.map(s => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </SelectWrapper>
+                </FormField>
+              </div>
+
+              {/* Description */}
+              <FormField label="Description">
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm(f => f ? { ...f, description: e.target.value } : f)}
+                  className={`${inputCls} resize-none leading-relaxed`}
+                  style={{ minHeight: '120px' }}
+                  placeholder="Detailed equipment description for buyers…"
+                />
+              </FormField>
             </div>
           )}
         </div>
@@ -597,19 +690,65 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
           <div className="shrink-0 border-t border-[#E8E9EA] px-8 py-4 flex items-center justify-end gap-3">
             <button
               onClick={onClose}
-              disabled={saving}
+              disabled={saving || publishing}
               className="px-5 py-2.5 text-sm font-bold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-ink hover:text-ink transition-colors disabled:opacity-40"
             >
               Cancel
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors disabled:opacity-40"
-              style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
-            >
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
+
+            {listingStatus === 'draft' ? (
+              <>
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={saving || publishing}
+                  className="px-5 py-2.5 text-sm font-bold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-ink hover:text-ink transition-colors disabled:opacity-40"
+                >
+                  {saving ? 'Saving…' : 'Save Draft'}
+                </button>
+                <div className="relative">
+                  {/* Publish error pop-up — appears above the button */}
+                  {publishError && (
+                    <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-10 w-64">
+                      <div className="relative bg-white border border-[#FFCCCC] rounded-[10px] px-3 py-2.5 shadow-lg text-center">
+                        <p className="text-xs font-sans leading-relaxed" style={{ color: '#CC0000' }}>
+                          {publishError}
+                        </p>
+                        {/* Downward caret */}
+                        <div
+                          className="absolute left-1/2 bg-white"
+                          style={{
+                            width: '10px',
+                            height: '10px',
+                            bottom: '-6px',
+                            transform: 'translateX(-50%) rotate(45deg)',
+                            borderRight: '1px solid #FFCCCC',
+                            borderBottom: '1px solid #FFCCCC',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={handlePublish}
+                    disabled={!canPublish || saving || publishing}
+                    title={!canPublish ? 'Add a title, category, price, location, and at least one photo to publish' : undefined}
+                    className="px-6 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ boxShadow: canPublish ? '0 4px 16px rgba(255,107,53,0.30)' : 'none' }}
+                  >
+                    {publishing ? 'Publishing…' : 'Publish Listing'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors disabled:opacity-40"
+                style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            )}
           </div>
         )}
       </div>

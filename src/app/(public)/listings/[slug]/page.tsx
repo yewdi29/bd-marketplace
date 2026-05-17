@@ -102,7 +102,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function SpecRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="py-3 flex flex-col gap-0.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3">{label}</span>
+      <span className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3">{label}</span>
       <span className="font-mono text-sm font-bold text-ink">{value}</span>
     </div>
   )
@@ -235,7 +235,7 @@ export default async function ListingDetailPage({ params }: Props) {
               className="bg-white border border-[#E8E9EA] flex flex-col gap-0"
               style={{ borderRadius: '16px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
             >
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3 mb-2">
+              <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-2">
                 {catLabel(l.category)}
               </p>
               {/* Title + Price on same row (B015) */}
@@ -246,21 +246,21 @@ export default async function ListingDetailPage({ params }: Props) {
                 >
                   {l.title}
                 </h1>
-                {priceVisible && l.price > 0 ? (
+                {!priceVisible ? (
+                  <span
+                    className="font-mono font-medium shrink-0"
+                    style={{ fontSize: '20px', letterSpacing: '-0.02em', color: '#FF6B35' }}
+                  >
+                    Contact for price
+                  </span>
+                ) : l.price > 0 ? (
                   <span
                     className="font-mono font-medium shrink-0"
                     style={{ fontSize: '20px', letterSpacing: '-0.02em', color: '#FF6B35' }}
                   >
                     {formatPriceFull(l.price)}
                   </span>
-                ) : (
-                  <span
-                    className="font-sans font-semibold italic shrink-0"
-                    style={{ fontSize: '15px', color: '#FF6B35' }}
-                  >
-                    Contact for price
-                  </span>
-                )}
+                ) : null}
               </div>
 
               <div className="border-t border-[#E8E9EA] my-4" />
@@ -390,13 +390,7 @@ export default async function ListingDetailPage({ params }: Props) {
             <p className="font-sans font-bold text-ink mb-5" style={{ fontSize: '16px' }}>
               Related Listings
             </p>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '16px',
-              }}
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(related as Listing[]).map(rel => (
                 <ListingCard key={rel.id} listing={rel} />
               ))}

@@ -17,9 +17,12 @@ interface MyListing {
   title: string
   category: string
   price: number
+  price_visible: boolean | null
   status: ListingStatus
   slug: string
   created_at: string
+  location_city: string | null
+  location_state: string | null
   primary_image_url: string | null
 }
 
@@ -69,6 +72,9 @@ interface CardAction {
   icon: React.ReactNode
   onClick: () => void
   danger?: boolean
+  primary?: boolean
+  disabled?: boolean
+  tooltip?: string
 }
 
 function CardOverlay({
@@ -90,11 +96,27 @@ function CardOverlay({
           { label: 'Unpublish', icon: <EyeOffIcon />, onClick: async () => { await onAction(listing.id, 'unpublish'); onClose() } },
           { label: 'Mark as Sold', icon: <CheckCircleIcon />, onClick: async () => { await onAction(listing.id, 'sold'); onClose() } },
         ]
-      case 'draft':
+      case 'draft': {
+        const draftReady = !!(
+          listing.title && listing.title !== 'Untitled Draft' &&
+          listing.category &&
+          listing.price > 0 &&
+          (listing.location_city || listing.location_state) &&
+          listing.primary_image_url
+        )
         return [
+          {
+            label: 'Publish Listing',
+            icon: <CheckCircleIcon />,
+            onClick: async () => { await onAction(listing.id, 'publish'); onClose() },
+            primary: true,
+            disabled: !draftReady,
+            tooltip: !draftReady ? 'Complete all required fields in the editor before publishing' : undefined,
+          },
           { label: 'Edit Draft', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
           { label: 'Delete Draft', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
         ]
+      }
       case 'sold':
         return [
           { label: 'Relist', icon: <RefreshIcon />, onClick: async () => { await onAction(listing.id, 'publish'); onClose() } },
@@ -117,25 +139,38 @@ function CardOverlay({
       {actions.map(action => (
         <button
           key={action.label}
-          onClick={action.onClick}
+          onClick={action.disabled ? undefined : action.onClick}
+          title={action.tooltip}
+          disabled={action.disabled}
           className={`w-full flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-semibold border transition-colors ${
-            action.danger
-              ? 'border-[#FFCCCC] hover:opacity-80'
-              : 'bg-white text-[#1A1D20] border-[#D4D5D7] hover:border-[#9A9DA2]'
+            action.disabled
+              ? 'opacity-40 cursor-not-allowed border-[#D4D5D7] bg-white text-ink-2'
+              : action.danger
+                ? 'border-[#FFCCCC] hover:opacity-80'
+                : action.primary
+                  ? 'border-orange hover:opacity-90'
+                  : 'bg-white text-[#1A1D20] border-[#D4D5D7] hover:border-[#9A9DA2]'
           }`}
-          style={action.danger ? { background: '#FFF0F0', color: '#CC0000' } : undefined}
+          style={
+            action.disabled ? undefined :
+            action.danger ? { background: '#FFF0F0', color: '#CC0000' } :
+            action.primary ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(255,107,53,0.25)' } :
+            undefined
+          }
         >
           <span className="w-4 h-4 shrink-0">{action.icon}</span>
           {action.label}
         </button>
       ))}
-      <button
-        onClick={onClose}
-        className="w-full flex items-center justify-center px-3 py-2 rounded-pill text-sm font-semibold border border-[#E8E9EA] transition-colors hover:border-[#D4D5D7]"
-        style={{ background: '#F7F8F9', color: '#4A4D52' }}
-      >
-        Cancel
-      </button>
+      <div className="w-full border-t border-[#E8E9EA] mt-2 pt-2">
+        <button
+          onClick={onClose}
+          className="w-full flex items-center justify-center px-3 py-2 rounded-pill text-sm font-semibold border border-[#E8E9EA] transition-colors hover:border-[#D4D5D7]"
+          style={{ background: '#F7F8F9', color: '#4A4D52' }}
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
@@ -312,10 +347,10 @@ function ListingCard({
 
         {/* Info */}
         <div className="p-3 pb-2">
-          <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">{formatCategory(listing.category)}</p>
+          <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{formatCategory(listing.category)}</p>
           <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-2">{listing.title}</p>
-          <p className="font-mono text-sm font-bold text-ink mb-0">
-            {listing.price > 0 ? formatPrice(listing.price) : <span className="font-sans text-xs text-ink-3 italic font-normal">Contact for price</span>}
+          <p className="font-mono text-sm font-medium text-orange tracking-tight mb-0">
+            {listing.price_visible === false ? 'Contact for price' : listing.price > 0 ? formatPrice(listing.price) : null}
           </p>
         </div>
       </div>

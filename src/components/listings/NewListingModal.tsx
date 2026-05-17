@@ -211,6 +211,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
   const [dropIdx, setDropIdx] = useState<number | null>(null)
   const [videoUrl, setVideoUrl] = useState('')
   const [videoError, setVideoError] = useState('')
+  const [priceError, setPriceError] = useState('')
 
   const draftCreated = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -276,8 +277,18 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
 
   // ── Step 2: Save fields ─────────────────────────────────────────────────────
 
+  function validatePrice(): boolean {
+    if (!form.price || parseFloat(form.price) <= 0) {
+      setPriceError('Price is required to publish your listing.')
+      return false
+    }
+    setPriceError('')
+    return true
+  }
+
   async function handleSaveFields() {
     if (!listingId) return
+    if (!validatePrice()) return
     setStepLoading(true)
     setError('')
 
@@ -390,6 +401,8 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
 
   async function handleSaveAsDraft() {
     if (!listingId) return
+    // Price is required even when saving as draft from step 2
+    if (step === 2 && !validatePrice()) return
     setStepLoading(true)
 
     await fetch(`/api/listings/${listingId}`, {
@@ -656,19 +669,32 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
 
               {/* Price + visibility toggle */}
               <FormField label="Price (USD)">
-                <div className="relative mb-2.5">
+                <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
                   <input
                     type="number"
                     value={form.price}
-                    onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                    className={`${inputCls} pl-7 font-mono`}
+                    onChange={e => {
+                      setForm(f => ({ ...f, price: e.target.value }))
+                      if (priceError) setPriceError('')
+                    }}
+                    className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
                     placeholder="0"
                     min={0}
                   />
                 </div>
+                {/* Helper text */}
+                <p style={{ fontSize: '12px', color: '#9A9DA2', lineHeight: 1.5, marginTop: '6px' }}>
+                  A listed price significantly improves your listing&apos;s visibility in search results. If you prefer not to display it publicly, toggle &ldquo;Contact for price&rdquo; below.
+                </p>
+                {/* Inline price error */}
+                {priceError && (
+                  <p className="text-orange font-sans" style={{ fontSize: '12px', marginTop: '4px' }}>
+                    {priceError}
+                  </p>
+                )}
                 {/* Price visible toggle */}
-                <label className="flex items-center gap-3 cursor-pointer select-none">
+                <label className="flex items-center gap-3 cursor-pointer select-none mt-2.5">
                   <button
                     type="button"
                     onClick={() => setForm(f => ({ ...f, price_visible: !f.price_visible }))}
@@ -883,7 +909,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
                 {/* Info */}
                 <div className="p-5">
                   {/* Category badge */}
-                  <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-2">{catLabel(form.category)}</p>
+                  <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-2">{catLabel(form.category)}</p>
 
                   {/* Title + Price */}
                   <div className="flex items-start justify-between gap-3 mb-3">

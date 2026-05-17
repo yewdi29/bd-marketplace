@@ -122,7 +122,7 @@ Inter is loaded with weights 400, 500, 600, 700, 800.
 | Micro | 11px | 500–700 | 0 | Tags, badges, meta info |
 | Price (card) | 15px | 500 | -0.02em | Andale Mono — listing cards |
 | Price (detail) | 20px | 500 | -0.02em | Andale Mono — listing detail page, shown in `--orange` |
-| Label | 10–11px | 500–700 | 0.08–0.1em | Andale Mono — uppercase spec labels, category labels |
+| Label | 12px | 500–700 | 0.08em | Andale Mono — uppercase spec labels, category labels |
 
 ### Typography Rules
 - **Never** use font weights below 400
@@ -247,7 +247,7 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - **Save/heart button:** top-right of image, `w-7 h-7` white circle, subtle shadow — **only visible on hover** (`opacity-0 group-hover:opacity-100`)
 - Badges overlay top-left of image: only "BD Verified" badge appears (when `listing.featured = true`), using orange badge styling
 - **No "New Listing" badge on public listing cards** — it appears on the detail page only
-- Category label: `font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3`
+- Category label: `font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3`
 - Title: `font-sans text-[15px] font-semibold text-ink` — note semibold not bold
 - Price: `font-mono text-[15px] font-medium text-ink` — in `--text` (dark), not orange
 - "Contact for price": `text-[12px] font-sans text-ink-3 italic`
@@ -374,7 +374,7 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Frosted glass exception: `rgba(255,255,255,0.50)` + `backdrop-filter: blur(8px)` over the listing card
 - Action buttons: white bg, `border-[#D4D5D7]`, pill shape, `text-sm font-semibold`
 - Danger action: `bg-[#FFF0F0]`, `color: #CC0000`, `border: #FFCCCC`
-- Cancel button: `bg-[#F7F8F9]`, `color: #4A4D52`, `border-[#E8E9EA]`
+- Cancel button: `bg-[#F7F8F9]`, `color: #4A4D52`, `border-[#E8E9EA]` — visually separated from action buttons by a `border-t border-[#E8E9EA]` divider with `mt-2 pt-2`
 
 ---
 
@@ -427,7 +427,7 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 - **Price on detail page:** `font-mono font-medium` `20px`, shown in `color: #FF6B35` (orange) — unlike listing cards where price is ink
 - "Contact for price": `font-sans font-semibold italic 15px color: #FF6B35`
 - Pills row (detail title card): Condition = green badge, Location = blue badge, New Listing = green badge
-- Specs grid: 2-column, `font-mono text-[10px] uppercase tracking-[0.08em] text-ink-3` label, `font-mono text-sm font-bold text-ink` value
+- Specs grid: 2-column, `font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3` label, `font-mono text-sm font-bold text-ink` value
 - Description: `font-sans text-ink-2 14px line-height: 1.8`
 - Related listings: 4-column fixed grid `repeat(4, 1fr) gap-4` — uses standard ListingCard
 - JSON-LD Product schema injected via `<script type="application/ld+json">`
