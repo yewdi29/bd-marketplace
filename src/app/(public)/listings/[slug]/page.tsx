@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Listing } from '@/lib/types/database'
+import { formatPrice } from '@/lib/formatPrice'
 import PhotoGallery from './PhotoGallery'
 import InquiryForm from './InquiryForm'
 import ListingActions from './ListingActions'
@@ -48,14 +49,6 @@ function catLabel(val: string) {
 
 function condLabel(val: string) {
   return CONDITION_LABELS[val] ?? val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
-
-function formatPriceFull(price: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price)
 }
 
 function isNewListing(createdAt: string): boolean {
@@ -246,21 +239,12 @@ export default async function ListingDetailPage({ params }: Props) {
                 >
                   {l.title}
                 </h1>
-                {!priceVisible ? (
-                  <span
-                    className="font-mono font-medium shrink-0"
-                    style={{ fontSize: '20px', letterSpacing: '-0.02em', color: '#FF6B35' }}
-                  >
-                    Contact for price
-                  </span>
-                ) : l.price > 0 ? (
-                  <span
-                    className="font-mono font-medium shrink-0"
-                    style={{ fontSize: '20px', letterSpacing: '-0.02em', color: '#FF6B35' }}
-                  >
-                    {formatPriceFull(l.price)}
-                  </span>
-                ) : null}
+                <span
+                  className="font-mono font-medium shrink-0"
+                  style={{ fontSize: '20px', letterSpacing: '-0.02em', color: '#FF6B35' }}
+                >
+                  {formatPrice(l.price, l.price_unit ?? 'total', priceVisible)}
+                </span>
               </div>
 
               <div className="border-t border-[#E8E9EA] my-4" />
@@ -392,7 +376,7 @@ export default async function ListingDetailPage({ params }: Props) {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(related as Listing[]).map(rel => (
-                <ListingCard key={rel.id} listing={rel} />
+                <ListingCard key={rel.id} listing={rel} isLoggedIn={!!user} />
               ))}
             </div>
           </div>

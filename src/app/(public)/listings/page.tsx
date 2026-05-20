@@ -49,6 +49,16 @@ export default async function ListingsPage({
   const params = await searchParams
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  let savedIds = new Set<string>()
+  if (user) {
+    const { data: saved } = await supabase
+      .from('saved_listings')
+      .select('listing_id')
+      .eq('user_id', user.id)
+    savedIds = new Set((saved ?? []).map((s: { listing_id: string }) => s.listing_id))
+  }
+
   let query = supabase
     .from('listings')
     .select('*, listing_images(*)')
@@ -177,7 +187,7 @@ export default async function ListingsPage({
           {listings && listings.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(listings as Listing[]).map(listing => (
-                <ListingCard key={listing.id} listing={listing} />
+                <ListingCard key={listing.id} listing={listing} isLoggedIn={!!user} initialSaved={savedIds.has(listing.id)} />
               ))}
             </div>
           ) : (

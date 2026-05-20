@@ -132,8 +132,8 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
             {/* Menu items */}
             <div className="py-1.5">
               {[
-                { label: 'My Dashboard', href: '/dashboard' },
-                { label: 'Saved Equipment', href: '/dashboard/saved' },
+                { label: 'My Listings', href: '/dashboard' },
+                { label: 'Saved Equipment', href: '/dashboard?tab=saved' },
                 { label: 'Account Settings', href: '/dashboard/settings' },
               ].map(item => (
                 <Link

@@ -20,7 +20,7 @@ export async function GET(_request: NextRequest) {
 
   const { data, error } = await supabase
     .from('listings')
-    .select('id, title, category, price, price_visible, status, slug, created_at, location_city, location_state, listing_images(url, is_primary, sort_order)')
+    .select('id, title, category, price, price_unit, price_visible, status, slug, created_at, location_city, location_state, listing_images(url, is_primary, sort_order)')
     .eq('seller_id', user.id)
     .neq('status', 'removed')
     .order('created_at', { ascending: false })
@@ -35,6 +35,7 @@ export async function GET(_request: NextRequest) {
       title: listing.title,
       category: listing.category,
       price: listing.price,
+      price_unit: listing.price_unit ?? 'total',
       price_visible: listing.price_visible,
       status: listing.status,
       slug: listing.slug,

@@ -1,15 +1,5 @@
 import type { ListingTier } from './types/database'
 
-export function formatPrice(price: number): string {
-  if (price >= 1_000_000) {
-    return `$${(price / 1_000_000).toFixed(1)}M`
-  }
-  if (price >= 1_000) {
-    return `$${(price / 1_000).toFixed(0)}K`
-  }
-  return `$${price.toLocaleString()}`
-}
-
 export function getTierLabel(tier: ListingTier): string {
   switch (tier) {
     case 'green': return 'Under $100K'

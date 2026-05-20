@@ -63,6 +63,15 @@ const CONDITIONS = [
   { value: 'parts_only', label: 'Parts Only' },
 ]
 
+const PRICE_UNITS = [
+  { value: 'total', label: 'Total Price' },
+  { value: 'per_foot', label: 'Per Foot' },
+  { value: 'per_piece', label: 'Per Piece' },
+  { value: 'per_ton', label: 'Per Ton' },
+  { value: 'per_set', label: 'Per Set' },
+  { value: 'per_meter', label: 'Per Meter' },
+]
+
 const MAX_PHOTOS = 20
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -80,6 +89,7 @@ interface EditForm {
   year: string
   condition: string
   price: string
+  price_unit: string
   price_visible: boolean
   location_city: string
   location_state: string
@@ -155,7 +165,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     async function fetchListing() {
       const { data, error: fetchError } = await supabase
         .from('listings')
-        .select('title, category, manufacturer, model, year, condition, price, price_visible, location_city, location_state, description, status, listing_images(id, url, sort_order, is_primary)')
+        .select('title, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, description, status, listing_images(id, url, sort_order, is_primary)')
         .eq('id', listingId)
         .single()
 
@@ -173,6 +183,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
         year: data.year != null ? String(data.year) : '',
         condition: data.condition ?? '',
         price: data.price != null && data.price > 0 ? String(data.price) : '',
+        price_unit: (data as { price_unit?: string }).price_unit ?? 'total',
         price_visible: data.price_visible !== false,
         location_city: data.location_city ?? '',
         location_state: data.location_state ?? '',
@@ -256,6 +267,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
           year: form.year ? parseInt(form.year) : null,
           condition: form.condition,
           price: parseFloat(form.price) || 0,
+          price_unit: form.price_unit,
           price_visible: form.price_visible,
           location_city: form.location_city || null,
           location_state: form.location_state || null,
@@ -596,21 +608,34 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                 />
               </FormField>
 
-              {/* Price */}
+              {/* Price + unit */}
               <FormField label="Price (USD)" required>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
-                  <input
-                    type="number"
-                    value={form.price}
-                    onChange={e => {
-                      setForm(f => f ? { ...f, price: e.target.value } : f)
-                      if (priceError) setPriceError('')
-                    }}
-                    className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
-                    placeholder="0"
-                    min={0}
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
+                    <input
+                      type="number"
+                      value={form.price}
+                      onChange={e => {
+                        setForm(f => f ? { ...f, price: e.target.value } : f)
+                        if (priceError) setPriceError('')
+                      }}
+                      className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
+                      placeholder="0"
+                      min={0}
+                    />
+                  </div>
+                  <SelectWrapper>
+                    <select
+                      value={form.price_unit}
+                      onChange={e => setForm(f => f ? { ...f, price_unit: e.target.value } : f)}
+                      className={`${selectCls} w-[140px] shrink-0`}
+                    >
+                      {PRICE_UNITS.map(u => (
+                        <option key={u.value} value={u.value}>{u.label}</option>
+                      ))}
+                    </select>
+                  </SelectWrapper>
                 </div>
                 {/* Helper text */}
                 <p style={{ fontSize: '12px', color: '#9A9DA2', lineHeight: 1.5, marginTop: '6px' }}>

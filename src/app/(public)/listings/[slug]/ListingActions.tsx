@@ -50,18 +50,17 @@ export default function ListingActions({ listingId, initialSaved, isLoggedIn, li
         onClick={handleSave}
         disabled={savingLoading}
         className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold border rounded-pill transition-colors disabled:opacity-50"
-        style={{
-          borderColor: saved ? '#FF6B35' : '#D4D5D7',
-          color: saved ? '#FF6B35' : '#4A4D52',
-        }}
+        style={saved
+          ? { background: '#CC0000', borderColor: '#CC0000', color: '#FFFFFF' }
+          : { borderColor: '#D4D5D7', color: '#4A4D52', background: 'transparent' }
+        }
       >
         <svg
-          className="w-4 h-4 transition-colors"
-          fill={saved ? 'currentColor' : 'none'}
+          className="w-4 h-4"
+          fill={saved ? '#FFFFFF' : 'none'}
           viewBox="0 0 24 24"
-          stroke="currentColor"
+          stroke={saved ? '#FFFFFF' : '#9A9DA2'}
           strokeWidth={2}
-          style={{ color: saved ? '#FF6B35' : '#9A9DA2' }}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>

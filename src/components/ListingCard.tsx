@@ -2,29 +2,49 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useState } from 'react'
 import { Listing } from '@/lib/types/database'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/formatPrice'
 
 interface ListingCardProps {
   listing: Listing
+  initialSaved?: boolean
+  isLoggedIn?: boolean
 }
 
 function isNewListing(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000
 }
 
-export default function ListingCard({ listing }: ListingCardProps) {
+export default function ListingCard({ listing, initialSaved = false, isLoggedIn = false }: ListingCardProps) {
+  const [saved, setSaved] = useState(initialSaved)
+  const [saving, setSaving] = useState(false)
+
   const primaryImage = listing.listing_images?.find(img => img.is_primary) ?? listing.listing_images?.[0]
   const href = `/listings/${listing.slug ?? listing.id}`
   const isNew = isNewListing(listing.created_at)
 
-  // Price visibility: only show "Contact for price" when price_visible is explicitly false
-  const contactForPrice = listing.price_visible === false
-  const showPrice = !contactForPrice && listing.price > 0
+  const priceDisplay = formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible)
 
-  // Location pill: "City, State, United States"
   const locationParts = [listing.location_city, listing.location_state].filter(Boolean)
   const locationText = locationParts.length > 0 ? [...locationParts, 'United States'].join(', ') : null
+
+  async function handleSave(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isLoggedIn) {
+      window.location.href = `/auth/login?redirectTo=${encodeURIComponent(window.location.pathname)}`
+      return
+    }
+    setSaving(true)
+    try {
+      const method = saved ? 'DELETE' : 'POST'
+      const res = await fetch(`/api/saved/${listing.id}`, { method })
+      if (res.ok) setSaved(s => !s)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Link
@@ -64,6 +84,25 @@ export default function ListingCard({ listing }: ListingCardProps) {
             New Listing
           </span>
         )}
+
+        {/* Heart save button */}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          aria-label={saved ? 'Remove from saved' : 'Save listing'}
+          className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center transition-opacity disabled:opacity-50"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+        >
+          <svg
+            className="w-4 h-4"
+            fill={saved ? '#CC0000' : 'none'}
+            viewBox="0 0 24 24"
+            stroke={saved ? '#CC0000' : '#9A9DA2'}
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </button>
       </div>
 
       {/* Card body */}
@@ -83,7 +122,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
 
         {/* Price */}
         <p className="font-mono font-medium text-orange mb-3" style={{ fontSize: '15px' }}>
-          {contactForPrice ? 'Contact for price' : showPrice ? formatPrice(listing.price) : null}
+          {priceDisplay}
         </p>
 
         {/* Location pill */}

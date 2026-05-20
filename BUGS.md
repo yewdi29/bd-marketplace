@@ -12,7 +12,16 @@ Bugs that need to be fixed.
   small message in a convenient spot to let user know that price is needed
   for best browser findability results. If you don't want to display price,
   toggle price off.
-- **Priority:** Medium
+- **Priority:** Resolved
+
+### B020 — Price Display
+- **Page:** Any page containing the listing card
+- **What happened:** 
+- **What should happen:** Listing must require a price. Also, diplay a
+  small message in a convenient spot to let user know that price is needed
+  for best browser findability results. If you don't want to display price,
+  toggle price off.
+- **Priority:** Resolved
 
 
 
@@ -22,9 +31,9 @@ Bugs that need to be fixed.
 ## Design Changes
 Make it look goood.
 
-### D001 — [Short description]
+### D002 — Increase Public Display Category Title
 - **Page:** Whole System
-- **Change:** Change to light mode.
+- **Change:** increase 
 - **Priority:** Resolved
 
 
@@ -107,4 +116,8 @@ Things not yet built that you want added.
     - Pro ($7500)
     - Premium ($12,000)
     - Global reach unlocked with premium, lower tiers limited to local country. Track reach based on IP location.
-[ ] 
+[ ] Need to figure out intelligence to detect editable values in the listing modal
+    that are unique to the listing specs. The goal is for AI to identify the unique specs
+    found in the initial prompt, then generate custom input fields. 
+[ ] Find solution to flexible pricing, such as: $19/ft, $500/pc,
+[ ] Redesign the product photo gallery. The gray side bars bother me.

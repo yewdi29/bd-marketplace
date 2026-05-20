@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // Build listing update payload — only include known, safe fields
   const allowed = [
     'title', 'category', 'manufacturer', 'model', 'year', 'condition',
-    'price', 'price_visible', 'price_negotiable',
+    'price', 'price_unit', 'price_visible', 'price_negotiable',
     'location_city', 'location_state',
     'description', 'tags', 'specs', 'video_url', 'status',
   ]

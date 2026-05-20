@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/formatPrice'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -63,6 +63,15 @@ const CONDITIONS = [
   { value: 'parts_only', label: 'Parts Only' },
 ]
 
+const PRICE_UNITS = [
+  { value: 'total', label: 'Total Price' },
+  { value: 'per_foot', label: 'Per Foot' },
+  { value: 'per_piece', label: 'Per Piece' },
+  { value: 'per_ton', label: 'Per Ton' },
+  { value: 'per_set', label: 'Per Set' },
+  { value: 'per_meter', label: 'Per Meter' },
+]
+
 const STEP_LABELS = ['Describe', 'Review & Refine', 'Photos & Video', 'Publish']
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -80,6 +89,7 @@ interface ListingForm {
   year: string
   condition: string
   price: string
+  price_unit: string
   price_visible: boolean
   location_city: string
   location_state: string
@@ -94,6 +104,7 @@ const EMPTY_FORM: ListingForm = {
   year: '',
   condition: '',
   price: '',
+  price_unit: 'total',
   price_visible: true,
   location_city: '',
   location_state: '',
@@ -262,6 +273,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
         year: l.year != null ? String(l.year) : '',
         condition: l.condition ?? '',
         price: l.price != null && l.price > 0 ? String(l.price) : '',
+        price_unit: (l as { price_unit?: string }).price_unit ?? 'total',
         price_visible: l.price_visible !== false,
         location_city: l.location_city ?? '',
         location_state: l.location_state ?? '',
@@ -667,21 +679,34 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
                 />
               </FormField>
 
-              {/* Price + visibility toggle */}
+              {/* Price + unit + visibility toggle */}
               <FormField label="Price (USD)">
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
-                  <input
-                    type="number"
-                    value={form.price}
-                    onChange={e => {
-                      setForm(f => ({ ...f, price: e.target.value }))
-                      if (priceError) setPriceError('')
-                    }}
-                    className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
-                    placeholder="0"
-                    min={0}
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
+                    <input
+                      type="number"
+                      value={form.price}
+                      onChange={e => {
+                        setForm(f => ({ ...f, price: e.target.value }))
+                        if (priceError) setPriceError('')
+                      }}
+                      className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
+                      placeholder="0"
+                      min={0}
+                    />
+                  </div>
+                  <SelectWrapper>
+                    <select
+                      value={form.price_unit}
+                      onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))}
+                      className={`${selectCls} w-[140px] shrink-0`}
+                    >
+                      {PRICE_UNITS.map(u => (
+                        <option key={u.value} value={u.value}>{u.label}</option>
+                      ))}
+                    </select>
+                  </SelectWrapper>
                 </div>
                 {/* Helper text */}
                 <p style={{ fontSize: '12px', color: '#9A9DA2', lineHeight: 1.5, marginTop: '6px' }}>
@@ -917,11 +942,12 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
                       {form.title || 'Untitled Draft'}
                     </h3>
                     <div className="shrink-0 text-right">
-                      {form.price_visible && parseFloat(form.price) > 0 ? (
-                        <span className="font-mono font-bold text-base text-ink">{formatPrice(parseFloat(form.price))}</span>
-                      ) : (
-                        <span className="text-sm font-sans text-ink-2 italic">Contact for price</span>
-                      )}
+                      {(() => {
+                        const priceStr = formatPrice(parseFloat(form.price) || 0, form.price_unit, form.price_visible)
+                        return priceStr === 'Contact for price'
+                          ? <span className="text-sm font-sans text-ink-2 italic">Contact for price</span>
+                          : <span className="font-mono font-bold text-base text-ink">{priceStr}</span>
+                      })()}
                     </div>
                   </div>
 

@@ -17,6 +17,7 @@ Use exactly these field names and value constraints:
   "year": 2012 (integer year, or null if unknown),
   "condition": "One of exactly: new | like_new | good | fair | parts_only",
   "price": 75000 (number, no currency symbol, or null if not mentioned),
+  "price_unit": "One of exactly: total | per_foot | per_piece | per_ton | per_set | per_meter. Default to 'total' unless the description explicitly mentions per-unit pricing (e.g. '$25 per foot', '$150/piece', '$500 per ton'). Use 'total' for any lump-sum or full-lot price.",
   "location_city": "City name, or null if not mentioned",
   "location_state": "US state two-letter abbreviation (e.g. TX), or null if not mentioned",
   "description": "Professional 3–5 sentence listing description for the public marketplace page. Highlight key specs, condition, and end with a call to action. Optimized for oil and gas buyers.",
@@ -33,6 +34,7 @@ interface ClaudeGenerated {
   year: number | null
   condition: string
   price: number | null
+  price_unit: string | null
   location_city: string | null
   location_state: string | null
   description: string
@@ -137,6 +139,7 @@ export async function POST(request: NextRequest) {
       year: generated.year ?? null,
       condition: generated.condition || 'good',
       price: generated.price ?? 0,
+      price_unit: generated.price_unit ?? 'total',
       price_visible: generated.price != null,
       location_city: generated.location_city ?? null,
       location_state: generated.location_state ?? null,

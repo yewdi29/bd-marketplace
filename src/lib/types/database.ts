@@ -42,6 +42,7 @@ export interface Listing {
   year: number | null
   condition: string | null
   price: number
+  price_unit: string
   price_negotiable: boolean
   price_visible: boolean
   location_city: string | null

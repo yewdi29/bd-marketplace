@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/formatPrice'
 import NewListingModal from '@/components/listings/NewListingModal'
 import EditListingModal from '@/components/listings/EditListingModal'
 
@@ -17,6 +17,7 @@ interface MyListing {
   title: string
   category: string
   price: number
+  price_unit: string
   price_visible: boolean | null
   status: ListingStatus
   slug: string
@@ -26,7 +27,22 @@ interface MyListing {
   primary_image_url: string | null
 }
 
+interface SavedListingItem {
+  id: string
+  title: string
+  category: string
+  price: number
+  price_unit: string
+  price_visible: boolean | null
+  slug: string | null
+  created_at: string
+  location_city: string | null
+  location_state: string | null
+  listing_images: { url: string; is_primary: boolean; sort_order: number }[]
+}
+
 type FilterTab = 'all' | 'active' | 'draft' | 'sold'
+type MainTab = 'listings' | 'saved'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -263,9 +279,9 @@ function RefreshIcon() {
   )
 }
 
-// ─── Listing Card ─────────────────────────────────────────────────────────────
+// ─── My Listing Card ──────────────────────────────────────────────────────────
 
-function ListingCard({
+function MyListingCard({
   listing,
   onManage,
   isManaging,
@@ -350,7 +366,7 @@ function ListingCard({
           <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{formatCategory(listing.category)}</p>
           <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-2">{listing.title}</p>
           <p className="font-mono text-sm font-medium text-orange tracking-tight mb-0">
-            {listing.price_visible === false ? 'Contact for price' : listing.price > 0 ? formatPrice(listing.price) : null}
+            {formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible ?? true)}
           </p>
         </div>
       </div>
@@ -368,12 +384,81 @@ function ListingCard({
   )
 }
 
+// ─── Saved Listing Card ───────────────────────────────────────────────────────
+
+function SavedCard({ listing, onRemove }: { listing: SavedListingItem; onRemove: (id: string) => void }) {
+  const [removing, setRemoving] = useState(false)
+  const primaryImage = listing.listing_images?.find(img => img.is_primary) ?? listing.listing_images?.[0]
+  const href = `/listings/${listing.slug ?? listing.id}`
+  const priceDisplay = formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible ?? true)
+  const locationParts = [listing.location_city, listing.location_state].filter(Boolean)
+  const locationText = locationParts.length > 0 ? locationParts.join(', ') : null
+
+  async function handleUnsave(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setRemoving(true)
+    try {
+      const res = await fetch(`/api/saved/${listing.id}`, { method: 'DELETE' })
+      if (res.ok) onRemove(listing.id)
+    } finally {
+      setRemoving(false)
+    }
+  }
+
+  return (
+    <Link
+      href={href}
+      className="group block bg-white border border-[#E8E9EA] hover:border-[#D4D5D7] rounded-[16px] overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
+      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
+    >
+      <div className="relative w-full h-[140px] bg-[#F0F0F0] overflow-hidden">
+        {primaryImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={primaryImage.url} alt={listing.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <svg className="w-10 h-10 text-ink-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+        {/* Filled red heart — click removes from saved */}
+        <button
+          onClick={handleUnsave}
+          disabled={removing}
+          aria-label="Remove from saved"
+          className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center disabled:opacity-50"
+          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+        >
+          <svg className="w-4 h-4" fill="#CC0000" viewBox="0 0 24 24" stroke="#CC0000" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </button>
+      </div>
+      <div className="p-3">
+        <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{formatCategory(listing.category)}</p>
+        <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-2">{listing.title}</p>
+        <p className="font-mono text-sm font-medium text-orange">
+          {priceDisplay}
+        </p>
+        {locationText && (
+          <p className="text-[11px] text-ink-3 font-sans mt-1.5">{locationText}</p>
+        )}
+      </div>
+    </Link>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>('listings')
   const [listings, setListings] = useState<MyListing[]>([])
+  const [savedListings, setSavedListings] = useState<SavedListingItem[]>([])
   const [plan, setPlan] = useState<'free' | 'premium'>('free')
   const [loading, setLoading] = useState(true)
+  const [savedLoading, setSavedLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [manageListing, setManageListing] = useState<MyListing | null>(null)
   const [editListingId, setEditListingId] = useState<string | null>(null)
@@ -383,6 +468,12 @@ export default function DashboardPage() {
   const [toast, setToast] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  // Read initial tab from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'saved') setActiveMainTab('saved')
+  }, [])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -406,7 +497,32 @@ export default function DashboardPage() {
     }
   }, [supabase, router])
 
+  const fetchSaved = useCallback(async () => {
+    setSavedLoading(true)
+    try {
+      const res = await fetch('/api/saved')
+      if (res.ok) {
+        const json = await res.json() as { listings: SavedListingItem[] }
+        setSavedListings(json.listings ?? [])
+      }
+    } finally {
+      setSavedLoading(false)
+    }
+  }, [])
+
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    if (activeMainTab === 'saved') fetchSaved()
+  }, [activeMainTab, fetchSaved])
+
+  function handleMainTabSwitch(tab: MainTab) {
+    setActiveMainTab(tab)
+    const url = new URL(window.location.href)
+    if (tab === 'saved') url.searchParams.set('tab', 'saved')
+    else url.searchParams.delete('tab')
+    router.replace(url.pathname + url.search, { scroll: false })
+  }
 
   async function handleAction(id: string, action: string) {
     setActionLoading(`${id}:${action}`)
@@ -458,112 +574,185 @@ export default function DashboardPage() {
   return (
     <div className="max-w-[1280px] mx-auto px-6 py-8">
 
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
-            My Listings
-          </h1>
-          {plan === 'free' && !loading && (
-            <p className="text-sm text-ink-3 mt-0.5">
-              <span className="font-mono">{listings.length}/3</span> free listings used
-            </p>
-          )}
-        </div>
-        <button
-          onClick={handleNewListing}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
-          style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          New Listing
-        </button>
-      </div>
-
-      {/* Filter pills */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        {filterTabs.map(tab => {
-          const isActive = activeFilter === tab.key
+      {/* Main tabs */}
+      <div className="flex items-center gap-1 mb-8 border-b border-[#E8E9EA]">
+        {(['listings', 'saved'] as MainTab[]).map(tab => {
+          const isActive = activeMainTab === tab
+          const label = tab === 'listings' ? 'My Listings' : 'Saved Equipment'
           return (
             <button
-              key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium rounded-pill border transition-colors ${
-                isActive
-                  ? 'bg-ink text-white border-ink'
-                  : 'bg-white text-ink-2 border-[#E8E9EA] hover:border-[#D4D5D7] hover:text-ink'
-              }`}
+              key={tab}
+              onClick={() => handleMainTabSwitch(tab)}
+              className="px-4 py-2.5 text-sm font-semibold transition-colors relative"
+              style={{
+                color: isActive ? '#1A1D20' : '#9A9DA2',
+                borderBottom: isActive ? '2px solid #1A1D20' : '2px solid transparent',
+                marginBottom: '-1px',
+              }}
             >
-              {tab.label}
-              {tab.count > 0 && (
-                <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-[#F0F0F0] text-ink-3'
-                }`}>
-                  {tab.key === 'active' && plan === 'free' ? `${tab.count}/3` : tab.count}
-                </span>
-              )}
+              {label}
             </button>
           )
         })}
       </div>
 
-      {/* Content */}
-      {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
-          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-14 h-14 rounded-[14px] bg-[#F0F0F0] flex items-center justify-center mb-4">
-            <svg className="w-7 h-7 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
+      {/* ── My Listings tab ── */}
+      {activeMainTab === 'listings' && (
+        <>
+          {/* Page header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
+                My Listings
+              </h1>
+              {plan === 'free' && !loading && (
+                <p className="text-sm text-ink-3 mt-0.5">
+                  <span className="font-mono">{listings.length}/3</span> free listings used
+                </p>
+              )}
+            </div>
+            <button
+              onClick={handleNewListing}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
+              style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              New Listing
+            </button>
           </div>
-          {listings.length === 0 ? (
-            <>
-              <h3 className="font-sans font-bold text-base text-ink mb-1">No listings yet</h3>
+
+          {/* Filter pills */}
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
+            {filterTabs.map(tab => {
+              const isActive = activeFilter === tab.key
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveFilter(tab.key)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium rounded-pill border transition-colors ${
+                    isActive
+                      ? 'bg-ink text-white border-ink'
+                      : 'bg-white text-ink-2 border-[#E8E9EA] hover:border-[#D4D5D7] hover:text-ink'
+                  }`}
+                >
+                  {tab.label}
+                  {tab.count > 0 && (
+                    <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#F0F0F0] text-ink-3'
+                    }`}>
+                      {tab.key === 'active' && plan === 'free' ? `${tab.count}/3` : tab.count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Content */}
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-14 h-14 rounded-[14px] bg-[#F0F0F0] flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              {listings.length === 0 ? (
+                <>
+                  <h3 className="font-sans font-bold text-base text-ink mb-1">No listings yet</h3>
+                  <p className="text-sm text-ink-3 mb-6 max-w-[280px]">
+                    Start selling by posting your first piece of equipment.
+                  </p>
+                  <button
+                    onClick={handleNewListing}
+                    className="px-5 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
+                    style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
+                  >
+                    Post Your First Listing
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 className="font-sans font-bold text-base text-ink mb-1">No {activeFilter} listings</h3>
+                  <p className="text-sm text-ink-3">Switch to a different filter to see your listings.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+              {filtered.map(listing => (
+                <MyListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onManage={setManageListing}
+                  isManaging={manageListing?.id === listing.id}
+                  onCloseManage={() => setManageListing(null)}
+                  onAction={handleAction}
+                  onEdit={id => { setManageListing(null); setEditListingId(id) }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Click-outside backdrop — dismisses the card manage overlay */}
+          {manageListing && (
+            <div
+              className="fixed inset-0 z-[5]"
+              onClick={() => setManageListing(null)}
+            />
+          )}
+        </>
+      )}
+
+      {/* ── Saved Equipment tab ── */}
+      {activeMainTab === 'saved' && (
+        <>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
+              Saved Equipment
+            </h1>
+          </div>
+
+          {savedLoading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : savedListings.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-14 h-14 rounded-[14px] bg-[#F0F0F0] flex items-center justify-center mb-4">
+                <svg className="w-7 h-7 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <h3 className="font-sans font-bold text-base text-ink mb-1">No saved equipment</h3>
               <p className="text-sm text-ink-3 mb-6 max-w-[280px]">
-                Start selling by posting your first piece of equipment.
+                Browse listings and tap the heart icon to save equipment you&apos;re interested in.
               </p>
-              <button
-                onClick={handleNewListing}
+              <Link
+                href="/listings"
                 className="px-5 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
                 style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
               >
-                Post Your First Listing
-              </button>
-            </>
+                Browse Equipment
+              </Link>
+            </div>
           ) : (
-            <>
-              <h3 className="font-sans font-bold text-base text-ink mb-1">No {activeFilter} listings</h3>
-              <p className="text-sm text-ink-3">Switch to a different filter to see your listings.</p>
-            </>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+              {savedListings.map(listing => (
+                <SavedCard
+                  key={listing.id}
+                  listing={listing}
+                  onRemove={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
+                />
+              ))}
+            </div>
           )}
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
-          {filtered.map(listing => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              onManage={setManageListing}
-              isManaging={manageListing?.id === listing.id}
-              onCloseManage={() => setManageListing(null)}
-              onAction={handleAction}
-              onEdit={id => { setManageListing(null); setEditListingId(id) }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Click-outside backdrop — dismisses the card manage overlay */}
-      {manageListing && (
-        <div
-          className="fixed inset-0 z-[5]"
-          onClick={() => setManageListing(null)}
-        />
+        </>
       )}
 
       {/* Edit Listing Modal (B011) */}
