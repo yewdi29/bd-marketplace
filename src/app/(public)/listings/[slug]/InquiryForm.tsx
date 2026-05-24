@@ -31,24 +31,17 @@ export default function InquiryForm({ listingId, sellerId }: Props) {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     try {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listing_id: listingId,
-          seller_id: sellerId,
-          ...form,
-        }),
+        body: JSON.stringify({ listing_id: listingId, seller_id: sellerId, ...form }),
       })
-
       if (!res.ok) {
         const d = await res.json() as { error?: string }
         setError(d.error ?? 'Something went wrong. Please try again.')
         return
       }
-
       setSent(true)
     } catch {
       setError('Network error. Please try again.')
@@ -57,22 +50,24 @@ export default function InquiryForm({ listingId, sellerId }: Props) {
     }
   }
 
+  // ── Sent state ────────────────────────────────────────────────────────────
   if (sent) {
     return (
-      <div className="text-center py-6">
-        <div className="w-12 h-12 rounded-full bg-[#F0FFF0] flex items-center justify-center mx-auto mb-3">
-          <svg className="w-6 h-6 text-[#1A5C18]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="flex items-center gap-3 py-2">
+        <div className="w-9 h-9 rounded-full bg-[#F0FFF0] flex items-center justify-center shrink-0">
+          <svg className="w-4 h-4 text-[#1A5C18]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="font-sans font-bold text-sm text-ink mb-1">Inquiry sent!</p>
-        <p className="text-xs text-ink-3 leading-relaxed">
-          Your inquiry has been sent to the seller. They&apos;ll reach out to you directly.
-        </p>
+        <div>
+          <p className="font-sans font-bold text-sm text-ink leading-none mb-1">Inquiry sent!</p>
+          <p className="text-xs text-ink-3">The seller will reach out to you directly.</p>
+        </div>
       </div>
     )
   }
 
+  // ── Form — always visible ────────────────────────────────────────────────
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <input
@@ -114,20 +109,18 @@ export default function InquiryForm({ listingId, sellerId }: Props) {
         className={`${inputCls} resize-none leading-relaxed`}
       />
 
-      {error && (
-        <p className="text-xs text-red-500">{error}</p>
-      )}
+      {error && <p className="text-xs text-red-500">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
         className="w-full py-3 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors disabled:opacity-50"
-        style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
+        style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.28)' }}
       >
         {loading ? 'Sending…' : 'Send Inquiry'}
       </button>
 
-      <p className="text-center text-[11px] font-sans text-ink-3">
+      <p className="text-center font-sans text-ink-3" style={{ fontSize: '11px' }}>
         Your info is only shared with the seller
       </p>
     </form>

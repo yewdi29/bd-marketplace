@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const { error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -39,6 +39,48 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 })
+  }
+
+  // ── Post-signup enrichment via service role ───────────────────────────────
+  // Runs async enrichment (duplicate detection, email domain) without blocking
+  // the signup response. Uses admin client so we can write to the users table
+  // that was just populated by the on_auth_user_created trigger.
+
+  const newUserId = signUpData.user?.id
+  if (newUserId) {
+    try {
+      const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const emailDomain = email.split('@')[1]?.toLowerCase() ?? null
+      const enrichment: Record<string, unknown> = {
+        email_domain: emailDomain,
+        updated_at: new Date().toISOString(),
+      }
+
+      // Soft-check for duplicate company name (case-insensitive)
+      if (companyName) {
+        const { data: duplicate } = await adminClient
+          .from('users')
+          .select('id')
+          .ilike('company_name', companyName.trim())
+          .neq('id', newUserId)
+          .maybeSingle()
+
+        if (duplicate) {
+          enrichment.company_name_duplicate = true
+        }
+      }
+
+      await adminClient
+        .from('users')
+        .update(enrichment)
+        .eq('id', newUserId)
+    } catch {
+      // Non-fatal — signup succeeded, enrichment failed silently
+    }
   }
 
   return NextResponse.json({ success: true })

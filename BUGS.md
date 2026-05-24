@@ -112,12 +112,12 @@ Things not yet built that you want added.
 
 ## Project To-Do's
 [ ] Figure out best listing pricing structure for memberships. (Free=3, Pro=15, Max=30) + perks.
-    - Basic ($2000) 
-    - Pro ($7500)
-    - Premium ($12,000)
+    - Pro ($2000/year) 10 listings, country only.
+    - Premium ($7500/year) 30 listings, global reach, Directory page placement, 
+    - Enterprise ($12,000/year) 50 listings, global reach, 
     - Global reach unlocked with premium, lower tiers limited to local country. Track reach based on IP location.
-[ ] Need to figure out intelligence to detect editable values in the listing modal
+[done] Need to figure out intelligence to detect editable values in the listing modal
     that are unique to the listing specs. The goal is for AI to identify the unique specs
     found in the initial prompt, then generate custom input fields. 
-[ ] Find solution to flexible pricing, such as: $19/ft, $500/pc,
+[done] Find solution to flexible pricing, such as: $19/ft, $500/pc,
 [ ] Redesign the product photo gallery. The gray side bars bother me.

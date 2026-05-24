@@ -20,11 +20,19 @@ export async function POST(request: NextRequest) {
   )
 
   const body = await request.json()
-  const { listing_id, buyer_name, buyer_email, buyer_phone, buyer_company, message } = body
+  const { listing_id, seller_id: body_seller_id, buyer_name, buyer_email, buyer_phone, buyer_company, message } = body
 
-  if (!listing_id || !buyer_name || !buyer_email || !message) {
+  if (!buyer_name || !buyer_email || !message) {
     return NextResponse.json(
-      { error: 'listing_id, buyer_name, buyer_email, and message are required' },
+      { error: 'buyer_name, buyer_email, and message are required' },
+      { status: 400 }
+    )
+  }
+
+  // Must supply at least one of listing_id or seller_id
+  if (!listing_id && !body_seller_id) {
+    return NextResponse.json(
+      { error: 'Either listing_id or seller_id is required' },
       { status: 400 }
     )
   }
@@ -34,35 +42,61 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
   }
 
-  // Fetch listing to get seller_id and tier
-  const { data: listing, error: listingError } = await supabase
-    .from('listings')
-    .select('id, seller_id, tier, status')
-    .eq('id', listing_id)
-    .single()
-
-  if (listingError || !listing) {
-    return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
-  }
-
-  if (listing.status !== 'active') {
-    return NextResponse.json({ error: 'Listing is not active' }, { status: 400 })
-  }
-
   const { data: { user } } = await supabase.auth.getUser()
 
+  // ── Path A: listing-specific inquiry (original flow) ──────────────────────
+  if (listing_id) {
+    const { data: listing, error: listingError } = await supabase
+      .from('listings')
+      .select('id, seller_id, tier, status')
+      .eq('id', listing_id)
+      .single()
+
+    if (listingError || !listing) {
+      return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+    }
+
+    if (listing.status !== 'active') {
+      return NextResponse.json({ error: 'Listing is not active' }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from('leads')
+      .insert({
+        listing_id,
+        seller_id: listing.seller_id,
+        buyer_id: user?.id ?? null,
+        buyer_name,
+        buyer_email,
+        buyer_phone: buyer_phone ?? null,
+        buyer_company: buyer_company ?? null,
+        message,
+        tier: listing.tier,
+        status: 'new',
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ lead: data }, { status: 201 })
+  }
+
+  // ── Path B: seller-profile direct inquiry (no listing) ────────────────────
   const { data, error } = await supabase
     .from('leads')
     .insert({
-      listing_id,
-      seller_id: listing.seller_id,
+      listing_id: null,
+      seller_id: body_seller_id,
       buyer_id: user?.id ?? null,
       buyer_name,
       buyer_email,
       buyer_phone: buyer_phone ?? null,
       buyer_company: buyer_company ?? null,
       message,
-      tier: listing.tier,
+      tier: null,
       status: 'new',
     })
     .select()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const US_STATES = [
@@ -18,6 +18,7 @@ interface UserProfile {
   email: string
   full_name: string | null
   company_name: string | null
+  company_logo_url: string | null
   phone: string | null
   city: string | null
   state: string | null
@@ -41,13 +42,18 @@ function Spinner() {
   )
 }
 
-function SaveButton({ loading, label }: { loading: boolean; label: string }) {
+function SaveButton({ loading, disabled, label }: { loading: boolean; disabled?: boolean; label: string }) {
+  const isDisabled = loading || disabled
   return (
     <button
       type="submit"
-      disabled={loading}
-      className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors disabled:opacity-60"
-      style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
+      disabled={isDisabled}
+      className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white rounded-pill transition-colors disabled:cursor-not-allowed"
+      style={{
+        background: isDisabled ? '#E8E9EA' : '#FF6B35',
+        color: isDisabled ? '#9A9DA2' : '#FFFFFF',
+        boxShadow: isDisabled ? 'none' : '0 4px 16px rgba(255,107,53,0.25)',
+      }}
     >
       {loading && <Spinner />}
       {label}
@@ -84,6 +90,26 @@ export default function SettingsPage() {
   const [stateField, setStateField] = useState('')
   const [country, setCountry] = useState('')
 
+  // Snapshot of last-saved values — used to detect unsaved changes
+  const [savedState, setSavedState] = useState({
+    firstName: '', lastName: '', phone: '', companyName: '', city: '', stateField: '', country: '',
+  })
+
+  const isDirty =
+    firstName !== savedState.firstName ||
+    lastName !== savedState.lastName ||
+    phone !== savedState.phone ||
+    companyName !== savedState.companyName ||
+    city !== savedState.city ||
+    stateField !== savedState.stateField ||
+    country !== savedState.country
+
+  // Logo state
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+
   // Password fields
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -98,13 +124,22 @@ export default function SettingsPage() {
         const u = data.user
         setProfile(u)
         const parts = (u.full_name ?? '').split(' ')
-        setFirstName(parts[0] ?? '')
-        setLastName(parts.slice(1).join(' '))
-        setPhone(u.phone ?? '')
-        setCompanyName(u.company_name ?? '')
-        setCity(u.city ?? '')
-        setStateField(u.state ?? '')
-        setCountry(u.country ?? 'United States')
+        const fn = parts[0] ?? ''
+        const ln = parts.slice(1).join(' ')
+        const ph = u.phone ?? ''
+        const co = u.company_name ?? ''
+        const ci = u.city ?? ''
+        const st = u.state ?? ''
+        const ct = u.country ?? 'United States'
+        setFirstName(fn)
+        setLastName(ln)
+        setPhone(ph)
+        setCompanyName(co)
+        setCity(ci)
+        setStateField(st)
+        setCountry(ct)
+        setLogoUrl(u.company_logo_url ?? null)
+        setSavedState({ firstName: fn, lastName: ln, phone: ph, companyName: co, city: ci, stateField: st, country: ct })
       } catch {
         setLoadError('Failed to load your profile. Please refresh the page.')
       } finally {
@@ -117,6 +152,31 @@ export default function SettingsPage() {
   function showToast(message: string) {
     setToast(message)
     setTimeout(() => setToast(null), 4000)
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoError(null)
+    setLogoUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/users/logo', { method: 'POST', body: form })
+      const json = await res.json() as { success?: boolean; url?: string; error?: string }
+      if (!res.ok || json.error) {
+        setLogoError(json.error ?? 'Upload failed')
+        return
+      }
+      setLogoUrl(json.url ?? null)
+      showToast('Logo updated')
+    } catch {
+      setLogoError('Upload failed. Please try again.')
+    } finally {
+      setLogoUploading(false)
+      // Reset input so the same file can be re-selected if needed
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
   }
 
   async function handleSaveProfile(e: React.FormEvent) {
@@ -142,6 +202,16 @@ export default function SettingsPage() {
         setProfileError(json.error ?? 'Failed to save settings')
         return
       }
+      // Re-sync snapshot so button returns to disabled state
+      setSavedState({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
+        companyName: companyName.trim(),
+        city: city.trim(),
+        stateField,
+        country: country.trim(),
+      })
       showToast('Settings saved')
     } catch {
       setProfileError('Failed to save settings')
@@ -282,6 +352,57 @@ export default function SettingsPage() {
             Company Information
           </p>
 
+          {/* Logo upload */}
+          <div className="flex items-center gap-5 mb-6">
+            {/* Circular preview */}
+            <div className="relative shrink-0">
+              <div
+                className="w-[72px] h-[72px] rounded-full overflow-hidden bg-[#F0F0F0] border-2 border-[#E8E9EA] flex items-center justify-center"
+                style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
+              >
+                {logoUploading ? (
+                  <svg className="w-5 h-5 animate-spin text-orange" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Company logo" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-sans font-bold text-xl text-ink-3 select-none">
+                    {companyName ? companyName.charAt(0).toUpperCase() : '?'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Upload button + hint */}
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] transition-colors disabled:opacity-50"
+              >
+                <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Upload Logo
+              </button>
+              <p className="text-xs text-ink-3 font-sans">PNG or JPG · Max 5 MB</p>
+              {logoError && <p className="text-xs text-red-500 font-sans">{logoError}</p>}
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/png, image/jpeg"
+              className="hidden"
+              onChange={handleLogoUpload}
+            />
+          </div>
+
           <div className="mb-4">
             <label className={labelClass}>Company Name</label>
             <input
@@ -340,7 +461,7 @@ export default function SettingsPage() {
 
         {profileError && <ErrorBanner message={profileError} />}
 
-        <SaveButton loading={saving} label="Save Changes" />
+        <SaveButton loading={saving} disabled={!isDirty} label="Save Changes" />
       </form>
 
       <div className="border-t border-[#E8E9EA] my-8" />
