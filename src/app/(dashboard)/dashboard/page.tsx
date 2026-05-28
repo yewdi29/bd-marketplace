@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/formatPrice'
 import NewListingModal from '@/components/listings/NewListingModal'
 import EditListingModal from '@/components/listings/EditListingModal'
+import type { MembershipPlan } from '@/lib/types/database'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -191,47 +192,14 @@ function CardOverlay({
   )
 }
 
-// ─── Upgrade Modal ────────────────────────────────────────────────────────────
+// ─── Plan limits ─────────────────────────────────────────────────────────────
 
-function UpgradeModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} />
-      <div
-        className="relative bg-white flex flex-col"
-        style={{ width: '380px', borderRadius: '20px', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', padding: '32px' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="w-10 h-10 rounded-[10px] bg-orange-bg flex items-center justify-center">
-            <svg className="w-5 h-5 text-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-bg text-ink-3 hover:text-ink transition-colors">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <h2 className="font-sans font-bold text-lg text-ink mb-2" style={{ letterSpacing: '-0.02em' }}>
-          You&apos;ve hit the free limit
-        </h2>
-        <p className="text-sm text-ink-2 mb-6 leading-relaxed">
-          Free sellers can post up to 3 listings. Upgrade to Premium for unlimited listings, priority placement, and full broker support.
-        </p>
-        <button
-          className="w-full py-3 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors mb-3"
-          style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
-        >
-          Upgrade to Premium — $49/mo
-        </button>
-        <button onClick={onClose} className="w-full py-2.5 text-sm font-medium text-ink-3 hover:text-ink transition-colors">
-          Maybe later
-        </button>
-      </div>
-    </div>
-  )
+const PLAN_LIMITS: Record<MembershipPlan, number> = {
+  free: 3,
+  starter: 15,
+  pro: 40,
+  max: Infinity,
+  premium: Infinity, // legacy rows — treat as unlimited
 }
 
 // ─── Icon components ──────────────────────────────────────────────────────────
@@ -456,13 +424,12 @@ export default function DashboardPage() {
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('listings')
   const [listings, setListings] = useState<MyListing[]>([])
   const [savedListings, setSavedListings] = useState<SavedListingItem[]>([])
-  const [plan, setPlan] = useState<'free' | 'premium'>('free')
+  const [plan, setPlan] = useState<MembershipPlan>('free')
   const [loading, setLoading] = useState(true)
   const [savedLoading, setSavedLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [manageListing, setManageListing] = useState<MyListing | null>(null)
   const [editListingId, setEditListingId] = useState<string | null>(null)
-  const [showUpgrade, setShowUpgrade] = useState(false)
   const [showNewListing, setShowNewListing] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -545,9 +512,10 @@ export default function DashboardPage() {
   }
 
   function handleNewListing() {
-    const nonRemovedCount = listings.length
-    if (plan === 'free' && nonRemovedCount >= 3) {
-      setShowUpgrade(true)
+    const activeCount = listings.filter(l => l.status === 'active').length
+    const limit = PLAN_LIMITS[plan]
+    if (activeCount >= limit) {
+      router.push('/dashboard/upgrade')
       return
     }
     setShowNewListing(true)
@@ -605,9 +573,9 @@ export default function DashboardPage() {
               <h1 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
                 My Listings
               </h1>
-              {plan === 'free' && !loading && (
+              {!loading && PLAN_LIMITS[plan] !== Infinity && (
                 <p className="text-sm text-ink-3 mt-0.5">
-                  <span className="font-mono">{listings.length}/3</span> free listings used
+                  <span className="font-mono">{activeCount}/{PLAN_LIMITS[plan]}</span> active listings used
                 </p>
               )}
             </div>
@@ -642,7 +610,9 @@ export default function DashboardPage() {
                     <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded-full ${
                       isActive ? 'bg-white/20 text-white' : 'bg-[#F0F0F0] text-ink-3'
                     }`}>
-                      {tab.key === 'active' && plan === 'free' ? `${tab.count}/3` : tab.count}
+                      {tab.key === 'active' && PLAN_LIMITS[plan] !== Infinity
+                        ? `${tab.count}/${PLAN_LIMITS[plan]}`
+                        : tab.count}
                     </span>
                   )}
                 </button>
@@ -764,10 +734,6 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Upgrade Modal */}
-      {showUpgrade && (
-        <UpgradeModal onClose={() => setShowUpgrade(false)} />
-      )}
 
       {/* Action loading overlay — subtle */}
       {actionLoading && (

@@ -88,7 +88,7 @@ function ActiveCard({ listing }: { listing: Listing }) {
           <img
             src={img.url}
             alt={listing.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -101,7 +101,7 @@ function ActiveCard({ listing }: { listing: Listing }) {
       <div className="p-3">
         <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{catLabel(listing.category)}</p>
         <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-1.5">{listing.title}</p>
-        <p className="font-mono text-sm font-medium text-ink">
+        <p className="font-mono text-sm font-medium" style={{ color: '#FF6B35' }}>
           {formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible)}
         </p>
       </div>

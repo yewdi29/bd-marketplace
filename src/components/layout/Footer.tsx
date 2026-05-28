@@ -30,6 +30,7 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {[
                 { label: 'Browse Listings', href: '/listings' },
+                { label: 'Business Directory', href: '/sellers' },
                 { label: 'List Equipment', href: '/auth/signup' },
                 { label: 'Knowledge Base', href: '/knowledge-base' },
               ].map(link => (

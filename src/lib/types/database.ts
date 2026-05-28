@@ -1,5 +1,5 @@
 export type UserRole = 'buyer' | 'seller' | 'admin'
-export type MembershipPlan = 'free' | 'premium'
+export type MembershipPlan = 'free' | 'starter' | 'pro' | 'max' | 'premium' // 'premium' kept for legacy rows
 export type ListingStatus = 'draft' | 'pending_review' | 'active' | 'sold' | 'removed'
 export type ListingTier = 'green' | 'yellow' | 'red'
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'closed' | 'lost'

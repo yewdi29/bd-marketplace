@@ -4,14 +4,63 @@ import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import type { MembershipPlan } from '@/lib/types/database'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ProfileUser {
   email: string
   full_name: string | null
   company_name: string | null
-  plan: 'free' | 'premium'
+  plan: MembershipPlan
   listing_count: number
 }
+
+// ─── Plan config ──────────────────────────────────────────────────────────────
+
+const PLAN_LIMITS: Record<MembershipPlan, number> = {
+  free: 3,
+  starter: 15,
+  pro: 40,
+  max: Infinity,
+  premium: Infinity,
+}
+
+function planBadgeStyle(plan: MembershipPlan): React.CSSProperties {
+  switch (plan) {
+    case 'max':
+      return { background: '#1A1D20', color: '#FFFFFF', borderColor: '#1A1D20' }
+    case 'pro':
+    case 'premium':
+      return { background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }
+    case 'starter':
+      return { background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }
+    default: // free
+      return { background: '#FFF2ED', color: '#FF6B35', borderColor: '#FFD4C2' }
+  }
+}
+
+function planLabel(plan: MembershipPlan): string {
+  switch (plan) {
+    case 'max': return 'MAX'
+    case 'pro': return 'PRO'
+    case 'premium': return 'PREMIUM'
+    case 'starter': return 'STARTER'
+    default: return 'FREE PLAN'
+  }
+}
+
+function planDotColor(plan: MembershipPlan): string {
+  switch (plan) {
+    case 'max': return '#FFFFFF'
+    case 'pro':
+    case 'premium': return '#D4A017'
+    case 'starter': return '#71717A'
+    default: return '#FF6B35'
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(fullName: string | null, email: string): string {
   if (fullName) {
@@ -27,16 +76,20 @@ function getFirstName(fullName: string | null, email: string): string {
   return email.split('@')[0]
 }
 
+// ─── ProfileDropdown ──────────────────────────────────────────────────────────
+
 export default function ProfileDropdown({ user }: { user: ProfileUser }) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [subPanelOpen, setSubPanelOpen] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const initials = getInitials(user.full_name, user.email)
   const firstName = getFirstName(user.full_name, user.email)
-  const meterPct = Math.min(Math.round((user.listing_count / 3) * 100), 100)
+  const limit = PLAN_LIMITS[user.plan]
+  const meterPct = limit !== Infinity ? Math.min(Math.round((user.listing_count / limit) * 100), 100) : 0
+  const showMeter = limit !== Infinity
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -53,6 +106,16 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()
+  }
+
+  function handleManageSubscription() {
+    setDropdownOpen(false)
+    if (user.plan === 'max') {
+      setToast('Billing management coming soon.')
+      setTimeout(() => setToast(null), 4000)
+    } else {
+      router.push('/dashboard/upgrade')
+    }
   }
 
   return (
@@ -97,30 +160,20 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
               </div>
 
               {/* Plan badge */}
-              {user.plan === 'premium' ? (
-                <span
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono font-bold rounded-pill border"
-                  style={{ background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#D4A017' }} />
-                  PREMIUM
-                </span>
-              ) : (
-                <span
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono font-bold rounded-pill border"
-                  style={{ background: '#FFF2ED', color: '#FF6B35', borderColor: '#FFD4C2' }}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange" />
-                  FREE PLAN
-                </span>
-              )}
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono font-bold rounded-pill border"
+                style={planBadgeStyle(user.plan)}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: planDotColor(user.plan) }} />
+                {planLabel(user.plan)}
+              </span>
 
-              {/* Listing meter — free only */}
-              {user.plan === 'free' && (
+              {/* Listing meter — finite-limit plans only */}
+              {showMeter && (
                 <div className="mt-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-mono text-ink-3 uppercase tracking-wide">Listings used</span>
-                    <span className="text-[11px] font-mono font-medium text-ink">{user.listing_count}/3</span>
+                    <span className="text-[11px] font-mono text-ink-3 uppercase tracking-wide">Active listings</span>
+                    <span className="text-[11px] font-mono font-medium text-ink">{user.listing_count}/{limit}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-[#F0F0F0] overflow-hidden">
                     <div className="h-full rounded-full bg-orange transition-all" style={{ width: `${meterPct}%` }} />
@@ -146,13 +199,13 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                 </Link>
               ))}
 
-              {/* Manage Subscription */}
+              {/* Upgrade Plan — navigates to /dashboard/upgrade (or coming-soon toast for max) */}
               <button
                 className="w-full flex items-center justify-between px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
-                onClick={() => { setDropdownOpen(false); setSubPanelOpen(true) }}
+                onClick={handleManageSubscription}
               >
-                <span>Manage Subscription</span>
-                {user.plan === 'free' && (
+                <span>{user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}</span>
+                {(user.plan === 'free' || user.plan === 'starter') && (
                   <span
                     className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-pill border"
                     style={{ background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }}
@@ -175,130 +228,19 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
         )}
       </div>
 
-      {/* Subscription side panel */}
-      {subPanelOpen && (
-        <>
+      {/* Toast (for max plan "coming soon") */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] pointer-events-none">
           <div
-            className="fixed inset-0 z-[70]"
-            style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
-            onClick={() => setSubPanelOpen(false)}
-          />
-          <div
-            className="fixed right-0 top-0 bottom-0 bg-white z-[80] flex flex-col overflow-y-auto"
-            style={{
-              width: '340px',
-              borderLeft: '1px solid #E8E9EA',
-              boxShadow: '-8px 0 32px rgba(0,0,0,0.10)',
-            }}
+            className="flex items-center gap-2 bg-ink text-white text-sm font-sans px-5 py-3 rounded-pill"
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.25)' }}
           >
-            {/* Panel header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#E8E9EA]">
-              <h2 className="font-sans font-bold text-base text-ink" style={{ letterSpacing: '-0.01em' }}>
-                Manage Subscription
-              </h2>
-              <button
-                onClick={() => setSubPanelOpen(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-bg text-ink-3 hover:text-ink transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="px-6 py-5 flex flex-col gap-4">
-              <p className="text-xs font-sans text-ink-3 uppercase tracking-wider font-semibold">Current Plan</p>
-
-              {/* Free plan card */}
-              <div
-                className="border rounded-[16px] p-4"
-                style={{
-                  borderColor: user.plan === 'free' ? '#FFD4C2' : '#E8E9EA',
-                  background: user.plan === 'free' ? '#FFF9F7' : '#FAFAFA',
-                }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-sans font-bold text-sm text-ink">Free</span>
-                  {user.plan === 'free' && (
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-pill bg-orange text-white">CURRENT</span>
-                  )}
-                </div>
-                <ul className="space-y-2">
-                  {[
-                    { label: 'Up to 3 listings', active: true },
-                    { label: 'Direct buyer contact', active: true },
-                    { label: 'Standard support', active: true },
-                    { label: 'Unlimited listings', active: false },
-                    { label: 'Priority placement', active: false },
-                    { label: 'Full broker support', active: false },
-                  ].map(f => (
-                    <li key={f.label} className={`flex items-center gap-2 text-sm ${f.active ? 'text-ink' : 'text-ink-3'}`}>
-                      <span className={`text-xs font-bold ${f.active ? 'text-orange' : 'text-ink-3'}`}>
-                        {f.active ? '✓' : '×'}
-                      </span>
-                      {f.label}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Premium plan card */}
-              <div
-                className="border rounded-[16px] p-4"
-                style={{
-                  borderColor: user.plan === 'premium' ? '#F0D98A' : '#E8E9EA',
-                  background: user.plan === 'premium' ? '#FDFAF0' : '#FAFAFA',
-                }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-sans font-bold text-sm text-ink">Premium</span>
-                  <div className="flex items-center gap-2">
-                    {user.plan === 'premium' && (
-                      <span
-                        className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-pill border"
-                        style={{ background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }}
-                      >
-                        CURRENT
-                      </span>
-                    )}
-                    <span className="font-mono text-sm font-medium text-ink-2">
-                      $49<span className="text-xs text-ink-3">/mo</span>
-                    </span>
-                  </div>
-                </div>
-                <ul className="space-y-2">
-                  {[
-                    'Unlimited listings',
-                    'Priority placement',
-                    'Full broker support',
-                    'Direct buyer contact',
-                    'Standard support',
-                    'Dedicated account manager',
-                  ].map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-ink">
-                      <span className="text-xs font-bold text-orange">✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {user.plan === 'free' && (
-                <>
-                  <button
-                    className="w-full py-3 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
-                    style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
-                  >
-                    Upgrade to Premium
-                  </button>
-                  <p className="text-xs text-ink-3 text-center">
-                    Cancel anytime · No contracts · Billed monthly
-                  </p>
-                </>
-              )}
-            </div>
+            <svg className="w-4 h-4 shrink-0 text-[#A2FF9A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            {toast}
           </div>
-        </>
+        </div>
       )}
     </>
   )

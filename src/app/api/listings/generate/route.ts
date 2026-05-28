@@ -87,30 +87,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Can only generate for draft listings' }, { status: 400 })
   }
 
-  // Call Claude API
-  const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
+  // Call Claude API — wrapped so any network failure returns clean JSON (not HTML)
+  let anthropicRes: Response
+  try {
+    anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+  } catch (err) {
+    console.error('Anthropic fetch failed:', err)
+    return NextResponse.json({ error: 'Could not reach the AI service. Please try again.' }, { status: 502 })
+  }
 
   if (!anthropicRes.ok) {
     const errText = await anthropicRes.text()
-    console.error('Anthropic API error:', errText)
+    console.error('Anthropic API error:', anthropicRes.status, errText)
     return NextResponse.json({ error: 'AI generation failed. Please try again.' }, { status: 502 })
   }
 
-  const anthropicData = await anthropicRes.json() as {
-    content: { type: string; text: string }[]
+  let anthropicData: { content: { type: string; text: string }[] }
+  try {
+    anthropicData = await anthropicRes.json() as { content: { type: string; text: string }[] }
+  } catch (err) {
+    console.error('Failed to parse Anthropic response:', err)
+    return NextResponse.json({ error: 'Unexpected response from AI. Please try again.' }, { status: 502 })
   }
 
   const rawText = anthropicData.content?.[0]?.text?.trim() ?? ''
@@ -120,12 +130,14 @@ export async function POST(request: NextRequest) {
   try {
     generated = JSON.parse(rawText)
   } catch {
-    const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ?? rawText.match(/(\{[\s\S]*\})/)
-    if (!match) {
+    try {
+      const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ?? rawText.match(/(\{[\s\S]*\})/)
+      if (!match) throw new Error('No JSON found in response')
+      generated = JSON.parse(match[1])
+    } catch {
       console.error('Could not parse Claude response:', rawText)
       return NextResponse.json({ error: 'Could not parse AI response. Please try again.' }, { status: 502 })
     }
-    generated = JSON.parse(match[1])
   }
 
   // PATCH the draft with all generated fields (including meta_description for SEO)

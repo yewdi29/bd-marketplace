@@ -44,17 +44,16 @@ export default function Navbar() {
 
   return (
     <header
-      className="fixed top-3 left-4 right-4 z-50"
+      className="fixed top-0 left-0 right-0 z-50"
       style={{
-        borderRadius: '20px',
-        background: 'rgba(255,255,255,0.85)',
+        background: 'rgba(255,255,255,0.55)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.05)',
+        borderBottom: '1px solid rgba(232,233,234,0.6)',
         height: '58px',
       }}
     >
-      <div className="max-w-[1280px] mx-auto px-5 flex items-center justify-between h-full">
+      <div className="max-w-[1232px] mx-auto px-8 flex items-center justify-between h-full">
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
@@ -112,8 +111,8 @@ export default function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div
-          className="md:hidden absolute top-full left-0 right-0 mt-1 bg-white border border-[#E8E9EA] p-4 flex flex-col gap-2"
-          style={{ borderRadius: '16px', boxShadow: '0 8px 28px rgba(0,0,0,0.10)' }}
+          className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-[#E8E9EA] p-4 flex flex-col gap-2"
+          style={{ boxShadow: '0 8px 28px rgba(0,0,0,0.08)' }}
         >
           <NavLinks isSignedIn={!!authUser} variant="dashboard" onNavigate={() => setMenuOpen(false)} />
           <div className="border-t border-[#E8E9EA] my-1" />

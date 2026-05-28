@@ -4,8 +4,8 @@ import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import type { Listing, MembershipPlan } from '@/lib/types/database'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
+import CompanyAvatar from '@/components/ui/CompanyAvatar'
 import NewsletterForm from '@/components/NewsletterForm'
-import SellerContactModal from './SellerContactModal'
 import SellerListingsSection from './SellerListingsSection'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -26,12 +26,15 @@ interface Props {
   params: Promise<{ slug: string }>
 }
 
+export const dynamic = 'force-dynamic'
+
 // ─── Admin client (server-side only) ─────────────────────────────────────────
 
 function getAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: (url, opts = {}) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
 }
 
@@ -148,22 +151,12 @@ export default async function SellerProfilePage({ params }: Props) {
 
             {/* Left: logo + info */}
             <div className="flex items-center gap-5 min-w-0">
-              {/* 72px circular logo / initials */}
-              <div
-                className="w-[72px] h-[72px] rounded-full overflow-hidden bg-ink flex items-center justify-center shrink-0"
-                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}
-              >
-                {profile.company_logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={profile.company_logo_url}
-                    alt={profile.company_name ?? 'Company logo'}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="font-sans font-bold text-2xl text-white select-none">{initials}</span>
-                )}
-              </div>
+              {/* 80px rounded-rect logo / initials */}
+              <CompanyAvatar
+                logoUrl={profile.company_logo_url}
+                companyName={profile.company_name}
+                size={80}
+              />
 
               {/* Info */}
               <div className="min-w-0">
@@ -195,13 +188,6 @@ export default async function SellerProfilePage({ params }: Props) {
               </div>
             </div>
 
-            {/* Right: Send Message button */}
-            <div className="shrink-0 pt-1">
-              <SellerContactModal
-                sellerId={profile.id}
-                sellerName={profile.company_name ?? 'this seller'}
-              />
-            </div>
           </div>
 
           {/* Stats strip */}

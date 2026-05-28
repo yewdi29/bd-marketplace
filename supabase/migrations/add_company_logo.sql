@@ -12,7 +12,9 @@ create index if not exists users_company_slug_idx on public.users (company_slug)
 -- ============================================================
 -- Storage RLS: company-logos bucket
 -- NOTE: Create the 'company-logos' bucket in the Supabase
--- Storage dashboard (set to private), then apply these policies.
+-- Storage dashboard — set it to PUBLIC so that getPublicUrl() works.
+-- The RLS policies below still protect writes (only owners can upload/delete).
+-- Then apply these policies.
 -- ============================================================
 
 -- Public read access (logos are public-facing brand assets)

@@ -107,7 +107,8 @@ export default async function ListingDetailPage({ params }: Props) {
   // Only safe, non-PII fields selected.
   const adminClient = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: (url, opts = {}) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
   const { data: sellerData } = await adminClient
     .from('users')
@@ -383,22 +384,6 @@ export default async function ListingDetailPage({ params }: Props) {
                       href={`/sellers/${seller.company_slug}`}
                       className="group flex items-center gap-3"
                     >
-                      {/* 48px circular logo / charcoal initials */}
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-ink flex items-center justify-center shrink-0 transition-opacity group-hover:opacity-80">
-                        {seller.company_logo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={seller.company_logo_url}
-                            alt={seller.company_name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="font-sans font-bold text-base text-white select-none leading-none">
-                            {seller.company_name.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-
                       <div className="flex-1 min-w-0">
                         {/* Company name + BD Verified badge */}
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
@@ -423,22 +408,6 @@ export default async function ListingDetailPage({ params }: Props) {
                     </Link>
                   ) : (
                     <div className="flex items-center gap-3">
-                      {/* 48px circular logo / charcoal initials */}
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-ink flex items-center justify-center shrink-0">
-                        {seller.company_logo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={seller.company_logo_url}
-                            alt={seller.company_name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="font-sans font-bold text-base text-white select-none leading-none">
-                            {seller.company_name.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className="font-sans font-bold text-ink truncate" style={{ fontSize: '14px' }}>

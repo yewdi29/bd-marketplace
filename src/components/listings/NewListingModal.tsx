@@ -498,6 +498,23 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
     return CONDITIONS.find(c => c.value === val)?.label ?? val
   }
 
+  function condPillStyle(val: string): React.CSSProperties {
+    switch (val) {
+      case 'new':
+        return { background: '#FFF2ED', color: '#FF6B35', borderColor: '#FF6B35' }
+      case 'like_new':
+        return { background: '#F0FFF0', color: '#1A5C18', borderColor: '#C8F5C4' }
+      case 'good':
+        return { background: '#EFF6FF', color: '#1E40AF', borderColor: '#BFDBFE' }
+      case 'fair':
+        return { background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }
+      case 'parts_only':
+        return { background: '#FFF0F0', color: '#CC0000', borderColor: '#FFCCCC' }
+      default:
+        return { borderColor: '#E8E9EA', color: '#9A9DA2' }
+    }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -902,14 +919,15 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
           {/* ─────── STEP 4: Review & Publish ─────── */}
           {step === 4 && (
             <div>
-              <h2 className="font-sans font-bold text-[22px] text-ink mb-1" style={{ letterSpacing: '-0.02em' }}>
+              <h2 className="font-sans font-bold text-[22px] text-ink mb-1 text-center" style={{ letterSpacing: '-0.02em' }}>
                 Ready to publish?
               </h2>
-              <p className="text-sm text-ink-2 mb-5">
+              <p className="text-sm text-ink-2 mb-5 text-center">
                 Here&apos;s how your listing will appear on the marketplace.
               </p>
 
-              {/* Preview card */}
+              {/* Preview card — constrained width, centered */}
+              <div style={{ maxWidth: '420px', margin: '0 auto' }}>
               <div className="border border-[#E8E9EA] rounded-[16px] overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
                 {/* Primary photo */}
                 <div className="w-full h-[220px] bg-[#F0F0F0] relative">
@@ -946,7 +964,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
                         const priceStr = formatPrice(parseFloat(form.price) || 0, form.price_unit, form.price_visible)
                         return priceStr === 'Contact for price'
                           ? <span className="text-sm font-sans text-ink-2 italic">Contact for price</span>
-                          : <span className="font-mono font-bold text-base text-ink">{priceStr}</span>
+                          : <span className="font-mono font-bold text-base" style={{ color: '#FF6B35' }}>{priceStr}</span>
                       })()}
                     </div>
                   </div>
@@ -963,7 +981,10 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
                       </span>
                     )}
                     {form.condition && (
-                      <span className="px-2 py-0.5 text-xs font-mono rounded-pill border border-[#E8E9EA] text-ink-3">
+                      <span
+                        className="px-2 py-0.5 text-xs font-mono font-bold rounded-pill border"
+                        style={condPillStyle(form.condition)}
+                      >
                         {condLabel(form.condition)}
                       </span>
                     )}
@@ -974,6 +995,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
                     <p className="text-sm text-ink-2 leading-relaxed line-clamp-3">{form.description}</p>
                   )}
                 </div>
+              </div>
               </div>
             </div>
           )}

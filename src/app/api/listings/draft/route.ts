@@ -22,42 +22,67 @@ export async function POST() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Check free-plan listing limit before creating the draft
+  // Check plan listing limit before creating the draft
+  const PLAN_LIMITS: Record<string, number> = {
+    free: 3,
+    starter: 15,
+    pro: 40,
+    max: Infinity,
+    premium: Infinity, // legacy
+  }
+
   const { data: profile } = await adminClient
     .from('users')
     .select('plan')
     .eq('id', user.id)
     .single()
 
-  if (profile?.plan === 'free') {
+  const plan = profile?.plan ?? 'free'
+  const limit = PLAN_LIMITS[plan] ?? 3
+
+  if (limit !== Infinity) {
     const { count } = await adminClient
       .from('listings')
       .select('id', { count: 'exact', head: true })
       .eq('seller_id', user.id)
-      .neq('status', 'removed')
+      .eq('status', 'active')
 
-    if ((count ?? 0) >= 3) {
+    if ((count ?? 0) >= limit) {
       return NextResponse.json(
-        { error: 'Free plan allows up to 3 listings. Upgrade to Premium for unlimited.' },
+        { error: `Your ${plan} plan allows up to ${limit} active listings. Upgrade to list more.` },
         { status: 403 }
       )
     }
   }
 
   // Create placeholder draft — triggers (tier, slug, limit) fire here
-  const { data, error } = await adminClient
-    .from('listings')
-    .insert({
-      seller_id: user.id,
-      title: 'Untitled Draft',
-      category: 'other',
-      price: 0,
-      status: 'draft',
-    })
-    .select('id')
-    .single()
+  let data: { id: string } | null = null
+  let insertError: { message: string } | null = null
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  try {
+    const result = await adminClient
+      .from('listings')
+      .insert({
+        seller_id: user.id,
+        title: 'Untitled Draft',
+        category: 'other',
+        price: 0,
+        price_unit: 'total',
+        status: 'draft',
+      })
+      .select('id')
+      .single()
+    data = result.data
+    insertError = result.error
+  } catch (err) {
+    console.error('Draft insert threw:', err)
+    return NextResponse.json({ error: 'Failed to create draft. Please try again.' }, { status: 500 })
+  }
+
+  if (insertError || !data) {
+    console.error('Draft insert error:', insertError)
+    return NextResponse.json({ error: insertError?.message ?? 'Failed to create draft.' }, { status: 500 })
+  }
 
   return NextResponse.json({ listing_id: data.id }, { status: 201 })
 }

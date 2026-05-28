@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import CompanyAvatar from '@/components/ui/CompanyAvatar'
+import { useRouter } from 'next/navigation'
+import type { MembershipPlan } from '@/lib/types/database'
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
@@ -71,6 +74,7 @@ function ErrorBanner({ message }: { message: string }) {
 
 export default function SettingsPage() {
   const supabase = createClient()
+  const router = useRouter()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -104,6 +108,9 @@ export default function SettingsPage() {
     stateField !== savedState.stateField ||
     country !== savedState.country
 
+  // Membership state
+  const [plan, setPlan] = useState<MembershipPlan>('free')
+
   // Logo state
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoUploading, setLogoUploading] = useState(false)
@@ -118,6 +125,12 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       try {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          const { data: planData } = await supabase.from('users').select('plan').eq('id', authUser.id).single()
+          if (planData?.plan) setPlan(planData.plan as MembershipPlan)
+        }
+
         const res = await fetch('/api/users/me')
         if (!res.ok) throw new Error('Failed to load profile')
         const data = await res.json() as { user: UserProfile }
@@ -152,6 +165,25 @@ export default function SettingsPage() {
   function showToast(message: string) {
     setToast(message)
     setTimeout(() => setToast(null), 4000)
+  }
+
+  async function handleLogoRemove() {
+    setLogoError(null)
+    setLogoUploading(true)
+    try {
+      const res = await fetch('/api/users/logo', { method: 'DELETE' })
+      const json = await res.json() as { success?: boolean; error?: string }
+      if (!res.ok || json.error) {
+        setLogoError(json.error ?? 'Failed to remove logo')
+        return
+      }
+      setLogoUrl(null)
+      showToast('Logo removed')
+    } catch {
+      setLogoError('Failed to remove logo. Please try again.')
+    } finally {
+      setLogoUploading(false)
+    }
   }
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -354,41 +386,56 @@ export default function SettingsPage() {
 
           {/* Logo upload */}
           <div className="flex items-center gap-5 mb-6">
-            {/* Circular preview */}
+            {/* Logo preview */}
             <div className="relative shrink-0">
-              <div
-                className="w-[72px] h-[72px] rounded-full overflow-hidden bg-[#F0F0F0] border-2 border-[#E8E9EA] flex items-center justify-center"
-                style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
-              >
-                {logoUploading ? (
+              {logoUploading ? (
+                <div
+                  className="w-[72px] h-[72px] bg-[#F7F8F9] border border-[#E8E9EA] flex items-center justify-center"
+                  style={{ borderRadius: '12px' }}
+                >
                   <svg className="w-5 h-5 animate-spin text-orange" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                ) : logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="Company logo" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="font-sans font-bold text-xl text-ink-3 select-none">
-                    {companyName ? companyName.charAt(0).toUpperCase() : '?'}
-                  </span>
-                )}
-              </div>
+                </div>
+              ) : (
+                <CompanyAvatar
+                  logoUrl={logoUrl}
+                  companyName={companyName || null}
+                  size={72}
+                />
+              )}
+
             </div>
 
-            {/* Upload button + hint */}
+            {/* Upload / Remove button + hint */}
             <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => logoInputRef.current?.click()}
-                disabled={logoUploading}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] transition-colors disabled:opacity-50"
-              >
-                <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Upload Logo
-              </button>
+              {logoUrl ? (
+                <button
+                  type="button"
+                  onClick={handleLogoRemove}
+                  disabled={logoUploading}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-pill transition-colors disabled:opacity-50"
+                  style={{ background: '#FFF0F0', color: '#CC0000', border: '1px solid #FFCCCC' }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Remove Logo
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoUploading}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Upload Logo
+                </button>
+              )}
               <p className="text-xs text-ink-3 font-sans">PNG or JPG · Max 5 MB</p>
               {logoError && <p className="text-xs text-red-500 font-sans">{logoError}</p>}
             </div>
@@ -514,6 +561,70 @@ export default function SettingsPage() {
           <SaveButton loading={savingPassword} label="Update Password" />
         </section>
       </form>
+
+      <div className="border-t border-[#E8E9EA] my-8" />
+
+      {/* ── Section 4: Membership ── */}
+      <section className="mb-8">
+        <p className={sectionHeadingClass} style={{ color: '#9A9DA2' }}>
+          Membership
+        </p>
+
+        <div
+          className="flex items-center justify-between p-4 rounded-[14px] border"
+          style={{ borderColor: '#E8E9EA', background: '#FAFAFA' }}
+        >
+          <div className="flex items-center gap-3">
+            {/* Plan badge */}
+            <span
+              className="inline-flex items-center px-3 py-1.5 text-[11px] font-mono font-bold rounded-pill border"
+              style={
+                plan === 'max'
+                  ? { background: '#1A1D20', color: '#FFFFFF', borderColor: '#1A1D20' }
+                  : plan === 'pro' || plan === 'premium'
+                    ? { background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }
+                    : plan === 'starter'
+                      ? { background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }
+                      : { background: '#FFF2ED', color: '#FF6B35', borderColor: '#FFD4C2' }
+              }
+            >
+              {plan === 'max' ? 'MAX' : plan === 'pro' ? 'PRO' : plan === 'starter' ? 'STARTER' : plan === 'premium' ? 'PREMIUM' : 'FREE'}
+            </span>
+
+            {/* Limit description */}
+            <div>
+              <p className="text-sm font-semibold text-ink capitalize">{plan === 'premium' ? 'Premium (Legacy)' : plan.charAt(0).toUpperCase() + plan.slice(1)} Plan</p>
+              <p className="text-xs text-ink-3 font-sans">
+                {plan === 'max' || plan === 'premium'
+                  ? 'Unlimited active listings'
+                  : plan === 'pro'
+                    ? '40 active listings'
+                    : plan === 'starter'
+                      ? '15 active listings'
+                      : '3 active listings'}
+              </p>
+            </div>
+          </div>
+
+          {/* CTA */}
+          {plan === 'max' ? (
+            <button
+              onClick={() => { showToast('Billing management coming soon.') }}
+              className="px-4 py-2 text-sm font-semibold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] hover:text-ink transition-colors"
+            >
+              Manage Billing
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push('/dashboard/upgrade')}
+              className="px-4 py-2 text-sm font-bold text-white rounded-pill transition-colors"
+              style={{ background: '#FF6B35', boxShadow: '0 4px 14px rgba(255,107,53,0.28)' }}
+            >
+              Upgrade Plan
+            </button>
+          )}
+        </div>
+      </section>
 
       {/* Toast */}
       {toast && (

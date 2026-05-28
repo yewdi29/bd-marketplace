@@ -31,7 +31,8 @@ interface SellerRow {
 function getAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: (url, opts = {}) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
 }
 
@@ -60,23 +61,24 @@ function SellerCard({ seller }: { seller: SellerRow }) {
     >
       <div className="flex items-center gap-4 mb-4">
         {/* Logo / initials */}
-        <div
-          className="w-12 h-12 rounded-full overflow-hidden bg-ink flex items-center justify-center shrink-0"
-          style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }}
-        >
-          {seller.company_logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={seller.company_logo_url}
-              alt={seller.company_name ?? 'Company logo'}
-              className="w-full h-full object-cover"
-            />
-          ) : (
+        {seller.company_logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={seller.company_logo_url}
+            alt={seller.company_name ?? 'Company logo'}
+            className="block shrink-0"
+            style={{ maxHeight: 64, width: 'auto', height: 'auto' }}
+          />
+        ) : (
+          <div
+            className="flex items-center justify-center shrink-0"
+            style={{ width: 64, height: 64, borderRadius: '12px', background: '#1A1D20' }}
+          >
             <span className="font-sans font-bold text-base text-white select-none leading-none">
               {initials}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Name + badge */}
         <div className="min-w-0 flex-1">
@@ -150,7 +152,16 @@ export default async function SellersDirectoryPage() {
     countMap[row.seller_id] = (countMap[row.seller_id] ?? 0) + 1
   }
 
-  // Filter to sellers who have at least 1 active listing
+  // Priority map — max first, free last. premium kept for legacy rows.
+  const planPriority: Record<string, number> = {
+    max: 1,
+    pro: 2,
+    premium: 2, // legacy
+    starter: 3,
+    free: 4,
+  }
+
+  // Filter to sellers who have at least 1 active listing, then sort by tier → active count
   const sellerRows: SellerRow[] = sellers
     .filter(s => (countMap[s.id] ?? 0) > 0 && s.company_slug)
     .map(s => ({
@@ -163,7 +174,11 @@ export default async function SellersDirectoryPage() {
       plan: s.plan as MembershipPlan,
       active_count: countMap[s.id] ?? 0,
     }))
-    .sort((a, b) => (a.company_name ?? '').localeCompare(b.company_name ?? ''))
+    .sort((a, b) => {
+      const tierDiff = (planPriority[a.plan] ?? 4) - (planPriority[b.plan] ?? 4)
+      if (tierDiff !== 0) return tierDiff
+      return b.active_count - a.active_count
+    })
 
   const totalListings = Object.values(countMap).reduce((s, n) => s + n, 0)
 
