@@ -423,25 +423,46 @@ create or replace function public.check_listing_limit()
 returns trigger as $$
 declare
   listing_count int;
-  user_plan membership_plan;
+  user_plan     text;
+  plan_limit    int;
 begin
-  select plan into user_plan from public.users where id = new.seller_id;
+  -- Only enforce when the listing is being made active (drafts are always allowed)
+  if new.status != 'active' then
+    return new;
+  end if;
 
-  if user_plan = 'free' then
-    select count(*) into listing_count
-    from public.listings
-    where seller_id = new.seller_id
-      and status != 'removed';
+  select plan::text into user_plan from public.users where id = new.seller_id;
 
-    if listing_count >= 3 then
-      raise exception 'Free plan allows a maximum of 3 active listings. Upgrade to premium for unlimited listings.';
-    end if;
+  case user_plan
+    when 'starter'  then plan_limit := 15;
+    when 'pro'      then plan_limit := 40;
+    when 'max'      then plan_limit := null;   -- unlimited
+    else                 plan_limit := 3;      -- free + unknown
+  end case;
+
+  -- Unlimited plans skip the check
+  if plan_limit is null then
+    return new;
+  end if;
+
+  select count(*) into listing_count
+  from public.listings
+  where seller_id = new.seller_id
+    and status = 'active'
+    and id != new.id;  -- exclude current row so updates are idempotent
+
+  if listing_count >= plan_limit then
+    raise exception
+      'You''ve reached your % active listing limit. Upgrade your membership for more listings.',
+      plan_limit;
   end if;
 
   return new;
 end;
 $$ language plpgsql security definer;
 
+-- Fires on INSERT and UPDATE so publishing a draft also hits the check
+drop trigger if exists enforce_listing_limit on public.listings;
 create trigger enforce_listing_limit
-  before insert on public.listings
+  before insert or update on public.listings
   for each row execute function public.check_listing_limit();

@@ -466,10 +466,54 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 
 ---
 
-## 8. What Never To Do
+## 8. Special Effects
+
+> Effects are opt-in and tightly scoped. If a surface isn't listed below, it gets **none** of these treatments.
+
+### Glassmorphism
+- **Applied to:** navbar only
+- **CSS:** `background: rgba(255,255,255,0.85)` + `backdrop-filter: blur(20px)`
+- **Exception:** dashboard card manage overlay uses a lighter frosted variant — `rgba(255,255,255,0.50)` + `backdrop-filter: blur(8px)` — documented in Components § Dashboard Card Manage Overlay
+- ❌ Never apply to listing cards, modals, page overlays, or any other surface
+
+### Moving Glow (Animated Gradient Border)
+- **Applied to:** AI prompt field in New Listing modal; hero search bar (on focus only)
+- **CSS:** animated gradient border cycling through the orange palette, `3s ease infinite`
+- **Trigger:** always-on for AI prompt field; focus state only for hero search bar
+- ❌ Never use as a general hover effect or on non-input elements
+
+### Glass Button
+- **Applied to:** "New Listing" button in dashboard nav; Search button in hero / navbar
+- **CSS:**
+  ```css
+  background: rgba(255,107,53,0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,107,53,0.3);
+  ```
+- **Hover:** `background: rgba(255,107,53,0.25)` + subtle orange glow shadow
+- ❌ Never apply to standard CTA buttons, form submit buttons, or any button outside these two specific placements
+
+### What Gets Nothing
+| Surface | Effect |
+|---------|--------|
+| Listing cards | Flat white only — no blur, no gradients, no glow |
+| Modals | Flat white + standard `shadow` only |
+| Page overlays (e.g. modal backdrop) | `rgba(0,0,0,0.30–0.55)` solid — no blur |
+| Section backgrounds | Solid `--bg` only |
+| Regular CTA buttons | Solid orange only — no glass, no blur |
+
+**Explicitly deferred (do not implement):**
+- Gradient flow animations on any surface
+- Pulse glows on cards or buttons
+- Dark glass (dark background + blur)
+- Full-page overlay blur effects
+
+---
+
+## 9. What Never To Do
 
 - ❌ Never use dark mode on the public site
-- ❌ Never apply frosted glass outside of the navbar (and dashboard card manage overlay — documented exception)
+- ❌ Never apply frosted glass outside of the navbar (and the dashboard card manage overlay exception) — see §8 Special Effects
 - ❌ Never use serif fonts anywhere
 - ❌ Never use square buttons — always pill shaped
 - ❌ Never show traffic light tiers to public users
@@ -483,10 +527,11 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 
 ---
 
-## 9. Changelog
+## 10. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v1.8 | May 2026 | Universal SearchBar component (src/components/marketplace/SearchBar.tsx) — variant="nav": 40px pill, rgba(255,255,255,0.85) glass bg + blur(8px), 1.5px #E8E9EA border, orange focus ring + 3px glow ring. variant="hero": white bg, moving glow border on focus (glow-rotate keyframe, 3s ease infinite, #FF6B35→#FFB347→#FF4500 gradient, 2px padding border trick). Submit arrow right edge, clear X when value present. Navbar.tsx: height 56px→64px, 3-column grid (Logo | NavLinks+SearchBar | Auth), glassmorphism stays, "List Equipment" button converted to glass-btn-orange class. DashboardNav.tsx: height 56px→64px, 3-column grid (Logo | SearchBar | NavLinks+NewListing+Profile), "+ New Listing" button glass-btn-orange. Layout offsets updated: public pt-[82px]→pt-[88px], dashboard pt-14→pt-16, listings filter sidebar top-[82px]→top-[88px]. Added globals.css: @keyframes glow-rotate, .search-glow-border, .glass-btn-orange with hover state. Installed: @radix-ui/react-popover, @radix-ui/react-checkbox, @radix-ui/react-select, lucide-react; shadcn components: popover, checkbox, select. |
 | v1.7 | May 2026 | Company logo containers: changed from circular to rounded rectangle (border-radius 12px) across all surfaces — Business Directory cards (64×64px), seller profile header (80×80px), listing detail Listed By block, and account settings preview. Logo containers use #F7F8F9 background, 1px solid #E8E9EA border, 6px padding, object-fit: contain. Initials fallback retains #1A1D20 background, no padding. Business Directory sort updated to tier-priority order (platinum → gold → silver → bronze → free), tiebroken by active listing count desc. Business Directory link added to Footer Marketplace column between Browse Listings and List Equipment. |
 | v1.6 | May 2026 | Seller profile page full rebuild (/sellers/[slug]) — breadcrumb "Business Directory → Company Name", white header card (72px circular logo, 22px company name, BDVerifiedBadge md, location 13px #9A9DA2, MEMBER SINCE mono 11px uppercase #B0B0B8, stats strip, Send Message orange pill button). SellerContactModal client component — trigger button opens 440px modal with backdrop rgba(0,0,0,0.30)+blur(4px), form posts to /api/leads without listing_id, success state, ESC/backdrop close. SellerListingsSection client component — Active/Sold tab pills (ink active / white inactive, count chips), sort dropdown (Newest/Price asc/desc), 3-col grid with ActiveCard (link, hover scale, orange price) and SoldCard (grayscale+sold overlay badge), 9/page pagination with orange current page pill + prev/next arrows. Sellers directory at /sellers — Business Directory page with grid of seller cards (48px logo, company name, BD Verified badge, location, active listing count), force-dynamic. Updated /api/leads to accept seller_id without listing_id (Path B: direct seller contact). |
 | v1.5 | May 2026 | Seller profile page (/sellers/[slug]) — white header card with 80px circular logo/initials, company name + BDVerifiedBadge, location, member since, stats row, active listings grid, sold listings grid with grayscale+sold overlay. BDVerifiedBadge component — orange brilliant-cut diamond SVG, three sizes (sm/md/lg), tooltip, premium-only. Company logo upload in Account Settings — circular 72px preview, upload button, immediate POST to /api/users/logo. Seller card on listing detail page showing logo, company name, badge, view-all link. |

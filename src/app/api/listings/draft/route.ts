@@ -49,7 +49,10 @@ export async function POST() {
 
     if ((count ?? 0) >= limit) {
       return NextResponse.json(
-        { error: `Your ${plan} plan allows up to ${limit} active listings. Upgrade to list more.` },
+        {
+          error: `You've reached your ${limit} active listing limit. Upgrade your membership for more listings.`,
+          upgrade: true,
+        },
         { status: 403 }
       )
     }
@@ -81,7 +84,22 @@ export async function POST() {
 
   if (insertError || !data) {
     console.error('Draft insert error:', insertError)
-    return NextResponse.json({ error: insertError?.message ?? 'Failed to create draft.' }, { status: 500 })
+    // DB trigger fires when the insert would exceed the plan limit.
+    // Detect that case and return the same upgrade flag as the pre-check above.
+    const msg = insertError?.message ?? ''
+    const isTriggerLimitError =
+      msg.toLowerCase().includes('listing') &&
+      (msg.toLowerCase().includes('limit') || msg.toLowerCase().includes('maximum') || msg.toLowerCase().includes('upgrade'))
+    if (isTriggerLimitError) {
+      return NextResponse.json(
+        {
+          error: `You've reached your ${limit} active listing limit. Upgrade your membership for more listings.`,
+          upgrade: true,
+        },
+        { status: 403 }
+      )
+    }
+    return NextResponse.json({ error: msg || 'Failed to create draft.' }, { status: 500 })
   }
 
   return NextResponse.json({ listing_id: data.id }, { status: 201 })

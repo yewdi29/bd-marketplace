@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatPrice } from '@/lib/formatPrice'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -224,8 +225,10 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
   const [videoError, setVideoError] = useState('')
   const [priceError, setPriceError] = useState('')
 
+  const [upgradePrompt, setUpgradePrompt] = useState(false)
   const draftCreated = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
   // Create draft on mount — exactly once (ref guards against Strict Mode double-invoke)
   useEffect(() => {
@@ -234,9 +237,15 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
 
     fetch('/api/listings/draft', { method: 'POST' })
       .then(r => r.json())
-      .then((d: { listing_id?: string; error?: string }) => {
-        if (d.listing_id) setListingId(d.listing_id)
-        else setError(d.error ?? 'Could not start a new listing. Please try again.')
+      .then((d: { listing_id?: string; error?: string; upgrade?: boolean }) => {
+        if (d.listing_id) {
+          setListingId(d.listing_id)
+        } else if (d.upgrade) {
+          setUpgradePrompt(true)
+          setError(d.error ?? 'Upgrade your membership for more listings.')
+        } else {
+          setError(d.error ?? 'Could not start a new listing. Please try again.')
+        }
       })
       .catch(() => setError('Network error. Please try again.'))
   }, [])
@@ -577,7 +586,20 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
           {/* Error banner */}
           {error && (
             <div className="mb-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3">
-              <p className="text-sm font-sans text-red-600">{error}</p>
+              {upgradePrompt ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-sans text-red-600">{error}</p>
+                  <button
+                    onClick={() => { onClose(); router.push('/dashboard/upgrade') }}
+                    className="shrink-0 px-3 py-1.5 text-xs font-bold text-white rounded-pill transition-colors"
+                    style={{ background: '#FF6B35', boxShadow: '0 2px 8px rgba(255,107,53,0.30)' }}
+                  >
+                    Upgrade
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm font-sans text-red-600">{error}</p>
+              )}
             </div>
           )}
 

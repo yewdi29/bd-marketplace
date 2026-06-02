@@ -1,207 +1,159 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import ListingCard from '@/components/ListingCard'
+import FilterBar from '@/components/marketplace/FilterBar'
 import type { Listing } from '@/lib/types/database'
 
-const CATEGORIES = [
-  { label: 'Drill Pipe', value: 'drill_pipe' },
-  { label: 'Drilling Rigs', value: 'rig' },
-  { label: 'Blowout Preventers', value: 'blowout_preventer' },
-  { label: 'Pumping Units', value: 'pumping_unit' },
-  { label: 'Wellheads', value: 'wellhead' },
-  { label: 'Compressors', value: 'compressor' },
-  { label: 'Mud Pumps', value: 'mud_pump' },
-  { label: 'Tanks & Vessels', value: 'tank' },
-]
+// ─── Skeleton cards ───────────────────────────────────────────────────────────
 
-const CONDITIONS = [
-  { label: 'New', value: 'new' },
-  { label: 'Like New', value: 'like_new' },
-  { label: 'Good', value: 'good' },
-  { label: 'Fair', value: 'fair' },
-  { label: 'Parts Only', value: 'parts_only' },
-]
-
-const SORT_OPTIONS = [
-  { label: 'Newest First', value: 'created_at:desc' },
-  { label: 'Oldest First', value: 'created_at:asc' },
-  { label: 'Price: Low → High', value: 'price:asc' },
-  { label: 'Price: High → Low', value: 'price:desc' },
-]
-
-interface SearchParams {
-  category?: string
-  condition?: string
-  sort?: string
-  featured?: string
-  q?: string
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-[16px] overflow-hidden border border-[#E8E9EA] animate-pulse">
+      <div className="aspect-[4/3] bg-[#F0F0F0]" />
+      <div className="p-4 space-y-2.5">
+        <div className="h-3 bg-[#F0F0F0] rounded-full w-24" />
+        <div className="h-4 bg-[#F0F0F0] rounded-full w-full" />
+        <div className="h-4 bg-[#F0F0F0] rounded-full w-3/4" />
+        <div className="h-4 bg-[#F0F0F0] rounded-full w-20" />
+      </div>
+    </div>
+  )
 }
 
-export const metadata = {
-  title: 'Browse Equipment',
-  description: 'Search thousands of oil & gas equipment listings. Drill pipe, rigs, BOP stacks, and more.',
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  )
 }
 
-export default async function ListingsPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>
-}) {
-  const params = await searchParams
-  const supabase = await createClient()
+// ─── FilterBar skeleton (shown while FilterBar suspends) ──────────────────────
 
-  const { data: { user } } = await supabase.auth.getUser()
-  let savedIds = new Set<string>()
-  if (user) {
-    const { data: saved } = await supabase
-      .from('saved_listings')
-      .select('listing_id')
-      .eq('user_id', user.id)
-    savedIds = new Set((saved ?? []).map((s: { listing_id: string }) => s.listing_id))
-  }
+function FilterBarFallback() {
+  return (
+    <div
+      className="sticky z-40 bg-white border-b border-[#E8E9EA]"
+      style={{ top: '58px', height: '53px' }}
+    />
+  )
+}
 
-  let query = supabase
-    .from('listings')
-    .select('*, listing_images(*)')
-    .eq('status', 'active')
+// ─── Main listings content (reads from URL, fetches from API) ─────────────────
 
-  if (params.category) query = query.eq('category', params.category)
-  if (params.condition) query = query.eq('condition', params.condition)
-  if (params.featured === 'true') query = query.eq('featured', true)
-  if (params.q) query = query.ilike('title', `%${params.q}%`)
+function ListingsContent() {
+  const searchParams = useSearchParams()
+  const [listings, setListings]   = useState<Listing[]>([])
+  const [total, setTotal]         = useState(0)
+  const [loading, setLoading]     = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  const [sortField, sortDir] = (params.sort ?? 'created_at:desc').split(':')
-  query = query.order(sortField as keyof Listing, { ascending: sortDir === 'asc' })
+  // Check auth once on mount so the heart button works correctly
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user))
+  }, [])
 
-  const { data: listings } = await query.limit(48)
-  const count = listings?.length ?? 0
+  const fetchListings = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      const q          = searchParams.get('q')
+      const category   = searchParams.get('category')
+      const conditions = searchParams.get('conditions')
+      const priceRange = searchParams.get('priceRange')
+      const state      = searchParams.get('state')
+      const sort       = searchParams.get('sort')
 
-  const hasFilters = params.category || params.condition || params.q
+      if (q)          params.set('q',          q)
+      if (category)   params.set('category',   category)
+      if (conditions) params.set('conditions', conditions)
+      if (priceRange) params.set('priceRange', priceRange)
+      if (state)      params.set('state',      state)
+      if (sort)       params.set('sort',       sort)
+      params.set('limit', '48')
+
+      const res = await fetch(`/api/listings?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setListings(data.listings ?? [])
+        setTotal(data.total ?? data.listings?.length ?? 0)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    fetchListings()
+  }, [fetchListings])
 
   return (
     <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
-      <div className="flex flex-col lg:flex-row gap-6">
 
-        {/* Sidebar */}
-        <aside className="w-full lg:w-[220px] shrink-0">
-          <div className="bg-white rounded-[16px] p-5 sticky top-[82px] shadow-card">
-            <form method="GET">
-              {/* Preserve sort across filter submits */}
-              {params.sort && <input type="hidden" name="sort" value={params.sort} />}
+      {/* Results count */}
+      <p className="font-sans font-bold text-sm text-ink mb-5">
+        {loading
+          ? <span className="inline-block h-4 w-32 bg-[#F0F0F0] rounded-full animate-pulse" />
+          : `${total} ${total === 1 ? 'listing' : 'listings'} found`
+        }
+      </p>
 
-              {/* Search */}
-              <div className="mb-5">
-                <p className="text-[11px] font-sans font-semibold text-ink uppercase tracking-wider mb-2.5">Search</p>
-                <input
-                  name="q"
-                  defaultValue={params.q}
-                  placeholder="Drill pipe, BOP..."
-                  className="w-full bg-bg border border-[#E8E9EA] text-ink placeholder:text-ink-3 px-3 py-2 text-sm font-sans rounded-[10px] focus:outline-none focus:border-orange transition-colors"
-                />
-              </div>
-
-              {/* Category */}
-              <div className="mb-5">
-                <p className="text-[11px] font-sans font-semibold text-ink uppercase tracking-wider mb-2.5">Category</p>
-                <div className="space-y-2">
-                  {CATEGORIES.map(cat => (
-                    <label key={cat.value} className="flex items-center gap-2.5 cursor-pointer group">
-                      <input
-                        type="radio"
-                        name="category"
-                        value={cat.value}
-                        defaultChecked={params.category === cat.value}
-                        className="w-3.5 h-3.5 accent-orange cursor-pointer"
-                      />
-                      <span className="text-sm font-sans text-ink-2 group-hover:text-ink transition-colors">
-                        {cat.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Condition */}
-              <div className="mb-5">
-                <p className="text-[11px] font-sans font-semibold text-ink uppercase tracking-wider mb-2.5">Condition</p>
-                <div className="space-y-2">
-                  {CONDITIONS.map(c => (
-                    <label key={c.value} className="flex items-center gap-2.5 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        name="condition"
-                        value={c.value}
-                        defaultChecked={params.condition === c.value}
-                        className="w-3.5 h-3.5 accent-orange cursor-pointer"
-                      />
-                      <span className="text-sm font-sans text-ink-2 group-hover:text-ink transition-colors">
-                        {c.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sort */}
-              <div className="mb-5">
-                <p className="text-[11px] font-sans font-semibold text-ink uppercase tracking-wider mb-2.5">Sort By</p>
-                <select
-                  name="sort"
-                  defaultValue={params.sort ?? 'created_at:desc'}
-                  className="w-full bg-bg border border-[#E8E9EA] text-ink px-3 py-2 text-sm font-sans rounded-[10px] focus:outline-none focus:border-orange transition-colors cursor-pointer"
-                >
-                  {SORT_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Apply button */}
-              <button
-                type="submit"
-                className="w-full py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow"
-              >
-                Apply Filters
-              </button>
-
-              {/* Clear all */}
-              {hasFilters && (
-                <a
-                  href="/listings"
-                  className="block text-center mt-3 text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
-                >
-                  Clear all
-                </a>
-              )}
-            </form>
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <div className="flex-1 min-w-0">
-
-          {/* Results count */}
-          <p className="font-sans font-bold text-sm text-ink mb-5">
-            {count} {count === 1 ? 'listing' : 'listings'} found
-          </p>
-
-          {listings && listings.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(listings as Listing[]).map(listing => (
-                <ListingCard key={listing.id} listing={listing} isLoggedIn={!!user} initialSaved={savedIds.has(listing.id)} />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-[16px] flex flex-col items-center justify-center py-24 text-center shadow-card">
-              <div className="text-4xl mb-4">🔍</div>
-              <h3 className="font-sans font-bold text-lg text-ink">No listings found</h3>
-              <p className="mt-2 text-sm font-sans text-ink-3 max-w-xs">
-                Try adjusting your filters or{' '}
-                <a href="/listings" className="text-orange hover:text-orange-lt font-semibold">view all listings</a>.
-              </p>
-            </div>
-          )}
+      {/* Grid */}
+      {loading ? (
+        <SkeletonGrid />
+      ) : listings.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {listings.map(listing => (
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              isLoggedIn={isLoggedIn}
+              initialSaved={false}
+            />
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-[16px] flex flex-col items-center justify-center py-24 text-center shadow-card">
+          <div className="text-4xl mb-4">🔍</div>
+          <h3 className="font-sans font-bold text-lg text-ink">No listings found</h3>
+          <p className="mt-2 text-sm font-sans text-ink-3 max-w-xs">
+            Try adjusting your filters or{' '}
+            <a href="/listings" className="text-orange hover:text-orange-lt font-semibold">
+              view all listings
+            </a>.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function ListingsPage() {
+  // The public layout adds pt-[82px] to <main> to clear the 58px fixed navbar.
+  // The remaining 24px gap would sit between the navbar and the filter bar.
+  // Pull the whole page up by -24px so the filter bar butts flush against the nav.
+  return (
+    <div className="-mt-6">
+      {/* FilterBar in its own Suspense so it can use useSearchParams */}
+      <Suspense fallback={<FilterBarFallback />}>
+        <FilterBar />
+      </Suspense>
+
+      {/* Listings grid — separate Suspense to show skeleton independently */}
+      <Suspense fallback={
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+          <div className="h-4 w-32 bg-[#F0F0F0] rounded-full mb-5 animate-pulse" />
+          <SkeletonGrid />
+        </div>
+      }>
+        <ListingsContent />
+      </Suspense>
     </div>
   )
 }

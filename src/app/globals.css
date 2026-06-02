@@ -77,3 +77,113 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--orange);
 }
+
+/* ─── Article body typography (knowledge base detail page) ───────────────── */
+/* Scoped to .article-body so it only affects rendered HTML article content.   */
+.article-body {
+  font-size: 16px;
+  line-height: 1.9;
+  color: #1A1D20;
+}
+.article-body h2 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 40px;
+  margin-bottom: 16px;
+  color: #1A1D20;
+}
+.article-body h3 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 32px;
+  margin-bottom: 12px;
+  color: #1A1D20;
+}
+.article-body p {
+  margin-bottom: 24px;
+}
+.article-body a {
+  color: #FF6B35;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.article-body a:hover { color: #FF8855; }
+.article-body ul,
+.article-body ol {
+  padding-left: 24px;
+  margin-bottom: 24px;
+}
+.article-body li { margin-bottom: 8px; }
+.article-body strong { font-weight: 700; }
+.article-body em { font-style: italic; }
+.article-body blockquote {
+  border-left: 3px solid #FF6B35;
+  background: #FFF2ED;
+  border-radius: 0 10px 10px 0;
+  padding: 12px 20px;
+  margin: 24px 0;
+  color: #4A4D52;
+  font-style: italic;
+}
+.article-body pre {
+  background: #F7F8F9;
+  border: 1px solid #E8E9EA;
+  border-radius: 10px;
+  padding: 16px;
+  overflow-x: auto;
+  margin-bottom: 24px;
+  font-family: 'Andale Mono', monospace;
+  font-size: 14px;
+}
+.article-body code {
+  font-family: 'Andale Mono', monospace;
+  font-size: 14px;
+  background: #F7F8F9;
+  border: 1px solid #E8E9EA;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.article-body hr {
+  border: none;
+  border-top: 1px solid #E8E9EA;
+  margin: 40px 0;
+}
+
+/* ─── Utility: hide scrollbar while keeping scroll behavior ──────────────── */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ─── Search bar: hero moving-glow border ─────────────────────────────────── */
+/* Applied only to variant="hero" search bar on focus.                         */
+/* Creates a 2px animated gradient border via padding trick.                   */
+@keyframes glow-rotate {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+.search-glow-border {
+  background: linear-gradient(270deg, #FF6B35, #FFB347, #FF4500, #FFB347, #FF6B35);
+  background-size: 400% 400%;
+  animation: glow-rotate 3s ease infinite;
+  border-radius: 102px; /* 100px input + 2px padding */
+  padding: 2px;
+}
+
+/* ─── Glass button — New Listing / Search in navbar only ──────────────────── */
+/* Never apply to regular CTA buttons elsewhere.                               */
+.glass-btn-orange {
+  background: rgba(255, 107, 53, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  color: #FF6B35;
+  border-radius: 100px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.glass-btn-orange:hover {
+  background: rgba(255, 107, 53, 0.25);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.25);
+}

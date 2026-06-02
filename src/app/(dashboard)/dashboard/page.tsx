@@ -82,6 +82,70 @@ function SkeletonCard() {
   )
 }
 
+// ─── Limit Reached Modal ──────────────────────────────────────────────────────
+
+function LimitReachedModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.30)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="bg-white rounded-[20px] w-full max-w-[380px]"
+        style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.18)', padding: '32px' }}
+      >
+        {/* Icon */}
+        <div
+          className="w-11 h-11 flex items-center justify-center rounded-[10px] mb-5"
+          style={{ background: '#FFF2ED' }}
+        >
+          <svg className="w-5 h-5 text-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+        </div>
+
+        {/* Heading */}
+        <p
+          className="font-sans font-bold text-ink mb-2"
+          style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
+        >
+          Active Listing Limit Reached
+        </p>
+
+        {/* Body */}
+        <p className="font-sans text-ink-3 mb-6" style={{ fontSize: '14px', lineHeight: '1.6' }}>
+          Your active listings limit has been met.{' '}
+          <a
+            href="/dashboard/upgrade"
+            className="text-ink underline underline-offset-2 hover:text-orange transition-colors"
+          >
+            Upgrade
+          </a>{' '}
+          your membership to list more.
+        </p>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 text-sm font-bold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] hover:text-ink transition-colors"
+          >
+            Dismiss
+          </button>
+          <a
+            href="/dashboard/upgrade"
+            className="flex-1 py-2.5 text-sm font-bold text-white text-center rounded-pill hover:bg-orange-lt transition-colors"
+            style={{ background: '#FF6B35', boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
+          >
+            Upgrade Plan
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── On-card manage overlay (B010) ────────────────────────────────────────────
 
 interface CardAction {
@@ -99,11 +163,15 @@ function CardOverlay({
   onClose,
   onAction,
   onEdit,
+  atLimit,
+  onLimitReached,
 }: {
   listing: MyListing
   onClose: () => void
   onAction: (id: string, action: string) => Promise<void>
   onEdit: (id: string) => void
+  atLimit: boolean
+  onLimitReached: () => void
 }) {
   const actions: CardAction[] = (() => {
     switch (listing.status) {
@@ -136,13 +204,27 @@ function CardOverlay({
       }
       case 'sold':
         return [
-          { label: 'Relist', icon: <RefreshIcon />, onClick: async () => { await onAction(listing.id, 'publish'); onClose() } },
+          {
+            label: 'Relist',
+            icon: <RefreshIcon />,
+            onClick: async () => {
+              if (atLimit) { onClose(); onLimitReached(); return }
+              await onAction(listing.id, 'publish'); onClose()
+            },
+          },
           { label: 'Archive', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
         ]
       case 'pending_review':
         return [
           { label: 'Edit Listing', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
-          { label: 'Republish', icon: <CheckCircleIcon />, onClick: async () => { await onAction(listing.id, 'publish'); onClose() } },
+          {
+            label: 'Republish',
+            icon: <CheckCircleIcon />,
+            onClick: async () => {
+              if (atLimit) { onClose(); onLimitReached(); return }
+              await onAction(listing.id, 'publish'); onClose()
+            },
+          },
           { label: 'Archive', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
         ]
     }
@@ -256,6 +338,8 @@ function MyListingCard({
   onCloseManage,
   onAction,
   onEdit,
+  atLimit,
+  onLimitReached,
 }: {
   listing: MyListing
   onManage: (l: MyListing) => void
@@ -263,6 +347,8 @@ function MyListingCard({
   onCloseManage: () => void
   onAction: (id: string, action: string) => Promise<void>
   onEdit: (id: string) => void
+  atLimit: boolean
+  onLimitReached: () => void
 }) {
   const badge = statusBadge(listing.status)
   const isNavigable = listing.status === 'active' && !!listing.slug
@@ -286,6 +372,8 @@ function MyListingCard({
           onClose={onCloseManage}
           onAction={onAction}
           onEdit={onEdit}
+          atLimit={atLimit}
+          onLimitReached={onLimitReached}
         />
       )}
 
@@ -433,6 +521,7 @@ export default function DashboardPage() {
   const [showNewListing, setShowNewListing] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [showLimitModal, setShowLimitModal] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -664,6 +753,8 @@ export default function DashboardPage() {
                   onCloseManage={() => setManageListing(null)}
                   onAction={handleAction}
                   onEdit={id => { setManageListing(null); setEditListingId(id) }}
+                  atLimit={activeCount >= PLAN_LIMITS[plan]}
+                  onLimitReached={() => setShowLimitModal(true)}
                 />
               ))}
             </div>
@@ -723,6 +814,11 @@ export default function DashboardPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Limit Reached Modal */}
+      {showLimitModal && (
+        <LimitReachedModal onClose={() => setShowLimitModal(false)} />
       )}
 
       {/* Edit Listing Modal (B011) */}
