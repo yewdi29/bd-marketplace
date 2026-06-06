@@ -610,15 +610,19 @@ export default function DashboardPage() {
     setShowNewListing(true)
   }
 
-  // Filter counts — drafts tab includes both 'draft' and 'pending_review' (B012)
-  const activeCount = listings.filter(l => l.status === 'active').length
-  const draftCount = listings.filter(l => l.status === 'draft' || l.status === 'pending_review').length
-  const soldCount = listings.filter(l => l.status === 'sold').length
+  // Grouped arrays — used for sectioned "All" view and filter counts
+  const activeListings      = listings.filter(l => l.status === 'active')
+  const unpublishedListings = listings.filter(l => l.status === 'draft' || l.status === 'pending_review')
+  const soldListings        = listings.filter(l => l.status === 'sold')
+
+  const activeCount = activeListings.length
+  const draftCount  = unpublishedListings.length
+  const soldCount   = soldListings.length
 
   const filtered = activeFilter === 'all'
-    ? listings
+    ? [...activeListings, ...unpublishedListings, ...soldListings]
     : activeFilter === 'draft'
-      ? listings.filter(l => l.status === 'draft' || l.status === 'pending_review')
+      ? unpublishedListings
       : listings.filter(l => l.status === activeFilter)
 
   const filterTabs: { key: FilterTab; label: string; count: number }[] = [

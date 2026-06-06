@@ -1,19 +1,12 @@
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import ListingCard from '@/components/ListingCard'
 import NewsletterForm from '@/components/NewsletterForm'
 import type { Listing } from '@/lib/types/database'
 
-const CATEGORIES = [
-  { label: 'Drill Pipe', slug: 'drill_pipe', icon: '⛏' },
-  { label: 'Drilling Rigs', slug: 'rig', icon: '🏗' },
-  { label: 'Blowout Preventers', slug: 'blowout_preventer', icon: '🔧' },
-  { label: 'Pumping Units', slug: 'pumping_unit', icon: '⚙️' },
-  { label: 'Wellheads', slug: 'wellhead', icon: '🛢' },
-  { label: 'Compressors', slug: 'compressor', icon: '💨' },
-  { label: 'Mud Pumps', slug: 'mud_pump', icon: '🔩' },
-  { label: 'Tanks & Vessels', slug: 'tank', icon: '🛢' },
-]
+// Globe uses WebGL — must be client-only
+const Globe = dynamic(() => import('@/components/ui/Globe'), { ssr: false })
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -43,164 +36,431 @@ export default async function HomePage() {
     .order('created_at', { ascending: false })
     .limit(8)
 
+  const INDUSTRY_TAGS = [
+    { label: 'Energy',       dotColor: '#E8E9EA' },
+    { label: 'Construction', dotColor: '#E8E9EA' },
+    { label: 'Mining',       dotColor: '#E8E9EA' },
+    { label: 'Agriculture',  dotColor: '#E8E9EA' },
+  ]
+
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+    <>
+      {/* ── Hero ──────────────────────────────────────────────────────────────── */}
+      {/*
+       * Z-index stack (all relative to this section):
+       *   Globe container  → z-1  (painted first — backdrop-filter blurs it)
+       *   Bottom fade      → z-2  (hides globe bleed at the bottom)
+       *   Grid + glass card → z-3 (content always on top)
+       *
+       * Mobile (<768px): flex-col — card first, then globe as a 360px flow element.
+       * md+ (≥768px):    2-col grid — globe is position:absolute at section level.
+       * overflow-hidden on section contains the absolute globe on md+.
+       */}
+      <section className="relative overflow-hidden min-h-[75vh]">
 
-      {/* Hero */}
-      <section className="py-8">
-        <div className="bg-white rounded-[20px] px-8 py-16 text-center shadow-card">
+        {/* Bottom fade — full width, above globe (z-2), below content (z-3) */}
+        <div
+          className="absolute bottom-0 left-0 right-0 w-full pointer-events-none"
+          style={{
+            height: '220px',
+            background: 'linear-gradient(to top, #F7F8F9 0%, transparent 100%)',
+            zIndex: 2,
+          }}
+        />
 
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-orange-bg border border-orange-bdr rounded-pill px-4 py-1.5 mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange animate-pulse" />
-            <span className="font-mono text-[11px] font-bold text-orange uppercase tracking-wider">
-              Heavy Equipment Marketplace
-            </span>
+        {/* Two-column grid — single column stack on mobile, side-by-side on md+.
+            position: relative + z-[3] keeps content above the absolute globe. */}
+        <div
+          className="flex flex-col md:grid md:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
+          style={{ maxWidth: '1280px', margin: '0 auto' }}
+        >
+          {/* ── Left column ── */}
+          <div className="px-4 py-10 md:pl-16 md:pr-0 md:py-[60px]">
+
+            {/*
+             * Frosted glass card — glassmorphism exception (navbar-only by default).
+             * Approved by product owner. backdrop-filter blurs the globe behind it.
+             * Padding scales down on mobile/tablet via Tailwind responsive classes.
+             */}
+            <div
+              className="w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px]"
+              style={{
+                background: 'rgba(255,255,255,0.75)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.6)',
+                borderRadius: '20px',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+              }}
+            >
+              {/* Eyebrow pill */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'rgba(255,107,53,0.07)',
+                  border: '1px solid rgba(255,107,53,0.18)',
+                  borderRadius: '100px',
+                  padding: '5px 13px',
+                  marginBottom: '28px',
+                }}
+              >
+                <span
+                  className="animate-pulse"
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#FF6B35',
+                    flexShrink: 0,
+                    display: 'inline-block',
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono, "Andale Mono", monospace)',
+                    fontSize: '10px',
+                    fontWeight: 500,
+                    color: '#FF6B35',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  Thousands of visitors globally
+                </span>
+              </div>
+
+              {/* Headline */}
+              <h1
+                style={{
+                  fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
+                  fontSize: '58px',
+                  fontWeight: 900,
+                  letterSpacing: '-0.04em',
+                  lineHeight: 1.02,
+                  color: '#1A1D20',
+                  marginBottom: '18px',
+                }}
+              >
+                Your Global Source
+                <br />
+                <span style={{ color: '#FF6B35' }}>for Heavy Equipment</span>
+              </h1>
+
+              {/* Industry tags */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  marginBottom: '22px',
+                }}
+              >
+                {INDUSTRY_TAGS.map(tag => (
+                  <div key={tag.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: tag.dotColor,
+                        flexShrink: 0,
+                        display: 'inline-block',
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        color: '#9A9DA2',
+                        fontWeight: 500,
+                        fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
+                      }}
+                    >
+                      {tag.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Subtitle */}
+              <p
+                style={{
+                  fontSize: '16px',
+                  color: '#6A6D72',
+                  lineHeight: 1.75,
+                  maxWidth: '440px',
+                  marginBottom: '36px',
+                  fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
+                }}
+              >
+                Connecting buyers and sellers of heavy equipment worldwide since 2009. From oil fields to construction sites — find what your operation needs, fast.
+              </p>
+
+              {/* CTA buttons */}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <Link
+                  href="/listings"
+                  className="inline-flex items-center px-[18px] py-2 bg-white text-ink border border-[#E8E9EA] rounded-pill font-bold text-[13px] no-underline whitespace-nowrap font-sans transition-all duration-200 hover:text-orange hover:border-orange"
+                >
+                  Browse Equipment
+                </Link>
+                <Link
+                  href="/how-it-works"
+                  className="inline-flex items-center px-[18px] py-2 bg-orange text-white rounded-pill font-bold text-[13px] no-underline whitespace-nowrap font-sans transition-all duration-200 hover:bg-orange-lt"
+                  style={{ boxShadow: '0 6px 20px rgba(255,107,53,0.3)' }}
+                >
+                  List Your Equipment
+                </Link>
+              </div>
+            </div>
           </div>
+
+          {/* Right column spacer — hidden on mobile, reserves space for the globe on md+ */}
+          <div className="hidden md:block" style={{ minHeight: '500px' }} />
+        </div>
+
+        {/*
+         * Globe container:
+         *  Mobile (<768px)  — relative flow element, 360px tall, overflow clipped,
+         *                     sits below the content card in the flex-col stack.
+         *  md (768–1024px)  — absolute, bottom: -220px, right: -200px
+         *  lg (1024–1280px) — absolute, bottom: -280px, right: -150px
+         *  xl (1280px+)     — absolute, bottom: -320px, right: -220px
+         */}
+        <div
+          className="
+            relative w-full h-[360px] overflow-hidden
+            md:absolute md:h-auto md:w-auto md:overflow-visible
+            md:bottom-[-220px] md:right-[-200px]
+            lg:bottom-[-280px] lg:right-[-150px]
+            xl:bottom-[-320px] xl:right-[-220px]
+          "
+          style={{ zIndex: 1, pointerEvents: 'auto' }}
+        >
+          <Globe />
+        </div>
+
+      </section>
+
+      {/* ── Below-fold content ────────────────────────────────────────────────── */}
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+
+        {/* Featured Listings */}
+        {featuredListings && featuredListings.length > 0 && (
+          <section className="py-10 border-t border-[#E8E9EA]">
+            <div className="flex items-end justify-between mb-6">
+              <div>
+                <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
+                  Featured Equipment
+                </h2>
+                <p className="mt-1 text-sm font-sans text-ink-3">Hand-picked listings from verified sellers</p>
+              </div>
+              <Link
+                href="/listings?featured=true"
+                className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
+              >
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(featuredListings as Listing[]).map(listing => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  isLoggedIn={!!user}
+                  initialSaved={savedIds.has(listing.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Recently Listed */}
+        {recentListings && recentListings.length > 0 && (
+          <section className="py-10 border-t border-[#E8E9EA]">
+            <div className="flex items-end justify-between mb-6">
+              <div>
+                <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
+                  Recently Listed
+                </h2>
+                <p className="mt-1 text-sm font-sans text-ink-3">Fresh inventory added this week</p>
+              </div>
+              <Link
+                href="/listings"
+                className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
+              >
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {(recentListings as Listing[]).map(listing => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  isLoggedIn={!!user}
+                  initialSaved={savedIds.has(listing.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+      </div>
+
+      {/* ── How It Works ──────────────────────────────────────────────────────── */}
+      <section style={{ background: '#F7F8F9', width: '100%', padding: '80px 32px', borderTop: '1px solid #E8E9EA' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+
+          {/* Top label */}
+          <p style={{
+            fontFamily: "'DM Mono', monospace",
+            fontSize: '10px',
+            fontWeight: 500,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.1em',
+            color: '#FF6B35',
+            marginBottom: '12px',
+          }}>
+            HOW IT WORKS
+          </p>
 
           {/* Headline */}
-          <h1
-            className="font-sans font-extrabold text-ink leading-[1.05] max-w-2xl mx-auto"
-            style={{ fontSize: '42px', letterSpacing: '-0.03em' }}
-          >
-            Buy, Sell &amp; Trade Oil &amp; Gas{' '}
-            <span className="text-orange">Equipment</span>
-          </h1>
+          <h2 style={{
+            fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
+            fontSize: '36px',
+            fontWeight: 800,
+            color: '#1A1D20',
+            letterSpacing: '-0.02em',
+            marginBottom: '56px',
+            margin: '0 0 56px 0',
+          }}>
+            List your equipment in three steps.
+          </h2>
 
-          {/* Subtext */}
-          <p className="mt-5 text-[15px] font-sans text-ink-2 max-w-lg mx-auto leading-[1.7]">
-            Drill pipe, rigs, BOP stacks, and more. Verified listings with expert broker support on high-value deals.
-          </p>
+          {/* Cards + decorative connector line */}
+          <div style={{ position: 'relative' }}>
 
-          {/* Search bar */}
-          <form
-            action="/listings"
-            method="GET"
-            className="mt-8 max-w-xl mx-auto flex items-center bg-white border border-[#D4D5D7] rounded-pill px-2 py-2"
-            style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}
-          >
-            <select
-              name="category"
-              className="bg-transparent border-none text-sm font-sans font-medium text-ink px-3 focus:outline-none cursor-pointer shrink-0"
-            >
-              <option value="">All Equipment</option>
-              {CATEGORIES.map(c => (
-                <option key={c.slug} value={c.slug}>{c.label}</option>
+            {/* Connector line — sits behind the cards */}
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '8%',
+              right: '8%',
+              height: '1px',
+              background: '#E8E9EA',
+              zIndex: 0,
+              transform: 'translateY(-50%)',
+            }} />
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '24px',
+              position: 'relative',
+              zIndex: 1,
+            }}>
+              {([
+                {
+                  num: '01',
+                  title: 'Describe Your Equipment',
+                  desc: 'Tell our AI what you have in plain language — condition, specs, price, and location. Just talk to us like you would a buyer.',
+                },
+                {
+                  num: '02',
+                  title: 'Publish Instantly',
+                  desc: 'Review your AI-generated listing, add photos, and publish with one click. Your equipment is live and searchable worldwide immediately.',
+                },
+                {
+                  num: '03',
+                  title: 'Connect and Close',
+                  desc: 'Buyers find your listing and contact you directly through the inquiry form. No middlemen, no fees per transaction. Just direct connections.',
+                },
+              ] as const).map(step => (
+                <div key={step.num} style={{
+                  background: 'white',
+                  border: '1px solid #E8E9EA',
+                  borderRadius: '16px',
+                  padding: '28px',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                }}>
+                  <p style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    color: '#FF6B35',
+                    letterSpacing: '0.1em',
+                    marginBottom: '16px',
+                  }}>
+                    {step.num}
+                  </p>
+                  <h3 style={{
+                    fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    color: '#1A1D20',
+                    marginBottom: '10px',
+                  }}>
+                    {step.title}
+                  </h3>
+                  <p style={{
+                    fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
+                    fontSize: '14px',
+                    color: '#6A6D72',
+                    lineHeight: 1.7,
+                    margin: 0,
+                  }}>
+                    {step.desc}
+                  </p>
+                </div>
               ))}
-            </select>
-            <div className="w-px h-5 bg-[#E8E9EA] mx-1 shrink-0" />
-            <input
-              type="text"
-              name="q"
-              placeholder="Search equipment..."
-              className="flex-1 bg-transparent text-sm font-sans text-ink placeholder:text-ink-3 focus:outline-none px-3 min-w-0"
-            />
-            <button
-              type="submit"
-              className="shrink-0 px-6 py-2 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow"
-            >
-              Search
-            </button>
-          </form>
-
-          {/* Stats */}
-          <div className="mt-12 grid grid-cols-3 gap-8 max-w-sm mx-auto">
-            {[
-              { value: '500+', label: 'Active Listings' },
-              { value: '$2B+', label: 'Equipment Value' },
-              { value: '48H', label: 'Avg. Response' },
-            ].map(stat => (
-              <div key={stat.label} className="text-center">
-                <div className="font-sans font-bold text-2xl text-ink">{stat.value}</div>
-                <div className="font-sans text-xs text-ink-3 mt-1">{stat.label}</div>
-              </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </section>
 
-      {/* Categories */}
-      <section className="py-10">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Browse by Category</h2>
-            <p className="mt-1 text-sm font-sans text-ink-3">Find the exact equipment you need</p>
-          </div>
-          <Link href="/listings" className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors">
-            View all →
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {CATEGORIES.map(cat => (
+          {/* CTA row */}
+          <div style={{ marginTop: '48px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
             <Link
-              key={cat.slug}
-              href={`/listings?category=${cat.slug}`}
-              className="group bg-white border border-[#E8E9EA] hover:border-[#D4D5D7] rounded-[16px] p-5 transition-all duration-200 hover:-translate-y-0.5 shadow-card hover:shadow-card-hover"
+              href="/auth/signup"
+              className="inline-flex items-center font-sans font-bold text-[13px] text-white no-underline whitespace-nowrap rounded-pill transition-all duration-200 hover:bg-orange-lt"
+              style={{ background: '#FF6B35', padding: '10px 24px', boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
             >
-              <span className="text-2xl">{cat.icon}</span>
-              <p className="mt-3 font-sans text-sm font-semibold text-ink group-hover:text-orange transition-colors">
-                {cat.label}
-              </p>
+              Start Listing Equipment
             </Link>
-          ))}
+            <Link
+              href="/how-it-works"
+              className="inline-flex items-center font-sans font-bold text-[13px] no-underline whitespace-nowrap rounded-pill transition-all duration-200 hover:border-[#D4D5D7] hover:text-ink"
+              style={{ border: '1px solid #E8E9EA', padding: '10px 24px', color: '#4A4D52', background: 'white' }}
+            >
+              See Full Guide
+            </Link>
+          </div>
+
         </div>
       </section>
 
-      {/* Featured Listings */}
-      {featuredListings && featuredListings.length > 0 && (
+      {/* ── Newsletter + bottom padding ───────────────────────────────────────── */}
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+
+        {/* Newsletter */}
         <section className="py-10 border-t border-[#E8E9EA]">
-          <div className="flex items-end justify-between mb-6">
-            <div>
-              <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Featured Equipment</h2>
-              <p className="mt-1 text-sm font-sans text-ink-3">Hand-picked listings from verified sellers</p>
+          <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
+            <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
+              Stay in the Field
+            </h2>
+            <p className="mt-3 text-[15px] font-sans text-ink-3 max-w-md mx-auto leading-relaxed">
+              New listings, market intel, and equipment guides delivered to your inbox. No noise — just signal.
+            </p>
+            <div className="mt-6 max-w-sm mx-auto">
+              <NewsletterForm source="homepage" />
             </div>
-            <Link href="/listings?featured=true" className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors">
-              View all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(featuredListings as Listing[]).map(listing => (
-              <ListingCard key={listing.id} listing={listing} isLoggedIn={!!user} initialSaved={savedIds.has(listing.id)} />
-            ))}
           </div>
         </section>
-      )}
 
-      {/* Recent Listings */}
-      {recentListings && recentListings.length > 0 && (
-        <section className="py-10 border-t border-[#E8E9EA]">
-          <div className="flex items-end justify-between mb-6">
-            <div>
-              <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Recently Listed</h2>
-              <p className="mt-1 text-sm font-sans text-ink-3">Fresh inventory added this week</p>
-            </div>
-            <Link href="/listings" className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors">
-              View all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(recentListings as Listing[]).map(listing => (
-              <ListingCard key={listing.id} listing={listing} isLoggedIn={!!user} initialSaved={savedIds.has(listing.id)} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Newsletter */}
-      <section className="py-10 border-t border-[#E8E9EA]">
-        <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
-          <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>Stay in the Field</h2>
-          <p className="mt-3 text-[15px] font-sans text-ink-3 max-w-md mx-auto leading-relaxed">
-            New listings, market intel, and equipment guides delivered to your inbox. No noise — just signal.
-          </p>
-          <div className="mt-6 max-w-sm mx-auto">
-            <NewsletterForm source="homepage" />
-          </div>
-        </div>
-      </section>
-
-      <div className="pb-16" />
-    </div>
+        <div className="pb-16" />
+      </div>
+    </>
   )
 }
