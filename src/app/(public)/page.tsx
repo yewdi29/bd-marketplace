@@ -85,10 +85,10 @@ export default async function HomePage() {
             <div
               className="w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px]"
               style={{
-                background: 'rgba(255,255,255,0.75)',
+                background: 'rgba(255,255,255,0.20)',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.6)',
+                border: '1px solid rgba(255,255,255,0.45)',
                 borderRadius: '20px',
                 boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
                 display: 'flex',

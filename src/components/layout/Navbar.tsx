@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
-import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
 import SearchBar from '@/components/marketplace/SearchBar'
@@ -30,8 +29,6 @@ function Logo() {
 export default function Navbar() {
   const [authUser, setAuthUser] = useState<ProfileUser | null>(null)
   const [authReady, setAuthReady] = useState(false)
-  const pathname = usePathname()
-  const isHomepage = pathname === '/'
 
   useEffect(() => {
     const supabase = createClient()
@@ -55,8 +52,6 @@ export default function Navbar() {
       setAuthReady(true)
     }
 
-    // onAuthStateChange fires immediately with the current session,
-    // so the navbar updates synchronously on login/logout without a flash.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         loadProfile(session.user.id, session.user.email ?? '')
@@ -69,23 +64,23 @@ export default function Navbar() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ── Right-side content — changes based on page + auth state ─────────────────
+  // ── Right-side content ───────────────────────────────────────────────────────
 
   function RightContent() {
-    // Don't render auth-sensitive UI until we know auth state
-    // (avoids a logged-in flash of Sign In buttons on page load)
     if (!authReady) return null
 
     if (authUser) {
       return <ProfileDropdown user={authUser} />
     }
 
-    // Logged out — same on homepage and other pages
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Link
-          href="/auth/signup"
-          className="hidden sm:block text-sm font-medium text-ink-2 hover:text-ink transition-colors"
+          href="/how-it-works"
+          className="hidden sm:block text-sm font-medium transition-colors"
+          style={{ color: '#4A4D52' }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#1A1D20')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#4A4D52')}
         >
           Sell With Us
         </Link>
@@ -104,45 +99,38 @@ export default function Navbar() {
     <header
       className="fixed top-0 left-0 right-0 z-50"
       style={{
-        background: 'rgba(255,255,255,0.55)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderBottom: '1px solid rgba(232,233,234,0.4)',
-        height: '58px',
+        background: 'rgba(255,255,255,0.20)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(232,233,234,0.30)',
+        height: '64px',
       }}
     >
       {/*
-       * 3-column grid: Logo | Center | Right
-       *
-       * Homepage:     logo | (empty) | Sell With Us + Sign In  OR  Profile
-       * Other pages:  logo | SearchBar | Sell With Us + Sign In  OR  Profile
-       *
-       * The center column is always present so the logo stays left-anchored
-       * and the right content stays right-anchored regardless of content.
+       * 3-column grid: Logo | SearchBar (centered) | Auth buttons
+       * Search bar is visible on ALL pages — including homepage.
        */}
       <div
         className="max-w-[1232px] mx-auto px-8 h-full grid items-center"
-        style={{ gridTemplateColumns: 'auto 1fr auto', gap: '16px' }}
+        style={{ gridTemplateColumns: 'auto 1fr auto', gap: '24px' }}
       >
         {/* Col 1: Logo */}
         <Logo />
 
-        {/* Col 2: SearchBar — only on non-homepage, desktop only.
-         * Wrapped in Suspense because SearchBar uses useSearchParams()
-         * to sync with ?q= on the /listings page. */}
+        {/* Col 2: SearchBar — centered, always visible on md+.
+            Wrapped in Suspense because SearchBar uses useSearchParams()
+            to sync with ?q= on the /listings page. */}
         <div className="flex justify-center">
-          {!isHomepage && (
-            <div className="hidden md:block w-full max-w-[50%]">
-              <Suspense fallback={
-                <div
-                  className="w-full"
-                  style={{ height: '40px', borderRadius: '100px', background: 'rgba(255,255,255,0.85)', border: '1.5px solid #E8E9EA' }}
-                />
-              }>
-                <SearchBar variant="nav" />
-              </Suspense>
-            </div>
-          )}
+          <div className="hidden md:block w-full max-w-[520px]">
+            <Suspense fallback={
+              <div
+                className="w-full"
+                style={{ height: '40px', borderRadius: '100px', background: 'rgba(255,255,255,0.85)', border: '1.5px solid #E8E9EA' }}
+              />
+            }>
+              <SearchBar variant="nav" />
+            </Suspense>
+          </div>
         </div>
 
         {/* Col 3: Auth content */}
