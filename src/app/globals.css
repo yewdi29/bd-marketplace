@@ -187,3 +187,22 @@ body {
   background: rgba(255, 107, 53, 0.25);
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.25);
 }
+
+/* ─── Gallery action pills — listing detail page (Save / Share overlay) ─────── */
+/* Frosted glass exception, matching navbar treatment. See DESIGN_SYSTEM.md §8. */
+.gallery-action-pill {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+/* ─── Heart pop animation — Save toggle ─────────────────────────────────────── */
+@keyframes heart-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.heart-pop {
+  animation: heart-pop 0.35s ease;
+}

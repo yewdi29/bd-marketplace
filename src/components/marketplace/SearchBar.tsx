@@ -2,16 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useGlowBorder } from '@/hooks/useGlowBorder'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface SearchBarProps {
   /**
-   * 'nav'  — inside Navbar/DashboardNav: rgba glass bg, blur(8px), standard orange focus ring.
-   *          No moving glow — glass effect is already part of the navbar.
+   * 'nav'  — inside Navbar/DashboardNav: rgba glass bg, blur(8px).
+   *          Canvas glow activates on focus and fades on blur.
    *          When on /listings, syncs value from URL ?q= and debounces updates (300 ms).
-   * 'hero' — standalone hero section: white bg, animated gradient border on focus only
-   *          (per §8 Special Effects: Moving Glow).
+   * 'hero' — standalone hero section: white bg.
+   *          Canvas glow activates on focus and fades on blur (same hook, default options).
    */
   variant: 'nav' | 'hero'
   placeholder?: string
@@ -45,7 +46,7 @@ export default function SearchBar({
   defaultValue = '',
   className = '',
 }: SearchBarProps) {
-  const [value, setValue]   = useState(defaultValue)
+  const [value, setValue]     = useState(defaultValue)
   const [focused, setFocused] = useState(false)
 
   const router       = useRouter()
@@ -53,30 +54,31 @@ export default function SearchBar({
   const searchParams = useSearchParams()
   const inputRef     = useRef<HTMLInputElement>(null)
 
+  // Canvas glow refs
+  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { onFocus: glowFocus, onBlur: glowBlur } = useGlowBorder(canvasRef, containerRef)
+
   // Are we currently on the listings browse page?
   const isListingsPage = pathname === '/listings'
 
   // ── Sync input value from URL ?q= when on /listings ────────────────────────
-  // Only fires when the URL's q param changes (e.g. a filter pill clears it),
-  // not on every keystroke — so typing is never interrupted.
   const urlQ = isListingsPage ? (searchParams.get('q') ?? '') : ''
   useEffect(() => {
     if (isListingsPage) setValue(urlQ)
   }, [isListingsPage, urlQ])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Submit handler — only fires on Enter or search button click ─────────────
+  // ── Submit handler ──────────────────────────────────────────────────────────
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const q = value.trim()
 
     if (isListingsPage) {
-      // Preserve all active filters — only update the q param
       const next = new URLSearchParams(searchParams.toString())
       if (q) next.set('q', q)
       else next.delete('q')
       router.replace(`/listings${next.toString() ? `?${next.toString()}` : ''}`)
     } else {
-      // Navigate to listings from any other page (homepage, etc.)
       router.push(q ? `/listings?q=${encodeURIComponent(q)}` : '/listings')
     }
   }
@@ -84,7 +86,6 @@ export default function SearchBar({
   function handleClear() {
     setValue('')
     inputRef.current?.focus()
-    // Remove ?q= from URL immediately when X is clicked on the listings page
     if (isListingsPage) {
       const next = new URLSearchParams(searchParams.toString())
       next.delete('q')
@@ -92,23 +93,19 @@ export default function SearchBar({
     }
   }
 
-  // ── Inner pill styles ───────────────────────────────────────────────────────
-
-  // Hero + focused = animated gradient border (§8 Moving Glow)
-  const showGlow = variant === 'hero' && focused
-
-  const innerStyle: React.CSSProperties = {
+  // ── Pill styles ─────────────────────────────────────────────────────────────
+  // Border goes transparent on focus so the canvas glow takes over visually.
+  const pillStyle: React.CSSProperties = {
+    position: 'relative',
+    zIndex: 1,
     height: '40px',
     borderRadius: '100px',
-    border: showGlow
-      ? 'none'
-      : `1.5px solid ${focused ? '#FF6B35' : '#E8E9EA'}`,
+    border: `1.5px solid ${focused ? 'transparent' : '#E8E9EA'}`,
     background: variant === 'nav' ? 'rgba(255,255,255,0.85)' : '#FFFFFF',
     ...(variant === 'nav'
       ? { backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }
       : {}),
-    boxShadow: focused && !showGlow ? '0 0 0 3px rgba(255,107,53,0.08)' : undefined,
-    transition: 'border-color 0.15s, box-shadow 0.15s',
+    transition: 'border-color 0.15s',
   }
 
   const resolvedPlaceholder =
@@ -118,13 +115,17 @@ export default function SearchBar({
 
   return (
     <form onSubmit={handleSubmit} className={`relative w-full ${className}`}>
-      {/*
-       * Glow wrapper — hero + focused only.
-       * .search-glow-border (globals.css) creates the animated gradient border
-       * via 2px padding + animated bg.
-       */}
-      <div className={showGlow ? 'search-glow-border' : ''}>
-        <div className="relative flex items-center" style={innerStyle}>
+      {/* Outer wrapper — canvas is positioned relative to this */}
+      <div className="relative">
+
+        {/* Canvas glow layer — behind the pill, z-index 0 */}
+        <canvas
+          ref={canvasRef}
+          style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
+        />
+
+        {/* Input pill — z-index 1, above canvas */}
+        <div ref={containerRef} className="flex items-center overflow-hidden" style={pillStyle}>
 
           {/* Search icon */}
           <span className="pl-3.5 text-ink-3 shrink-0">
@@ -137,8 +138,8 @@ export default function SearchBar({
             type="text"
             value={value}
             onChange={e => setValue(e.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onFocus={() => { setFocused(true); glowFocus() }}
+            onBlur={() => { setFocused(false); glowBlur() }}
             placeholder={resolvedPlaceholder}
             className="flex-1 bg-transparent text-sm font-sans text-ink placeholder:text-ink-3 focus:outline-none px-2.5 h-full"
           />

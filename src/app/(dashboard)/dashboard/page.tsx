@@ -525,11 +525,38 @@ export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  // Read initial tab from URL on mount
+  // Read initial tab + upgrade success from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('tab') === 'saved') setActiveMainTab('saved')
-  }, [])
+
+    if (params.get('upgrade') === 'success') {
+      // Remove the query param without a full reload
+      const clean = window.location.pathname
+      window.history.replaceState({}, '', clean)
+
+      // Show success toast after data loads (plan fetched in fetchData)
+      const timerId = setTimeout(async () => {
+        const supabaseInstance = createClient()
+        const { data: { user } } = await supabaseInstance.auth.getUser()
+        if (!user) return
+        const { data } = await supabaseInstance
+          .from('users')
+          .select('plan')
+          .eq('id', user.id)
+          .single()
+        const planName = data?.plan
+          ? (data.plan === 'starter' ? 'Starter'
+            : data.plan === 'pro' ? 'Pro'
+            : data.plan === 'max' ? 'Max'
+            : data.plan.charAt(0).toUpperCase() + data.plan.slice(1))
+          : 'Premium'
+        setToast(`You're now on ${planName}. Welcome to Black Diamond.`)
+        setTimeout(() => setToast(null), 5000)
+      }, 800)
+      return () => clearTimeout(timerId)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -794,9 +821,9 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </div>
-              <h3 className="font-sans font-bold text-base text-ink mb-1">No saved equipment</h3>
+              <h3 className="font-sans font-bold text-base text-ink mb-1">No saved listings yet</h3>
               <p className="text-sm text-ink-3 mb-6 max-w-[280px]">
-                Browse listings and tap the heart icon to save equipment you&apos;re interested in.
+                Browse equipment and hit Save to build your list.
               </p>
               <Link
                 href="/listings"

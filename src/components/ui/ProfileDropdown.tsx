@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
+import PlanBadge from '@/components/ui/PlanBadge'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,40 +25,6 @@ const PLAN_LIMITS: Record<MembershipPlan, number> = {
   pro: 40,
   max: Infinity,
   premium: Infinity,
-}
-
-function planBadgeStyle(plan: MembershipPlan): React.CSSProperties {
-  switch (plan) {
-    case 'max':
-      return { background: '#1A1D20', color: '#FFFFFF', borderColor: '#1A1D20' }
-    case 'pro':
-    case 'premium':
-      return { background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }
-    case 'starter':
-      return { background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }
-    default: // free
-      return { background: '#FFF2ED', color: '#FF6B35', borderColor: '#FFD4C2' }
-  }
-}
-
-function planLabel(plan: MembershipPlan): string {
-  switch (plan) {
-    case 'max': return 'MAX'
-    case 'pro': return 'PRO'
-    case 'premium': return 'PREMIUM'
-    case 'starter': return 'STARTER'
-    default: return 'FREE PLAN'
-  }
-}
-
-function planDotColor(plan: MembershipPlan): string {
-  switch (plan) {
-    case 'max': return '#FFFFFF'
-    case 'pro':
-    case 'premium': return '#D4A017'
-    case 'starter': return '#71717A'
-    default: return '#FF6B35'
-  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -160,13 +127,7 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
               </div>
 
               {/* Plan badge */}
-              <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono font-bold rounded-pill border"
-                style={planBadgeStyle(user.plan)}
-              >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: planDotColor(user.plan) }} />
-                {planLabel(user.plan)}
-              </span>
+              <PlanBadge plan={user.plan} />
 
               {/* Listing meter — finite-limit plans only */}
               {showMeter && (
@@ -205,7 +166,7 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                 onClick={handleManageSubscription}
               >
                 <span>{user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}</span>
-                {(user.plan === 'free' || user.plan === 'starter') && (
+                {user.plan === 'free' && (
                   <span
                     className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-pill border"
                     style={{ background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }}

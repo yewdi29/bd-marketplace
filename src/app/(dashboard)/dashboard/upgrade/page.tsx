@@ -154,11 +154,17 @@ function TierCard({
   billingCycle,
   currentPlan,
   onChoose,
+  loading,
+  onManageMembership,
+  portalLoading,
 }: {
   tier: TierConfig
   billingCycle: BillingCycle
   currentPlan: MembershipPlan
-  onChoose: (name: string) => void
+  onChoose: (id: string) => void
+  loading: boolean
+  onManageMembership: () => void
+  portalLoading: boolean
 }) {
   const price = billingCycle === 'monthly' ? tier.monthly : tier.annualPerMonth
   const isPopular = tier.popular
@@ -251,30 +257,63 @@ function TierCard({
       </ul>
 
       {/* CTA */}
-      <button
-        onClick={() => onChoose(tier.name)}
-        disabled={isCurrent}
-        className="w-full py-3 text-sm font-bold rounded-pill transition-all duration-150 disabled:cursor-not-allowed"
-        style={
-          isCurrent
-            ? { background: '#F4F4F5', color: '#9A9DA2', border: '1px solid #E4E4E7' }
-            : { background: '#FFFFFF', color: '#1A1D20', border: '1.5px solid #D4D5D7' }
-        }
-        onMouseEnter={e => {
-          if (!isCurrent) {
-            e.currentTarget.style.borderColor = '#FF6B35'
-            e.currentTarget.style.color = '#FF6B35'
+      {isCurrent ? (
+        <button
+          onClick={onManageMembership}
+          disabled={portalLoading}
+          className="w-full py-3 text-sm font-bold rounded-pill transition-all duration-150 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          style={{ background: '#FFFFFF', color: '#1A1D20', border: '1.5px solid #D4D5D7' }}
+          onMouseEnter={e => {
+            if (!portalLoading) {
+              e.currentTarget.style.borderColor = '#FF6B35'
+              e.currentTarget.style.color = '#FF6B35'
+            }
+          }}
+          onMouseLeave={e => {
+            if (!portalLoading) {
+              e.currentTarget.style.borderColor = '#D4D5D7'
+              e.currentTarget.style.color = '#1A1D20'
+            }
+          }}
+        >
+          {portalLoading ? (
+            <svg className="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+          ) : 'Manage Membership'}
+        </button>
+      ) : (
+        <button
+          onClick={() => onChoose(tier.id)}
+          disabled={isCurrent || loading}
+          className="w-full py-3 text-sm font-bold rounded-pill transition-all duration-150 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          style={
+            isCurrent
+              ? { background: '#F4F4F5', color: '#9A9DA2', border: '1px solid #E4E4E7' }
+              : { background: '#FFFFFF', color: '#1A1D20', border: '1.5px solid #D4D5D7' }
           }
-        }}
-        onMouseLeave={e => {
-          if (!isCurrent) {
-            e.currentTarget.style.borderColor = '#D4D5D7'
-            e.currentTarget.style.color = '#1A1D20'
-          }
-        }}
-      >
-        {isCurrent ? 'Current Plan' : `Choose ${tier.name}`}
-      </button>
+          onMouseEnter={e => {
+            if (!isCurrent && !loading) {
+              e.currentTarget.style.borderColor = '#FF6B35'
+              e.currentTarget.style.color = '#FF6B35'
+            }
+          }}
+          onMouseLeave={e => {
+            if (!isCurrent && !loading) {
+              e.currentTarget.style.borderColor = '#D4D5D7'
+              e.currentTarget.style.color = '#1A1D20'
+            }
+          }}
+        >
+          {loading ? (
+            <svg className="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+          ) : isCurrent ? 'Current Plan' : `Choose ${tier.name}`}
+        </button>
+      )}
     </div>
   )
 }
@@ -284,7 +323,9 @@ function TierCard({
 export default function UpgradePage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const [currentPlan, setCurrentPlan] = useState<MembershipPlan>('free')
-  const [toast, setToast] = useState<string | null>(null)
+  const [loadingTier, setLoadingTier] = useState<string | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -298,9 +339,44 @@ export default function UpgradePage() {
     loadPlan()
   }, [supabase])
 
-  function handleChoose(tierName: string) {
-    setToast(`${tierName} plan — coming soon! Stripe integration is in our next phase.`)
-    setTimeout(() => setToast(null), 4500)
+  async function handleChoose(tierId: string) {
+    setError(null)
+    setLoadingTier(tierId)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tierId, billingPeriod: billingCycle }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        setError(data.error ?? 'Something went wrong. Please try again.')
+        setLoadingTier(null)
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setError('Network error. Please check your connection and try again.')
+      setLoadingTier(null)
+    }
+  }
+
+  async function handleManageMembership() {
+    setError(null)
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        setError(data.error ?? 'Something went wrong. Please try again.')
+        setPortalLoading(false)
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setError('Network error. Please check your connection and try again.')
+      setPortalLoading(false)
+    }
   }
 
   return (
@@ -349,6 +425,9 @@ export default function UpgradePage() {
             billingCycle={billingCycle}
             currentPlan={currentPlan}
             onChoose={handleChoose}
+            loading={loadingTier === tier.id}
+            onManageMembership={handleManageMembership}
+            portalLoading={portalLoading}
           />
         ))}
       </div>
@@ -363,18 +442,10 @@ export default function UpgradePage() {
         </p>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] pointer-events-none">
-          <div
-            className="flex items-center gap-2 bg-ink text-white text-sm font-sans px-5 py-3 rounded-pill"
-            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.25)' }}
-          >
-            <svg className="w-4 h-4 shrink-0 text-[#A2FF9A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            {toast}
-          </div>
+      {/* Error banner */}
+      {error && (
+        <div className="mt-6 max-w-lg mx-auto px-4 py-3 rounded-[10px] border border-red-200 bg-red-50">
+          <p className="text-sm font-sans text-red-600 text-center">{error}</p>
         </div>
       )}
     </div>

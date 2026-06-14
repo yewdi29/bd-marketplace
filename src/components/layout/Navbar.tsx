@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
@@ -10,16 +11,15 @@ import SearchBar from '@/components/marketplace/SearchBar'
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5 shrink-0">
-      <div
-        className="w-7 h-7 bg-ink flex items-center justify-center shrink-0"
-        style={{ borderRadius: '7px' }}
-      >
-        <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
-          <path d="M8 1.5L2.5 6 8 14.5 13.5 6 8 1.5z" fill="white" />
-        </svg>
-      </div>
-      <span className="font-sans font-bold text-sm tracking-tight text-ink">BLACK DIAMOND</span>
+    <Link href="/" className="shrink-0">
+      <Image
+        src="/bd_logo-black.svg"
+        alt="Black Diamond"
+        width={140}
+        height={40}
+        priority
+        style={{ height: '27px', width: 'auto' }}
+      />
     </Link>
   )
 }
@@ -121,7 +121,7 @@ export default function Navbar() {
             Wrapped in Suspense because SearchBar uses useSearchParams()
             to sync with ?q= on the /listings page. */}
         <div className="flex justify-center">
-          <div className="hidden md:block w-full max-w-[520px]">
+          <div className="hidden md:block w-full max-w-[440px]">
             <Suspense fallback={
               <div
                 className="w-full"

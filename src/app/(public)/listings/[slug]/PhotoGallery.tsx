@@ -6,9 +6,10 @@ import type { ListingImage } from '@/lib/types/database'
 interface Props {
   images: ListingImage[]
   title: string
+  actions?: React.ReactNode
 }
 
-export default function PhotoGallery({ images, title }: Props) {
+export default function PhotoGallery({ images, title, actions }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
 
   const sorted = [...images].sort((a, b) => {
@@ -23,27 +24,30 @@ export default function PhotoGallery({ images, title }: Props) {
   // ── No photos placeholder ───────────────────────────────────────────────────
   if (total === 0) {
     return (
-      <div
-        className="w-full bg-[#F0F0F0] rounded-[16px] flex flex-col items-center justify-center gap-3"
-        style={{ aspectRatio: '4/3' }}
-      >
-        <svg
-          className="text-ink-3 opacity-25"
-          style={{ width: '48px', height: '48px' }}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={1}
+      <div className="w-full">
+        <div
+          className="relative w-full bg-[#F0F0F0] rounded-[16px] flex flex-col items-center justify-center gap-3"
+          style={{ aspectRatio: '4/3' }}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
-        <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3 opacity-50">
-          No photos
-        </span>
+          <svg
+            className="text-ink-3 opacity-25"
+            style={{ width: '48px', height: '48px' }}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3 opacity-50">
+            No photos
+          </span>
+          {actions}
+        </div>
       </div>
     )
   }
@@ -52,17 +56,16 @@ export default function PhotoGallery({ images, title }: Props) {
   return (
     <div className="w-full">
       {/* Hero image */}
-      <div
-        className="relative w-full overflow-hidden rounded-[16px] bg-[#F0F0F0]"
-        style={{ aspectRatio: '4/3' }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={active.url}
-          alt={active.alt_text ?? title}
-          key={active.id}
-          className="w-full h-full object-cover transition-opacity duration-150"
-        />
+      <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
+        <div className="absolute inset-0 overflow-hidden rounded-[16px] bg-[#F0F0F0]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={active.url}
+            alt={active.alt_text ?? title}
+            key={active.id}
+            className="w-full h-full object-cover transition-opacity duration-150"
+          />
+        </div>
 
         {/* Photo count pill — bottom-right */}
         {total > 1 && (
@@ -78,6 +81,9 @@ export default function PhotoGallery({ images, title }: Props) {
             {activeIdx + 1} / {total}
           </div>
         )}
+
+        {/* Save / Share overlay — top-right */}
+        {actions}
       </div>
 
       {/* Thumbnail strip */}

@@ -274,8 +274,14 @@ export default function FilterBar() {
 
   return (
     <div
-      className="sticky z-40 bg-white border-b border-[#E8E9EA]"
-      style={{ top: '58px' }}
+      className="sticky z-40 border-b"
+      style={{
+        top: '58px',
+        background: 'rgba(255,255,255,0.20)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderColor: 'rgba(232,233,234,0.25)',
+      }}
     >
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
 

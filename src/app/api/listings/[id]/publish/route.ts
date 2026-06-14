@@ -40,6 +40,31 @@ export async function PATCH(
   if (!listing || listing.seller_id !== user.id)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  // ── Plan limit check — enforce active listing cap before publishing ──────────
+  const PLAN_LIMITS: Record<string, number> = {
+    free: 3, starter: 15, pro: 40, max: Infinity, premium: Infinity,
+  }
+  const { data: profile } = await adminClient
+    .from('users')
+    .select('plan')
+    .eq('id', user.id)
+    .single()
+  const plan = profile?.plan ?? 'free'
+  const planLimit = PLAN_LIMITS[plan] ?? 3
+  if (planLimit !== Infinity) {
+    const { count } = await adminClient
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_id', user.id)
+      .eq('status', 'active')
+    if ((count ?? 0) >= planLimit) {
+      return NextResponse.json(
+        { error: `You've reached your ${planLimit} active listing limit. Upgrade your membership for more listings.`, upgrade: true },
+        { status: 403 },
+      )
+    }
+  }
+
   // Validate required fields before going live
   if (
     !listing.title || listing.title === 'Untitled Draft' ||

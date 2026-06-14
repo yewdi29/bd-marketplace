@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 
 // Single source of truth for nav link labels and destinations.
 // To add, remove, or rename a link — edit here only.
-export const NAV_LINK_DEFS = (isSignedIn: boolean) => [
+export const NAV_LINK_DEFS = (_isSignedIn: boolean) => [
   { label: 'Browse Equipment', href: '/listings' },
   { label: 'Field Guides', href: '/knowledge-base' },
-  { label: 'Sell With Us', href: isSignedIn ? '/dashboard/listings/new' : '/auth/signup' },
+  { label: 'How It Works', href: '/how-it-works' },
 ]
 
 interface NavLinksProps {

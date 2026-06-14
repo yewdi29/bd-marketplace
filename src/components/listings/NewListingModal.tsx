@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatPrice } from '@/lib/formatPrice'
+import { useGlowBorder } from '@/hooks/useGlowBorder'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -229,6 +230,20 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
   const draftCreated = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  // ── AI prompt canvas glow — always-on when modal is open ───────────────────
+  const promptCanvasRef    = useRef<HTMLCanvasElement>(null)
+  const promptContainerRef = useRef<HTMLDivElement>(null)
+  const { onFocus: promptGlowFocus } = useGlowBorder(
+    promptCanvasRef,
+    promptContainerRef,
+    { burstSpeed: 0.8, settleSpeed: 0.12, arcLen: 80, borderRadius: 10 },
+  )
+
+  // Activate glow immediately on mount and keep it alive — never call onBlur
+  useEffect(() => {
+    promptGlowFocus()
+  }, [promptGlowFocus])
 
   // Create draft on mount — exactly once (ref guards against Strict Mode double-invoke)
   useEffect(() => {
@@ -612,16 +627,32 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
               <p className="text-sm text-ink-2 mb-5 leading-relaxed">
                 Just talk to us like you would a buyer. Our AI will extract all the details and build your listing.
               </p>
-              <div className="relative">
+              {/*
+               * Canvas glow: the container div IS the ref target and the positioning
+               * context for the canvas. One div, no intermediate wrapper — eliminates
+               * any offset between what the ResizeObserver measures and where the
+               * canvas sits.
+               */}
+              <div
+                ref={promptContainerRef}
+                className="relative"
+                style={{ borderRadius: '10px' }}
+              >
+                {/* Canvas — absolute, z-index 0, behind the textarea */}
+                <canvas
+                  ref={promptCanvasRef}
+                  style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
+                />
+                {/* Textarea — block + z-index 1 so it sits above the canvas */}
                 <textarea
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location. Just talk to us like you would a buyer."
                   className={`${inputCls} resize-none leading-relaxed`}
-                  style={{ minHeight: '200px' }}
+                  style={{ minHeight: '200px', borderColor: 'transparent', display: 'block', position: 'relative', zIndex: 1 }}
                   disabled={generating}
                 />
-                <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3">
+                <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>
                   {prompt.length}
                 </span>
               </div>

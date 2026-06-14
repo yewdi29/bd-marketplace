@@ -6,6 +6,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Listing, MembershipPlan } from '@/lib/types/database'
 import { formatPrice } from '@/lib/formatPrice'
 import PhotoGallery from './PhotoGallery'
+import ListingActions from './ListingActions'
 import InquiryForm from './InquiryForm'
 import ListingCard from '@/components/ListingCard'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
@@ -63,25 +64,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('listings')
-    .select('title, meta_description, description, listing_images(url, is_primary, sort_order)')
+    .select('title, meta_description, description, price, price_unit, price_visible, location_city, location_state, listing_images(url, is_primary, sort_order)')
     .eq('slug', slug)
     .eq('status', 'active')
     .single()
 
   if (!data) return { title: 'Listing Not Found | Black Diamond Marketplace' }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const canonicalUrl = `${appUrl}/listings/${slug}`
+
   const imgs = (data.listing_images ?? []) as { url: string; is_primary: boolean; sort_order: number }[]
-  const primaryImg = imgs.find(i => i.is_primary) ?? imgs.sort((a, b) => a.sort_order - b.sort_order)[0]
-  const description = data.meta_description ?? data.description?.slice(0, 160) ?? undefined
+  const primaryImg = imgs.find(i => i.is_primary) ?? [...imgs].sort((a, b) => a.sort_order - b.sort_order)[0]
+  const ogImage = primaryImg?.url ?? `${appUrl}/bd_logo-black.svg`
+
+  const location = [data.location_city, data.location_state].filter(Boolean).join(', ')
+  const priceDisplay = formatPrice(data.price, data.price_unit ?? 'total', data.price_visible !== false)
+  const ogDescription = `Available on Black Diamond Marketplace${location ? ` · ${location}` : ''} · ${priceDisplay}`
+
+  const description = data.meta_description ?? data.description?.slice(0, 160) ?? ogDescription
 
   return {
     title: `${data.title} | Black Diamond Marketplace`,
     description,
     openGraph: {
       title: data.title,
-      description: description ?? undefined,
-      images: primaryImg ? [{ url: primaryImg.url }] : [],
+      description: ogDescription,
+      images: [{ url: ogImage }],
+      url: canonicalUrl,
       type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: data.title,
+      description: ogDescription,
+      images: [ogImage],
     },
   }
 }
@@ -169,6 +186,18 @@ export default async function ListingDetailPage({ params }: Props) {
   // Current user — needed for ListingCard isLoggedIn prop
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Check whether the current user has already saved this listing
+  let initialSaved = false
+  if (user) {
+    const { data: savedRow } = await supabase
+      .from('saved_listings')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('listing_id', l.id)
+      .maybeSingle()
+    initialSaved = !!savedRow
+  }
+
   // Sort images: primary first, then by sort_order
   const images = (l.listing_images ?? []).sort((a, b) => {
     if (a.is_primary && !b.is_primary) return -1
@@ -177,6 +206,10 @@ export default async function ListingDetailPage({ params }: Props) {
   })
 
   const priceVisible = l.price_visible !== false
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const listingUrl = `${appUrl}/listings/${slug}`
+  const listingLocation = [l.location_city, l.location_state].filter(Boolean).join(', ') || null
 
   // Build specs array — structured fields first, then dynamic AI specs
   const aiSpecs: { label: string; value: string | number }[] = l.specs
@@ -251,7 +284,21 @@ export default async function ListingDetailPage({ params }: Props) {
               className="bg-white border border-[#E8E9EA] rounded-[16px] p-4"
               style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
             >
-              <PhotoGallery images={images} title={l.title} />
+              <PhotoGallery
+                images={images}
+                title={l.title}
+                actions={
+                  <ListingActions
+                    listingId={l.id}
+                    initialSaved={initialSaved}
+                    isLoggedIn={!!user}
+                    listingTitle={l.title}
+                    listingPrice={formatPrice(l.price, l.price_unit ?? 'total', priceVisible)}
+                    listingLocation={listingLocation}
+                    listingUrl={listingUrl}
+                  />
+                }
+              />
             </div>
           </div>
 

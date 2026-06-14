@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import CompanyAvatar from '@/components/ui/CompanyAvatar'
 import { useRouter } from 'next/navigation'
 import type { MembershipPlan } from '@/lib/types/database'
+import PlanBadge from '@/components/ui/PlanBadge'
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
@@ -110,6 +111,9 @@ export default function SettingsPage() {
 
   // Membership state
   const [plan, setPlan] = useState<MembershipPlan>('free')
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual' | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState<string | null>(null)
 
   // Logo state
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -127,8 +131,9 @@ export default function SettingsPage() {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser()
         if (authUser) {
-          const { data: planData } = await supabase.from('users').select('plan').eq('id', authUser.id).single()
+          const { data: planData } = await supabase.from('users').select('plan, billing_period').eq('id', authUser.id).single()
           if (planData?.plan) setPlan(planData.plan as MembershipPlan)
+          if (planData?.billing_period) setBillingPeriod(planData.billing_period as 'monthly' | 'annual')
         }
 
         const res = await fetch('/api/users/me')
@@ -165,6 +170,24 @@ export default function SettingsPage() {
   function showToast(message: string) {
     setToast(message)
     setTimeout(() => setToast(null), 4000)
+  }
+
+  async function handleManageBilling() {
+    setPortalError(null)
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        setPortalError(data.error ?? 'Could not open billing portal. Please try again.')
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setPortalError('Network error. Please check your connection and try again.')
+    } finally {
+      setPortalLoading(false)
+    }
   }
 
   async function handleLogoRemove() {
@@ -571,57 +594,73 @@ export default function SettingsPage() {
         </p>
 
         <div
-          className="flex items-center justify-between p-4 rounded-[14px] border"
+          className="p-4 rounded-[14px] border"
           style={{ borderColor: '#E8E9EA', background: '#FAFAFA' }}
         >
-          <div className="flex items-center gap-3">
-            {/* Plan badge */}
-            <span
-              className="inline-flex items-center px-3 py-1.5 text-[11px] font-mono font-bold rounded-pill border"
-              style={
-                plan === 'max'
-                  ? { background: '#1A1D20', color: '#FFFFFF', borderColor: '#1A1D20' }
-                  : plan === 'pro' || plan === 'premium'
-                    ? { background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }
-                    : plan === 'starter'
-                      ? { background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }
-                      : { background: '#FFF2ED', color: '#FF6B35', borderColor: '#FFD4C2' }
-              }
-            >
-              {plan === 'max' ? 'MAX' : plan === 'pro' ? 'PRO' : plan === 'starter' ? 'STARTER' : plan === 'premium' ? 'PREMIUM' : 'FREE'}
-            </span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {/* Plan badge */}
+              <PlanBadge plan={plan} />
 
-            {/* Limit description */}
-            <div>
-              <p className="text-sm font-semibold text-ink capitalize">{plan === 'premium' ? 'Premium (Legacy)' : plan.charAt(0).toUpperCase() + plan.slice(1)} Plan</p>
-              <p className="text-xs text-ink-3 font-sans">
-                {plan === 'max' || plan === 'premium'
-                  ? 'Unlimited active listings'
-                  : plan === 'pro'
-                    ? '40 active listings'
-                    : plan === 'starter'
-                      ? '15 active listings'
-                      : '3 active listings'}
-              </p>
+              {/* Plan name + listing cap */}
+              <div>
+                <p className="text-sm font-semibold text-ink">
+                  {plan === 'premium' ? 'Premium (Legacy)' : plan.charAt(0).toUpperCase() + plan.slice(1)} Plan
+                </p>
+                <p className="text-xs text-ink-3 font-sans">
+                  {plan === 'max' || plan === 'premium'
+                    ? 'Unlimited active listings'
+                    : plan === 'pro'
+                      ? '40 active listings'
+                      : plan === 'starter'
+                        ? '15 active listings'
+                        : '3 active listings'}
+                </p>
+              </div>
             </div>
+
+            {/* CTA */}
+            {plan === 'free' ? (
+              <button
+                onClick={() => router.push('/dashboard/upgrade')}
+                className="px-4 py-2 text-sm font-bold text-white rounded-pill transition-colors"
+                style={{ background: '#FF6B35', boxShadow: '0 4px 14px rgba(255,107,53,0.28)' }}
+              >
+                Upgrade Plan
+              </button>
+            ) : (
+              <button
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] hover:text-ink transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {portalLoading ? (
+                  <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : null}
+                Manage Billing
+              </button>
+            )}
           </div>
 
-          {/* CTA */}
-          {plan === 'max' ? (
-            <button
-              onClick={() => { showToast('Billing management coming soon.') }}
-              className="px-4 py-2 text-sm font-semibold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] hover:text-ink transition-colors"
-            >
-              Manage Billing
-            </button>
-          ) : (
-            <button
-              onClick={() => router.push('/dashboard/upgrade')}
-              className="px-4 py-2 text-sm font-bold text-white rounded-pill transition-colors"
-              style={{ background: '#FF6B35', boxShadow: '0 4px 14px rgba(255,107,53,0.28)' }}
-            >
-              Upgrade Plan
-            </button>
+          {/* Billing period row — shown for paid plans with a known billing period */}
+          {plan !== 'free' && billingPeriod && (
+            <div className="mt-3 pt-3 border-t border-[#E8E9EA] flex items-center gap-2">
+              <span className="text-xs text-ink-3 font-sans">Billing period:</span>
+              <span
+                className="inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-bold rounded-pill border"
+                style={{ background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }}
+              >
+                {billingPeriod === 'annual' ? 'Annual' : 'Monthly'}
+              </span>
+            </div>
+          )}
+
+          {/* Portal error */}
+          {portalError && (
+            <p className="mt-3 text-xs font-sans text-red-600">{portalError}</p>
           )}
         </div>
       </section>

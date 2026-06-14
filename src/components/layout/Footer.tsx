@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import NewsletterForm from '@/components/NewsletterForm'
 
 export default function Footer() {
@@ -9,13 +10,14 @@ export default function Footer() {
 
           {/* Brand + newsletter */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-7 h-7 bg-ink flex items-center justify-center shrink-0" style={{ borderRadius: '7px' }}>
-                <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
-                  <path d="M8 1.5L2.5 6 8 14.5 13.5 6 8 1.5z" fill="white" />
-                </svg>
-              </div>
-              <span className="font-sans font-bold text-sm tracking-tight text-ink">BLACK DIAMOND</span>
+            <div className="mb-4">
+              <Image
+                src="/bd_logo-black.svg"
+                alt="Black Diamond"
+                width={120}
+                height={34}
+                style={{ height: '24px', width: 'auto' }}
+              />
             </div>
             <p className="text-sm font-sans text-ink-3 max-w-xs leading-relaxed mb-6">
               The premier marketplace for heavy oil &amp; gas equipment. Connecting serious buyers with verified sellers nationwide.
@@ -31,6 +33,7 @@ export default function Footer() {
               {[
                 { label: 'Browse Listings', href: '/listings' },
                 { label: 'Business Directory', href: '/sellers' },
+                { label: 'How It Works', href: '/how-it-works' },
                 { label: 'List Equipment', href: '/auth/signup' },
                 { label: 'Knowledge Base', href: '/knowledge-base' },
               ].map(link => (
