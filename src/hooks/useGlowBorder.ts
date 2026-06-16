@@ -12,6 +12,8 @@ export interface GlowBorderOptions {
   settleSpeed?: number
   /** Corner radius of the element in px. Default 100 (pill). */
   borderRadius?: number
+  /** Multiplier applied to all shadowBlur spread values. Default 1.0. */
+  glowIntensity?: number
 }
 
 interface GlowState {
@@ -141,12 +143,14 @@ export function useGlowBorder<T extends HTMLElement>(
     burstSpeed: 1.2,
     settleSpeed: 0.18,
     borderRadius: 100,
+    glowIntensity: 1.0,
   })
   optsRef.current = {
     arcLen: options?.arcLen ?? 60,
     burstSpeed: options?.burstSpeed ?? 1.2,
     settleSpeed: options?.settleSpeed ?? 0.18,
     borderRadius: options?.borderRadius ?? 100,
+    glowIntensity: options?.glowIntensity ?? 1.0,
   }
 
   const stateRef = useRef<GlowState>({
@@ -201,7 +205,7 @@ export function useGlowBorder<T extends HTMLElement>(
       const st = stateRef.current
       const canvas = canvasRef.current
       const pts = ptsRef.current
-      const { arcLen } = optsRef.current
+      const { arcLen, glowIntensity } = optsRef.current
 
       // ── Animate state ──────────────────────────────────────────────────────
       st.speed += (st.targetSpeed - st.speed) * 0.03
@@ -250,7 +254,7 @@ export function useGlowBorder<T extends HTMLElement>(
 
               // Outer glow pass
               ctx.save()
-              ctx.shadowBlur = 10 * falloff
+              ctx.shadowBlur = 10 * falloff * glowIntensity
               ctx.shadowColor = `rgba(255, 120, 60, ${0.9 * falloff * st.opacity})`
               ctx.strokeStyle = `rgba(255, 150, 80, ${falloff * st.opacity})`
               ctx.lineWidth = 2
@@ -264,7 +268,7 @@ export function useGlowBorder<T extends HTMLElement>(
               // Inner bright pass — only for the brightest center of the arc
               if (falloff > 0.7) {
                 ctx.save()
-                ctx.shadowBlur = 6
+                ctx.shadowBlur = 6 * glowIntensity
                 ctx.shadowColor = `rgba(255, 200, 150, ${falloff * st.opacity})`
                 ctx.strokeStyle = `rgba(255, 220, 180, ${falloff * st.opacity})`
                 ctx.lineWidth = 1

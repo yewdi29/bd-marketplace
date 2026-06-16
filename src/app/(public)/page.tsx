@@ -52,17 +52,21 @@ export default async function HomePage() {
        *   Bottom fade      → z-2  (hides globe bleed at the bottom)
        *   Grid + glass card → z-3 (content always on top)
        *
-       * Mobile (<768px): flex-col — card first, then globe as a 360px flow element.
-       * md+ (≥768px):    2-col grid — globe is position:absolute at section level.
-       * overflow-hidden on section contains the absolute globe on md+.
+       * Mobile (<730px): flex-col — card first, then globe as a 360px flow element.
+       * Tablet (730–1000px): same flow layout, taller container.
+       * Desktop (≥1000px): globe is position:absolute; section is the offset parent.
+       * overflow-hidden clips the globe at the section boundary on all desktop modes.
+       *
+       * ≥1500px: Globe.tsx centers the globe in the right half of the 1280px content
+       * container using pure viewport math — no DOM anchoring, no section constraints.
        */}
-      <section className="relative overflow-hidden min-h-[75vh]">
+      <section data-hero-section className="relative overflow-hidden min-h-[75vh]">
 
         {/* Bottom fade — full width, above globe (z-2), below content (z-3) */}
         <div
           className="absolute bottom-0 left-0 right-0 w-full pointer-events-none"
           style={{
-            height: '220px',
+            height: '140px',
             background: 'linear-gradient(to top, #F7F8F9 0%, transparent 100%)',
             zIndex: 2,
           }}
@@ -71,11 +75,12 @@ export default async function HomePage() {
         {/* Two-column grid — single column stack on mobile, side-by-side on md+.
             position: relative + z-[3] keeps content above the absolute globe. */}
         <div
-          className="flex flex-col md:grid md:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
+          data-hero-container
+          className="flex flex-col min-[1000px]:grid min-[1000px]:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
           style={{ maxWidth: '1280px', margin: '0 auto' }}
         >
           {/* ── Left column ── */}
-          <div className="px-4 py-10 md:pl-16 md:pr-0 md:py-[60px]">
+          <div className="px-4 py-10 min-[1000px]:pl-16 min-[1000px]:pr-0 min-[1000px]:py-[60px]">
 
             {/*
              * Frosted glass card — glassmorphism exception (navbar-only by default).
@@ -83,6 +88,7 @@ export default async function HomePage() {
              * Padding scales down on mobile/tablet via Tailwind responsive classes.
              */}
             <div
+              data-hero-card
               className="w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px]"
               style={{
                 background: 'rgba(255,255,255,0.20)',
@@ -219,30 +225,12 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Right column spacer — hidden on mobile, reserves space for the globe on md+ */}
-          <div className="hidden md:block" style={{ minHeight: '500px' }} />
+          {/* Right column spacer — hidden when stacked, reserves space for the globe ≥1000px */}
+          <div className="hidden min-[1000px]:block" style={{ minHeight: '500px' }} />
         </div>
 
-        {/*
-         * Globe container:
-         *  Mobile (<768px)  — relative flow element, 360px tall, overflow clipped,
-         *                     sits below the content card in the flex-col stack.
-         *  md (768–1024px)  — absolute, bottom: -220px, right: -200px
-         *  lg (1024–1280px) — absolute, bottom: -280px, right: -150px
-         *  xl (1280px+)     — absolute, bottom: -320px, right: -220px
-         */}
-        <div
-          className="
-            relative w-full h-[360px] overflow-hidden
-            md:absolute md:h-auto md:w-auto md:overflow-visible
-            md:bottom-[-220px] md:right-[-200px]
-            lg:bottom-[-280px] lg:right-[-150px]
-            xl:bottom-[-320px] xl:right-[-220px]
-          "
-          style={{ zIndex: 1, pointerEvents: 'auto' }}
-        >
-          <Globe />
-        </div>
+        {/* Globe is self-positioning — breakpoint logic lives in Globe.tsx */}
+        <Globe />
 
       </section>
 

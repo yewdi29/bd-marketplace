@@ -12,7 +12,7 @@ import type { Listing } from '@/lib/types/database'
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-[16px] overflow-hidden border border-[#E8E9EA] animate-pulse">
-      <div className="aspect-[4/3] bg-[#F0F0F0]" />
+      <div className="bg-[#F0F0F0]" style={{ paddingBottom: '60%' }} />
       <div className="p-4 space-y-2.5">
         <div className="h-3 bg-[#F0F0F0] rounded-full w-24" />
         <div className="h-4 bg-[#F0F0F0] rounded-full w-full" />
@@ -25,7 +25,7 @@ function SkeletonCard() {
 
 function SkeletonGrid() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
     </div>
   )
@@ -106,7 +106,7 @@ function ListingsContent() {
       {loading ? (
         <SkeletonGrid />
       ) : listings.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {listings.map(listing => (
             <ListingCard
               key={listing.id}

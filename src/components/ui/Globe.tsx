@@ -6,9 +6,6 @@ import { useEffect, useRef, useState } from 'react'
 const DPR = 2
 
 // ─── Endpoint labels ──────────────────────────────────────────────────────────
-// id matches the marker id in the COBE config.
-// Divs are created imperatively inside COBE's wrapper after createGlobe() runs,
-// then positioned each frame by reading COBE's hidden anchor div percentages.
 const ENDPOINT_LABELS = [
   { id: 'guatemala', equipment: 'Pipe Casing',  price: '$62K'  },
   { id: 'edmonton',  equipment: 'Drilling Rig', price: '$1.8M' },
@@ -22,12 +19,43 @@ const ENDPOINT_LABELS = [
   { id: 'karachi',   equipment: 'Pump Unit',    price: '$120K' },
 ]
 
+// ─── Layout type ──────────────────────────────────────────────────────────────
+type GlobeMode = 'mobile' | 'tablet' | 'desktop'
+
+interface GlobeLayout {
+  mode: GlobeMode
+  size: number
+  // Flow modes (mobile / tablet)
+  containerHeight: number
+  // Absolute (desktop) modes — section-relative left/top of the globe canvas
+  left: number
+  top: number
+}
+
+
+function computeLayout(w: number, h: number): GlobeLayout {
+  // ── Flow modes — globe stacks below the content card ──────────────────────
+  if (w < 730) {
+    return { mode: 'mobile', size: Math.max(Math.round(w * 1.35), 460), containerHeight: 440, left: 0, top: -60 }
+  }
+  if (w < 1000) {
+    return { mode: 'tablet', size: Math.max(Math.round(w * 1.05), 760), containerHeight: 500, left: 0, top: -60 }
+  }
+
+  // ── Desktop (≥1000px) — centered in right half of 1280px container, top flush with section ──
+  // boundW caps at 1280 so the right-half center (×0.75) is stable once the container
+  // stops growing; at sub-1280 viewports it adapts to the actual container width.
+  const size = Math.max(Math.round(h * 1.2), 960)
+  const boundW = Math.min(w, 1280)
+  const left = Math.round(Math.max(0, (w - 1280) / 2) + boundW * 0.75 - size / 2)
+  return { mode: 'desktop', size, containerHeight: 0, left, top: -30 }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Globe() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafGlobe  = useRef<number | null>(null)
 
-  // Initial phi 0.5 centers the globe on the Atlantic (Americas left, Europe/ME right)
   const phiRef             = useRef(0.5)
   const thetaRef           = useRef(0.1)
   const velocityX          = useRef(0)
@@ -38,24 +66,23 @@ export default function Globe() {
   const lastX              = useRef(0)
   const lastY              = useRef(0)
 
-  // ── Responsive size ──────────────────────────────────────────────────────────
-  const [size, setSize] = useState(860)
+  // ── Responsive layout state ───────────────────────────────────────────────
+  const [layout, setLayout] = useState<GlobeLayout>({
+    mode: 'desktop',
+    size: 960,
+    containerHeight: 0,
+    left: 700,
+    top: 0,
+  })
 
   useEffect(() => {
-    const compute = () => {
-      const w = window.innerWidth
-      if (w < 768)  return window.innerWidth
-      if (w < 1024) return Math.max(Math.round(window.innerHeight * 0.80),  680)
-      if (w < 1280) return Math.max(Math.round(window.innerHeight * 0.95),  800)
-      return Math.max(Math.round(window.innerHeight * 1.1), 900)
-    }
-    setSize(compute())
-    const onResize = () => setSize(compute())
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    const update = () => setLayout(computeLayout(window.innerWidth, window.innerHeight))
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
   }, [])
 
-  // ── Pointer handlers ─────────────────────────────────────────────────────────
+  // ── Pointer handlers ─────────────────────────────────────────────────────
   const onPointerDown = (e: React.PointerEvent) => {
     pointerInteracting.current = { x: e.clientX, y: e.clientY }
     lastX.current = e.clientX
@@ -83,13 +110,12 @@ export default function Globe() {
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
   }
 
-  // ── Main effect ──────────────────────────────────────────────────────────────
+  // ── Main COBE effect (re-runs when size changes) ──────────────────────────
+  const { size } = layout
+
   useEffect(() => {
     if (!canvasRef.current) return
 
-    // ── COBE globe ────────────────────────────────────────────────────────────
-    // arcs use from/to [lat,lng] tuples — startLat/startLng crashes cobe v2
-    // arcAlt per arc is not in the cobe v2 type; global arcHeight controls altitude
     const globe = createGlobe(canvasRef.current, {
       devicePixelRatio: DPR,
       width:  size * DPR,
@@ -136,17 +162,9 @@ export default function Globe() {
       arcWidth: 0.4,
     })
 
-    // ── After createGlobe(), COBE has wrapped the canvas in its own div ───────
-    // canvasRef.current.parentElement is now COBE's position:relative wrapper.
     const cobeWrapper = canvasRef.current.parentElement
-    if (!cobeWrapper) {
-      globe.destroy()
-      return
-    }
+    if (!cobeWrapper) { globe.destroy(); return }
 
-    // Create one label div per endpoint and append it inside COBE's wrapper.
-    // This makes label divs siblings of COBE's anchor divs, sharing the same
-    // percentage-based coordinate space.
     const labelEls: Record<string, HTMLDivElement> = {}
     ENDPOINT_LABELS.forEach(label => {
       const div = document.createElement('div')
@@ -171,7 +189,6 @@ export default function Globe() {
       labelEls[label.id] = div
     })
 
-    // ── Globe spin + momentum ─────────────────────────────────────────────────
     function tick() {
       if (pointerInteracting.current === null) {
         const targetSpeed = isHovering.current ? 0 : 0.0007
@@ -188,43 +205,24 @@ export default function Globe() {
     }
     rafGlobe.current = requestAnimationFrame(tick)
 
-    // ── Label positioning loop ────────────────────────────────────────────────
-    // Each frame: find COBE's 1×1px anchor div for this marker (identified by
-    // its style containing "--cobe-{id}"), read its left/top percentages,
-    // convert to pixels, and position our label div offset from that point.
-    // Visibility is read from the :root CSS custom property COBE sets to "N"
-    // when the marker is on the front hemisphere, deleted when behind.
     let rafLabels: number
     function updateLabels() {
       ENDPOINT_LABELS.forEach(label => {
         const el = labelEls[label.id]
         if (!el) return
-
-        // COBE's anchor div has "anchor-name:--cobe-{id}" in its style.
-        // Match on the value portion to handle any whitespace normalisation.
         const anchor = cobeWrapper!.querySelector(
           `[style*="--cobe-${label.id}"]`
         ) as HTMLElement | null
-
         if (!anchor) return
-
-        const leftPct = parseFloat(anchor.style.left)  // e.g. 45.2  (percent)
-        const topPct  = parseFloat(anchor.style.top)   // e.g. 32.1  (percent)
-
+        const leftPct = parseFloat(anchor.style.left)
+        const topPct  = parseFloat(anchor.style.top)
         if (isNaN(leftPct) || isNaN(topPct)) return
-
         const wrapW = cobeWrapper!.offsetWidth
         const wrapH = cobeWrapper!.offsetHeight
-
         const x = (leftPct / 100) * wrapW
         const y = (topPct  / 100) * wrapH
-
         el.style.left = `${x + 14}px`
         el.style.top  = `${y - 28}px`
-
-        // COBE sets --cobe-visible-{id} to "N" on :root when visible.
-        // "N" is not a valid CSS value for opacity, so the browser treats it as
-        // the initial value (1). When the property is absent the fallback 0 is used.
         const visVal = getComputedStyle(document.documentElement)
           .getPropertyValue(`--cobe-visible-${label.id}`)
           .trim()
@@ -234,7 +232,6 @@ export default function Globe() {
     }
     updateLabels()
 
-    // ── Cleanup ───────────────────────────────────────────────────────────────
     return () => {
       if (rafGlobe.current !== null) cancelAnimationFrame(rafGlobe.current)
       cancelAnimationFrame(rafLabels)
@@ -243,44 +240,76 @@ export default function Globe() {
     }
   }, [size])
 
-  // JSX: just the canvas — no label divs here.
-  // Labels are appended imperatively into COBE's wrapper in the effect above.
+  // ── Outer container style ─────────────────────────────────────────────────
+  const isFlow = layout.mode === 'mobile' || layout.mode === 'tablet'
+
+  const outerStyle: React.CSSProperties = isFlow
+    ? {
+        position: 'relative',
+        marginTop: `${layout.top}px`,
+        width: '100%',
+        height: `${layout.containerHeight}px`,
+        overflow: 'hidden',
+        zIndex: 1,
+        pointerEvents: 'auto',
+      }
+    : {
+        position: 'absolute',
+        left: `${layout.left}px`,
+        top:  `${layout.top}px`,
+        width: size,
+        height: size,
+        zIndex: 1,
+        pointerEvents: 'auto',
+      }
+
   return (
-    <div style={{ position: 'relative', width: size, height: size }}>
-      <canvas
-        ref={canvasRef}
-        width={size * DPR}
-        height={size * DPR}
-        style={{ width: size, height: size, cursor: 'grab', display: 'block' }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
-        onMouseEnter={() => { isHovering.current = true }}
-        onMouseLeave={() => { isHovering.current = false }}
-        onTouchStart={(e) => {
-          const t = e.touches[0]
-          pointerInteracting.current = { x: t.clientX, y: t.clientY }
-          lastX.current = t.clientX
-          lastY.current = t.clientY
-          velocityX.current = 0
-          velocityY.current = 0
+    <div style={outerStyle}>
+      {/* Inner div — sized to the globe canvas. Flow mode centers it horizontally
+          and anchors its top to the container so the top hemisphere shows. */}
+      <div
+        style={{
+          position: isFlow ? 'absolute' : 'relative',
+          ...(isFlow ? { left: '50%', top: 0, transform: 'translateX(-50%)' } : {}),
+          width: size,
+          height: size,
         }}
-        onTouchMove={(e) => {
-          if (!pointerInteracting.current) return
-          const t = e.touches[0]
-          const dX = t.clientX - lastX.current
-          const dY = t.clientY - lastY.current
-          phiRef.current   += dX * 0.004
-          thetaRef.current += dY * 0.004
-          thetaRef.current  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, thetaRef.current))
-          velocityX.current = dX * 0.004
-          velocityY.current = dY * 0.004
-          lastX.current = t.clientX
-          lastY.current = t.clientY
-        }}
-        onTouchEnd={onPointerUp}
-      />
+      >
+        <canvas
+          ref={canvasRef}
+          width={size * DPR}
+          height={size * DPR}
+          style={{ width: size, height: size, cursor: 'grab', display: 'block' }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerUp}
+          onMouseEnter={() => { isHovering.current = true }}
+          onMouseLeave={() => { isHovering.current = false }}
+          onTouchStart={(e) => {
+            const t = e.touches[0]
+            pointerInteracting.current = { x: t.clientX, y: t.clientY }
+            lastX.current = t.clientX
+            lastY.current = t.clientY
+            velocityX.current = 0
+            velocityY.current = 0
+          }}
+          onTouchMove={(e) => {
+            if (!pointerInteracting.current) return
+            const t = e.touches[0]
+            const dX = t.clientX - lastX.current
+            const dY = t.clientY - lastY.current
+            phiRef.current   += dX * 0.004
+            thetaRef.current += dY * 0.004
+            thetaRef.current  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, thetaRef.current))
+            velocityX.current = dX * 0.004
+            velocityY.current = dY * 0.004
+            lastX.current = t.clientX
+            lastY.current = t.clientY
+          }}
+          onTouchEnd={onPointerUp}
+        />
+      </div>
     </div>
   )
 }

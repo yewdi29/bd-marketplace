@@ -37,7 +37,7 @@ const STUB_ARTICLES = [
     excerpt: 'Step-by-step BOP inspection and maintenance procedures to stay compliant and keep your crew safe.',
     category: 'upstream',
     read_time_mins: 6,
-    slug: 'bop-maintenance-checklist',
+    slug: 'blowout-preventer-maintenance-checklist',
   },
   {
     title: 'Understanding API Specs for Oilfield Equipment',
@@ -72,9 +72,11 @@ export default async function KnowledgeBasePage() {
     .order('published_at', { ascending: false })
     .limit(20)
 
-  const articles = publishedArticles && publishedArticles.length > 0
-    ? publishedArticles as Partial<Article>[]
-    : STUB_ARTICLES
+  const published = (publishedArticles ?? []) as Partial<Article>[]
+  const publishedSlugs = new Set(published.map(a => a.slug))
+  const remainingStubs = STUB_ARTICLES.filter(a => !publishedSlugs.has(a.slug))
+
+  const articles = [...published, ...remainingStubs]
 
   const categories = Array.from(new Set(articles.map(a => a.category as ArticleCategory)))
 

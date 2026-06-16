@@ -27,7 +27,7 @@ export default function HeroSearchForm() {
   const { onFocus: glowFocus, onBlur: glowBlur } = useGlowBorder(
     canvasRef,
     containerRef,
-    { burstSpeed: 1.5, settleSpeed: 0.15 },
+    { burstSpeed: 1.5, settleSpeed: 0.15, arcLen: 78, glowIntensity: 1.4 },
   )
 
   function handleSubmit(e: React.FormEvent) {

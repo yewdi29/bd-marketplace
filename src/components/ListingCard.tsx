@@ -51,8 +51,8 @@ export default function ListingCard({ listing, initialSaved = false, isLoggedIn 
       href={href}
       className="group block bg-white border border-[#E8E9EA] hover:border-[#D4D5D7] rounded-[16px] overflow-hidden transition-all duration-200 hover:-translate-y-0.5 shadow-card hover:shadow-card-hover"
     >
-      {/* Image area */}
-      <div className="relative aspect-[4/3] bg-bg overflow-hidden">
+      {/* Image area — fixed 60%-of-width height via padding trick for consistent thumbnails */}
+      <div className="relative bg-bg overflow-hidden" style={{ paddingBottom: '60%' }}>
         {primaryImage ? (
           <Image
             src={primaryImage.url}
