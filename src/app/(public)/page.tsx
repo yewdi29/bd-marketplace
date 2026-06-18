@@ -1,16 +1,52 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import ListingCard from '@/components/ListingCard'
 import NewsletterForm from '@/components/NewsletterForm'
-import type { Listing } from '@/lib/types/database'
+import FeaturedCarousel from '@/components/home/FeaturedCarousel'
+import CategoryBrowse from '@/components/home/CategoryBrowse'
+import OperatorJournalSection from '@/components/home/OperatorJournalSection'
+import type { Listing, MembershipPlan } from '@/lib/types/database'
 
 // Globe uses WebGL — must be client-only
 const Globe = dynamic(() => import('@/components/ui/Globe'), { ssr: false })
 
+// Tier weight for sorting featured listings
+const TIER_WEIGHT: Record<MembershipPlan, number> = {
+  max:     4,
+  pro:     3,
+  starter: 2,
+  premium: 1,
+  free:    0,
+}
+
+// Seeded random — deterministic shuffle keyed to a 5-day window
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed + 1) * 10000
+  return x - Math.floor(x)
+}
+
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const result = [...arr]
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom(seed + i) * (i + 1))
+    ;[result[i], result[j]] = [result[j], result[i]]
+  }
+  return result
+}
+
+const INDUSTRY_TAGS = [
+  { label: 'Energy',       dotColor: '#E8E9EA' },
+  { label: 'Construction', dotColor: '#E8E9EA' },
+  { label: 'Mining',       dotColor: '#E8E9EA' },
+  { label: 'Agriculture',  dotColor: '#E8E9EA' },
+]
+
 export default async function HomePage() {
   const supabase = await createClient()
 
+  // ── Auth + saved listings ────────────────────────────────────────────────
   const { data: { user } } = await supabase.auth.getUser()
   let savedIds = new Set<string>()
   if (user) {
@@ -21,27 +57,66 @@ export default async function HomePage() {
     savedIds = new Set((saved ?? []).map((s: { listing_id: string }) => s.listing_id))
   }
 
-  const { data: featuredListings } = await supabase
-    .from('listings')
-    .select('*, listing_images(*)')
-    .eq('status', 'active')
-    .eq('featured', true)
-    .order('created_at', { ascending: false })
-    .limit(6)
+  // ── Featured carousel: non-free sellers, tier-weighted, 5-day shuffle ───
+  let featuredCarousel: Listing[] = []
+  try {
+    const adminClient = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
+    const { data: eligibleListings } = await adminClient
+      .from('listings')
+      .select('*, listing_images(*)')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(80)
+
+    if (eligibleListings && eligibleListings.length > 0) {
+      const sellerIds = Array.from(new Set(eligibleListings.map((l: Listing) => l.seller_id)))
+      const { data: users } = await adminClient
+        .from('users')
+        .select('id, plan')
+        .in('id', sellerIds)
+
+      const planMap = new Map<string, MembershipPlan>(
+        (users ?? []).map((u: { id: string; plan: MembershipPlan }) => [u.id, u.plan])
+      )
+
+      const eligible = (eligibleListings as Listing[]).filter(l => {
+        const plan = planMap.get(l.seller_id) ?? 'free'
+        return plan !== 'free'
+      })
+
+      // Sort by tier weight descending, then shuffle within each weight group
+      const windowSeed = Math.floor(Date.now() / (5 * 24 * 60 * 60 * 1000))
+
+      const byWeight = eligible.reduce<Record<number, Listing[]>>((acc, l) => {
+        const plan = planMap.get(l.seller_id) ?? 'free'
+        const w = TIER_WEIGHT[plan] ?? 0
+        if (!acc[w]) acc[w] = []
+        acc[w].push(l)
+        return acc
+      }, {})
+
+      const sorted: Listing[] = Object.keys(byWeight)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .flatMap(w => seededShuffle(byWeight[w], windowSeed + w))
+
+      featuredCarousel = sorted.slice(0, 7)
+    }
+  } catch {
+    // Service role unavailable in local dev — skip carousel gracefully
+  }
+
+  // ── Recently Listed ──────────────────────────────────────────────────────
   const { data: recentListings } = await supabase
     .from('listings')
     .select('*, listing_images(*)')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(8)
-
-  const INDUSTRY_TAGS = [
-    { label: 'Energy',       dotColor: '#E8E9EA' },
-    { label: 'Construction', dotColor: '#E8E9EA' },
-    { label: 'Mining',       dotColor: '#E8E9EA' },
-    { label: 'Agriculture',  dotColor: '#E8E9EA' },
-  ]
 
   return (
     <>
@@ -203,13 +278,14 @@ export default async function HomePage() {
                   fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
                 }}
               >
-                Connecting buyers and sellers of heavy equipment worldwide since 2009. From oil fields to construction sites — find what your operation needs, fast.
+                Connecting buyers and sellers of heavy equipment worldwide since 2009.
+                From oil fields to construction sites — find what your operation needs, fast.
               </p>
 
               {/* CTA buttons */}
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <Link
-                  href="/listings"
+                  href="/search"
                   className="inline-flex items-center px-[18px] py-2 bg-white text-ink border border-[#E8E9EA] rounded-pill font-bold text-[13px] no-underline whitespace-nowrap font-sans transition-all duration-200 hover:text-orange hover:border-orange"
                 >
                   Browse Equipment
@@ -237,48 +313,54 @@ export default async function HomePage() {
       {/* ── Below-fold content ────────────────────────────────────────────────── */}
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
 
-        {/* Featured Listings */}
-        {featuredListings && featuredListings.length > 0 && (
+        {/* 1 ── Featured Equipment Carousel */}
+        {featuredCarousel.length > 0 && (
           <section className="py-10 border-t border-[#E8E9EA]">
             <div className="flex items-end justify-between mb-6">
               <div>
-                <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
+                <h2
+                  className="font-sans font-bold text-2xl text-ink"
+                  style={{ letterSpacing: '-0.02em' }}
+                >
                   Featured Equipment
                 </h2>
-                <p className="mt-1 text-sm font-sans text-ink-3">Hand-picked listings from verified sellers</p>
+                <p className="mt-1 text-sm font-sans text-ink-3">
+                  Hand-picked listings from verified sellers
+                </p>
               </div>
               <Link
-                href="/listings?featured=true"
+                href="/search?featured=true"
                 className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
               >
                 View all →
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(featuredListings as Listing[]).map(listing => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  isLoggedIn={!!user}
-                  initialSaved={savedIds.has(listing.id)}
-                />
-              ))}
-            </div>
+            <FeaturedCarousel
+              listings={featuredCarousel}
+              isLoggedIn={!!user}
+              savedIds={Array.from(savedIds)}
+            />
           </section>
         )}
 
-        {/* Recently Listed */}
+        {/* 2 ── Browse by Category */}
+        <CategoryBrowse />
+
+        {/* 3 ── Recently Listed */}
         {recentListings && recentListings.length > 0 && (
           <section className="py-10 border-t border-[#E8E9EA]">
             <div className="flex items-end justify-between mb-6">
               <div>
-                <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
+                <h2
+                  className="font-sans font-bold text-2xl text-ink"
+                  style={{ letterSpacing: '-0.02em' }}
+                >
                   Recently Listed
                 </h2>
                 <p className="mt-1 text-sm font-sans text-ink-3">Fresh inventory added this week</p>
               </div>
               <Link
-                href="/listings"
+                href="/search"
                 className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
               >
                 View all →
@@ -299,11 +381,10 @@ export default async function HomePage() {
 
       </div>
 
-      {/* ── How It Works ──────────────────────────────────────────────────────── */}
+      {/* 4 ── How It Works */}
       <section style={{ background: '#F7F8F9', width: '100%', padding: '80px 32px', borderTop: '1px solid #E8E9EA' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
 
-          {/* Top label */}
           <p style={{
             fontFamily: "'DM Mono', monospace",
             fontSize: '10px',
@@ -316,23 +397,18 @@ export default async function HomePage() {
             HOW IT WORKS
           </p>
 
-          {/* Headline */}
           <h2 style={{
             fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
             fontSize: '36px',
             fontWeight: 800,
             color: '#1A1D20',
             letterSpacing: '-0.02em',
-            marginBottom: '56px',
             margin: '0 0 56px 0',
           }}>
             List your equipment in three steps.
           </h2>
 
-          {/* Cards + decorative connector line */}
           <div style={{ position: 'relative' }}>
-
-            {/* Connector line — sits behind the cards */}
             <div style={{
               position: 'absolute',
               top: '50%',
@@ -408,7 +484,6 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* CTA row */}
           <div style={{ marginTop: '48px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
             <Link
               href="/auth/signup"
@@ -429,17 +504,59 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Newsletter + bottom padding ───────────────────────────────────────── */}
+      {/* 5 ── Operator Journal */}
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+        <OperatorJournalSection />
+      </div>
 
-        {/* Newsletter */}
+      {/* 6 ── SEO Text */}
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+        <section className="py-10 border-t border-[#E8E9EA]">
+          <div className="mx-auto" style={{ maxWidth: '800px' }}>
+            <p
+              className="font-sans text-ink-2"
+              style={{ fontSize: '15px', lineHeight: 1.8, marginBottom: '20px' }}
+            >
+              Black Diamond Marketplace connects buyers and sellers of heavy equipment across the oil
+              and gas, construction, mining, and agriculture industries. From drilling rigs and pipe
+              racks to excavators, loaders, and processing equipment, our platform serves operators
+              sourcing both new and used machinery for active job sites worldwide.
+            </p>
+            <p
+              className="font-sans text-ink-2"
+              style={{ fontSize: '15px', lineHeight: 1.8, marginBottom: '20px' }}
+            >
+              Equipment listed on Black Diamond spans every stage of operation — upstream drilling
+              assets like blowout preventers and mud pumps, midstream infrastructure including tanks
+              and compressors, and downstream processing units. Buyers can search by category,
+              location, price range, and specification, with AI-assisted listings that surface the
+              technical details that matter most to serious procurement decisions.
+            </p>
+            <p
+              className="font-sans text-ink-2"
+              style={{ fontSize: '15px', lineHeight: 1.8 }}
+            >
+              Whether you&apos;re a fleet manager replacing aging assets, an independent operator
+              scaling a new project, or a seller looking to move equipment efficiently, Black Diamond
+              Marketplace is built to remove the friction of traditional industrial equipment
+              sourcing — connecting verified buyers and sellers with transparency, speed, and trust.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      {/* 7 ── Newsletter */}
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
         <section className="py-10 border-t border-[#E8E9EA]">
           <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
-            <h2 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
-              Stay in the Field
+            <h2
+              className="font-sans font-bold text-2xl text-ink"
+              style={{ letterSpacing: '-0.02em' }}
+            >
+              Stay Ahead of the Market.
             </h2>
             <p className="mt-3 text-[15px] font-sans text-ink-3 max-w-md mx-auto leading-relaxed">
-              New listings, market intel, and equipment guides delivered to your inbox. No noise — just signal.
+              Get new listings, market insights, and equipment trends delivered to your inbox.
             </p>
             <div className="mt-6 max-w-sm mx-auto">
               <NewsletterForm source="homepage" />

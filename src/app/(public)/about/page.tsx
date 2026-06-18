@@ -223,7 +223,7 @@ export default function AboutPage() {
               List Equipment
             </Link>
             <Link
-              href="/listings"
+              href="/search"
               className="px-6 py-2.5 text-sm font-bold text-white bg-transparent border border-white rounded-pill hover:bg-white hover:text-ink transition-colors"
             >
               Browse Equipment

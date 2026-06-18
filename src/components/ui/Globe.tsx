@@ -123,7 +123,7 @@ export default function Globe() {
       phi:   phiRef.current,
       theta: thetaRef.current,
       dark: 0,
-      diffuse: 3,
+      diffuse: 1,
       mapSamples:    20000,
       mapBrightness: 3.5,
       baseColor:   [0.97, 0.97, 0.97] as [number, number, number],
@@ -160,6 +160,8 @@ export default function Globe() {
       ],
       arcColor: [1, 0.78, 0.58] as [number, number, number],
       arcWidth: 0.4,
+      arcHeight: 0.15,
+      markerElevation: 0,
     })
 
     const cobeWrapper = canvasRef.current.parentElement

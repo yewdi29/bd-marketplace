@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Article, ArticleCategory } from '@/lib/types/database'
 
 export const metadata = {
-  title: 'Knowledge Base',
+  title: 'The Operator Journal',
   description: 'Expert guides on oil & gas equipment: drill pipe specs, rig types, BOP maintenance, and industry insights.',
 }
 
@@ -87,7 +87,7 @@ export default async function KnowledgeBasePage() {
       <div className="max-w-2xl mb-12">
         <div className="inline-flex items-center gap-2 bg-orange-bg border border-orange-bdr rounded-pill px-3 py-1 mb-5">
           <span className="w-1.5 h-1.5 rounded-full bg-orange" />
-          <span className="font-mono text-[11px] font-bold text-orange uppercase tracking-wider">Knowledge Base</span>
+          <span className="font-mono text-[11px] font-bold text-orange uppercase tracking-wider">The Operator Journal</span>
         </div>
         <h1
           className="font-sans font-extrabold text-ink leading-[1.05]"

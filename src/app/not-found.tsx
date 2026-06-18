@@ -62,7 +62,7 @@ export default function NotFound() {
       {/* Buttons */}
       <div className="flex items-center gap-3 flex-wrap justify-center mb-6">
         <Link
-          href="/listings"
+          href="/search"
           className="font-sans font-bold text-sm text-white bg-orange rounded-pill px-8 py-3 shadow-orange-glow hover:bg-orange-lt transition-all duration-200"
         >
           Browse Equipment
@@ -77,7 +77,7 @@ export default function NotFound() {
 
       {/* Small note */}
       <Link
-        href="/listings"
+        href="/search"
         className="font-sans text-ink-3 hover:text-ink text-sm transition-colors"
         style={{ fontSize: '13px' }}
       >

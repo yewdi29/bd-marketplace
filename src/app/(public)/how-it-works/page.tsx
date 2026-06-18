@@ -204,7 +204,7 @@ export default function HowItWorksPage() {
               <Button variant="primary" size="lg">Start Listing Equipment</Button>
             </Link>
           ) : (
-            <Link href="/listings">
+            <Link href="/search">
               <Button variant="primary" size="lg">Browse Equipment</Button>
             </Link>
           )}
@@ -312,7 +312,7 @@ export default function HowItWorksPage() {
               List Equipment
             </button>
           </Link>
-          <Link href="/listings">
+          <Link href="/search">
             <button
               className="font-sans font-bold text-sm text-white bg-transparent rounded-pill px-8 py-3 transition-all duration-200 hover:bg-white/10"
               style={{ border: '2px solid rgba(255,255,255,0.6)', letterSpacing: '0.01em' }}

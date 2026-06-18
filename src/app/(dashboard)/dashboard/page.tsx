@@ -826,7 +826,7 @@ export default function DashboardPage() {
                 Browse equipment and hit Save to build your list.
               </p>
               <Link
-                href="/listings"
+                href="/search"
                 className="px-5 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
                 style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
               >

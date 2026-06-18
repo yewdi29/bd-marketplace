@@ -213,7 +213,7 @@ export default async function SellersDirectoryPage() {
           >
             <p className="font-sans text-ink-3 text-sm">No sellers with active listings yet.</p>
             <Link
-              href="/listings"
+              href="/search"
               className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-orange hover:text-orange-lt transition-colors"
             >
               Browse all listings
@@ -233,7 +233,7 @@ export default async function SellersDirectoryPage() {
         {/* ── CTA: Browse listings ── */}
         <div className="mt-10 text-center">
           <Link
-            href="/listings"
+            href="/search"
             className="inline-flex items-center gap-2 text-sm font-semibold text-orange hover:text-orange-lt transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
