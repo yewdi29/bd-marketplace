@@ -27,9 +27,18 @@ const PLAN_LIMITS: Record<MembershipPlan, number> = {
   premium: Infinity,
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Shared with the mobile slide-in menu so both surfaces link to the same places
+export const PROFILE_MENU_LINKS = [
+  { label: 'My Listings', href: '/dashboard' },
+  { label: 'Saved Equipment', href: '/dashboard?tab=saved' },
+  { label: 'Account Settings', href: '/dashboard/settings' },
+]
 
-function getInitials(fullName: string | null, email: string): string {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Exported so the mobile slide-in menu (same logged-in identity, different
+// trigger/layout) can render the same avatar/name without duplicating logic.
+
+export function getInitials(fullName: string | null, email: string): string {
   if (fullName) {
     const parts = fullName.trim().split(' ')
     if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
@@ -38,7 +47,7 @@ function getInitials(fullName: string | null, email: string): string {
   return email[0].toUpperCase()
 }
 
-function getFirstName(fullName: string | null, email: string): string {
+export function getFirstName(fullName: string | null, email: string): string {
   if (fullName) return fullName.trim().split(' ')[0]
   return email.split('@')[0]
 }
@@ -145,11 +154,7 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
 
             {/* Menu items */}
             <div className="py-1.5">
-              {[
-                { label: 'My Listings', href: '/dashboard' },
-                { label: 'Saved Equipment', href: '/dashboard?tab=saved' },
-                { label: 'Account Settings', href: '/dashboard/settings' },
-              ].map(item => (
+              {PROFILE_MENU_LINKS.map(item => (
                 <Link
                   key={item.href}
                   href={item.href}

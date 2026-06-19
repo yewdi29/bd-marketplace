@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useGlowBorder } from '@/hooks/useGlowBorder'
+import { useSearchSuggestions, logSearch } from '@/hooks/useSearchSuggestions'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,9 @@ export interface SearchBarProps {
    *          Also shows a live, keyboard-navigable suggestions dropdown sourced
    *          from industries/categories/search_keywords, falling back to
    *          matching listing titles when nothing in the taxonomy has inventory.
+   *          (Suggestion fetching/matching/keyboard-nav logic lives in
+   *          useSearchSuggestions, shared with the mobile/tablet full-screen
+   *          search takeover — same behavior everywhere.)
    * 'hero' — standalone hero section: white bg.
    *          Canvas glow activates on focus and fades on blur (same hook, default options).
    */
@@ -21,36 +25,6 @@ export interface SearchBarProps {
   placeholder?: string
   defaultValue?: string
   className?: string
-}
-
-interface Suggestion {
-  label: string
-  count: number
-  type: 'industry' | 'category'
-  slug: string
-}
-
-interface ListingSuggestion {
-  id: string
-  title: string
-  slug: string
-}
-
-// A flat, keyboard-navigable view over both suggestion groups
-type NavItem =
-  | { kind: 'suggestion'; data: Suggestion }
-  | { kind: 'listing'; data: ListingSuggestion }
-
-// ─── search_queries log — accumulates real search behavior for future
-// popularity-ranked suggestions, not yet used in ranking logic. ───────────────
-function logSearch(payload: { query_text: string; results_count?: number | null; clicked_result_id?: string | null }) {
-  fetch('/api/search-log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  }).catch(() => {
-    // Logging is passive — never let it affect the search experience
-  })
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -103,48 +77,12 @@ export default function SearchBar({
   }, [isSearchPage, urlQ])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Live suggestions dropdown — navbar variant only ─────────────────────────
-  const [suggestions, setSuggestions]               = useState<Suggestion[]>([])
-  const [listingMatches, setListingMatches]         = useState<ListingSuggestion[]>([])
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
-  const [dropdownOpen, setDropdownOpen]             = useState(false)
-  const [highlightedIndex, setHighlightedIndex]     = useState(-1)
-  const latestTermRef = useRef('')
-
-  const navItems: NavItem[] = [
-    ...suggestions.map((data): NavItem => ({ kind: 'suggestion', data })),
-    ...listingMatches.map((data): NavItem => ({ kind: 'listing', data })),
-  ]
-
-  useEffect(() => {
-    if (variant !== 'nav') return
-    const term = value.trim()
-    if (term.length < 2) {
-      setSuggestions([])
-      setListingMatches([])
-      setLoadingSuggestions(false)
-      return
-    }
-    const handle = setTimeout(async () => {
-      latestTermRef.current = term
-      setLoadingSuggestions(true)
-      try {
-        const res = await fetch(`/api/listings/suggestions?q=${encodeURIComponent(term)}`)
-        if (res.ok) {
-          const data = await res.json() as { suggestions: Suggestion[]; listings: ListingSuggestion[] }
-          // Ignore stale responses from an earlier, slower request
-          if (latestTermRef.current === term) {
-            setSuggestions(data.suggestions ?? [])
-            setListingMatches(data.listings ?? [])
-          }
-        }
-      } catch {
-        // Network hiccup — fail silently, suggestions are a non-critical enhancement
-      } finally {
-        if (latestTermRef.current === term) setLoadingSuggestions(false)
-      }
-    }, 200)
-    return () => clearTimeout(handle)
-  }, [value, variant])
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const {
+    suggestions, listingMatches, loading: loadingSuggestions,
+    highlightedIndex, setHighlightedIndex, navItems,
+    clearResults, goToSuggestion: goTo, goToListing: goToListingItem, handleKeyDown: suggestionsKeyDown,
+  } = useSearchSuggestions(value, variant === 'nav')
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -158,49 +96,19 @@ export default function SearchBar({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [variant])
 
-  function goToSuggestion(s: Suggestion) {
-    logSearch({ query_text: value.trim(), results_count: s.count })
+  function goToSuggestion(s: Parameters<typeof goTo>[0]) {
     setDropdownOpen(false)
-    setHighlightedIndex(-1)
-    const param = s.type === 'industry' ? 'industry' : 'cat'
-    router.push(`/search?${param}=${encodeURIComponent(s.slug)}`)
+    goTo(s)
   }
 
-  function goToListing(l: ListingSuggestion) {
-    logSearch({ query_text: value.trim(), clicked_result_id: l.id })
+  function goToListing(l: Parameters<typeof goToListingItem>[0]) {
     setDropdownOpen(false)
-    setHighlightedIndex(-1)
-    router.push(`/listings/${l.slug}`)
+    goToListingItem(l)
   }
 
-  function selectNavItem(item: NavItem) {
-    if (item.kind === 'suggestion') goToSuggestion(item.data)
-    else goToListing(item.data)
-  }
-
-  // ── Keyboard navigation ──────────────────────────────────────────────────────
-  // Down/Up move the highlight one row at a time, stopping at the list's edges
-  // rather than wrapping. Enter selects the highlighted row (same as a click).
-  // Escape closes the dropdown without selecting and leaves focus in the input.
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (variant !== 'nav' || !dropdownOpen || navItems.length === 0) return
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setHighlightedIndex(i => Math.min(i + 1, navItems.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightedIndex(i => (i <= 0 ? -1 : i - 1))
-    } else if (e.key === 'Enter') {
-      if (highlightedIndex >= 0 && highlightedIndex < navItems.length) {
-        e.preventDefault()
-        selectNavItem(navItems[highlightedIndex])
-      }
-      // No highlight — let the form submit normally as a raw text search
-    } else if (e.key === 'Escape') {
-      setDropdownOpen(false)
-      setHighlightedIndex(-1)
-    }
+    const closeDropdown = () => setDropdownOpen(false)
+    suggestionsKeyDown(e, variant === 'nav' && dropdownOpen, { onEscape: closeDropdown, onSelect: closeDropdown })
   }
 
   // ── Submit handler ──────────────────────────────────────────────────────────
@@ -223,9 +131,7 @@ export default function SearchBar({
 
   function handleClear() {
     setValue('')
-    setSuggestions([])
-    setListingMatches([])
-    setHighlightedIndex(-1)
+    clearResults()
     inputRef.current?.focus()
     if (isSearchPage) {
       const next = new URLSearchParams(searchParams.toString())
@@ -280,7 +186,7 @@ export default function SearchBar({
             ref={inputRef}
             type="text"
             value={value}
-            onChange={e => { setValue(e.target.value); setDropdownOpen(true); setHighlightedIndex(-1) }}
+            onChange={e => { setValue(e.target.value); setDropdownOpen(true) }}
             onFocus={() => { setFocused(true); glowFocus(); if (variant === 'nav') setDropdownOpen(true) }}
             onBlur={() => { setFocused(false); glowBlur() }}
             onKeyDown={handleKeyDown}

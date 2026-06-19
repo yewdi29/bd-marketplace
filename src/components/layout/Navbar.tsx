@@ -3,11 +3,16 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect, Suspense } from 'react'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
 import SearchBar from '@/components/marketplace/SearchBar'
+import MobileMenu from '@/components/layout/MobileMenu'
+import MobileSearchTakeover from '@/components/layout/MobileSearchTakeover'
+import { LogoIcon, SearchIcon, SearchBarTrigger, MobileNavTrigger, TAP_TARGET, TAP_SIZE } from '@/components/layout/MobileNavParts'
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
+// Homepage (mobile/tablet): full wordmark. Every other page: icon only (LogoIcon, shared).
 
 function Logo() {
   return (
@@ -24,11 +29,23 @@ function Logo() {
   )
 }
 
+const SEARCH_BAR_FALLBACK = (
+  <div
+    className="w-full"
+    style={{ height: '40px', borderRadius: '100px', background: 'rgba(255,255,255,0.85)', border: '1.5px solid #E8E9EA' }}
+  />
+)
+
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 
 export default function Navbar() {
+  const pathname = usePathname()
+  const isHomepage = pathname === '/'
+
   const [authUser, setAuthUser] = useState<ProfileUser | null>(null)
   const [authReady, setAuthReady] = useState(false)
+  const [searchTakeoverOpen, setSearchTakeoverOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -64,7 +81,18 @@ export default function Navbar() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ── Right-side content ───────────────────────────────────────────────────────
+  // Search takeover and the slide-in menu are mutually exclusive — opening
+  // one always closes the other, so they can never visually conflict.
+  function openSearchTakeover() {
+    setMobileMenuOpen(false)
+    setSearchTakeoverOpen(true)
+  }
+  function openMobileMenu() {
+    setSearchTakeoverOpen(false)
+    setMobileMenuOpen(true)
+  }
+
+  // ── Right-side content — desktop only, unchanged ────────────────────────────
 
   function RightContent() {
     if (!authReady) return null
@@ -106,36 +134,52 @@ export default function Navbar() {
         height: '64px',
       }}
     >
-      {/*
-       * 3-column grid: Logo | SearchBar (centered) | Auth buttons
-       * Search bar is visible on ALL pages — including homepage.
-       */}
-      <div
-        className="max-w-[1600px] mx-auto px-8 h-full grid items-center"
-        style={{ gridTemplateColumns: 'auto 1fr auto', gap: '24px' }}
-      >
-        {/* Col 1: Logo */}
-        <Logo />
+      <div className="max-w-[1600px] mx-auto h-full">
 
-        {/* Col 2: SearchBar — centered, always visible on md+.
-            Wrapped in Suspense because SearchBar uses useSearchParams()
-            to sync with ?q= on the /listings page. */}
-        <div className="flex justify-center">
-          <div className="hidden md:block w-full max-w-[440px]">
-            <Suspense fallback={
-              <div
-                className="w-full"
-                style={{ height: '40px', borderRadius: '100px', background: 'rgba(255,255,255,0.85)', border: '1.5px solid #E8E9EA' }}
-              />
-            }>
-              <SearchBar variant="nav" />
-            </Suspense>
+        {/* ── Desktop (≥1024px) — unchanged ───────────────────────────────────── */}
+        <div
+          className="hidden lg:grid items-center h-full px-8"
+          style={{ gridTemplateColumns: 'auto 1fr auto', gap: '24px' }}
+        >
+          <Logo />
+          <div className="flex justify-center">
+            <div className="w-full max-w-[440px]">
+              <Suspense fallback={SEARCH_BAR_FALLBACK}>
+                <SearchBar variant="nav" />
+              </Suspense>
+            </div>
           </div>
+          <RightContent />
         </div>
 
-        {/* Col 3: Auth content */}
-        <RightContent />
+        {/* ── Below 1024px — homepage vs every other page ─────────────────────── */}
+        <div className="flex lg:hidden items-center h-full px-3 gap-2">
+          {isHomepage ? (
+            <>
+              <Logo />
+              <div className="flex-1" />
+              <button
+                onClick={openSearchTakeover}
+                aria-label="Search"
+                className={`${TAP_TARGET} text-ink-2 hover:text-ink transition-colors`}
+                style={TAP_SIZE}
+              >
+                <SearchIcon />
+              </button>
+            </>
+          ) : (
+            <>
+              <LogoIcon />
+              <SearchBarTrigger onClick={openSearchTakeover} />
+            </>
+          )}
+          <MobileNavTrigger user={authUser} authReady={authReady} onClick={openMobileMenu} />
+        </div>
+
       </div>
+
+      <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={authUser} />
+      <MobileSearchTakeover open={searchTakeoverOpen} onClose={() => setSearchTakeoverOpen(false)} />
     </header>
   )
 }

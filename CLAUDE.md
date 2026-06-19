@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-Black Diamond Marketplace is a Next.js 14 / TypeScript / Supabase heavy equipment marketplace for the oil and gas industry. It competes with EquipmentShare and TradeQuip — connecting buyers and sellers of drill pipe, rigs, BOP, and completion equipment.
+Black Diamond Marketplace is a Next.js 14 / TypeScript / Supabase heavy equipment marketplace serving any industry that relies on capital-intensive machinery — including oil & gas, construction, mining, and agriculture. It competes with EquipmentShare and TradeQuip — connecting buyers and sellers of excavators, haul trucks, drill rigs, tractors, and other heavy equipment.
 
 **Stack:**
 - Frontend: Next.js 14 App Router + TypeScript + Tailwind CSS

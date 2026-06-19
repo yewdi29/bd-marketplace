@@ -79,6 +79,26 @@ function IconX() {
   )
 }
 
+function DiamondMark() {
+  return (
+    <div
+      className="flex items-center justify-center shrink-0"
+      style={{ width: '24px', height: '24px', borderRadius: '5px', background: 'rgba(255,255,255,0.12)' }}
+    >
+      <svg viewBox="0 0 32 32" width="12" height="12" fill="none">
+        <path d="M16 3L4.5 12 16 29.5 27.5 12 16 3z" fill="white" />
+      </svg>
+    </div>
+  )
+}
+
+const SOCIALS = [
+  { label: 'Instagram', icon: <IconInstagram /> },
+  { label: 'LinkedIn',  icon: <IconLinkedin />  },
+  { label: 'Facebook',  icon: <IconFacebook />  },
+  { label: 'X',         icon: <IconX />         },
+]
+
 export default function Footer() {
   const year = new Date().getFullYear()
 
@@ -89,8 +109,8 @@ export default function Footer() {
         {/* Main grid: 3/4 sitemap + 1/4 settings */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 pb-10">
 
-          {/* Sitemap columns */}
-          <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-8">
+          {/* Sitemap columns — 1-col mobile, 2x2 tablet, 4-col desktop (unchanged) */}
+          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {SITEMAP.map(col => (
               <div key={col.heading}>
                 <h3
@@ -167,26 +187,14 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
+        {/* Bottom bar — desktop (≥1024px): unchanged left/right split */}
         <div
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-5"
+          className="hidden lg:flex items-center justify-between gap-4 py-5"
           style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
           {/* Left: diamond + copyright + legal links */}
           <div className="flex flex-wrap items-center gap-3">
-            <div
-              className="flex items-center justify-center shrink-0"
-              style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '5px',
-                background: 'rgba(255,255,255,0.12)',
-              }}
-            >
-              <svg viewBox="0 0 32 32" width="12" height="12" fill="none">
-                <path d="M16 3L4.5 12 16 29.5 27.5 12 16 3z" fill="white" />
-              </svg>
-            </div>
+            <DiamondMark />
             <p
               className="font-sans"
               style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}
@@ -211,12 +219,7 @@ export default function Footer() {
 
           {/* Right: social icons */}
           <div className="flex items-center gap-4">
-            {[
-              { label: 'Instagram', icon: <IconInstagram /> },
-              { label: 'LinkedIn',  icon: <IconLinkedin />  },
-              { label: 'Facebook',  icon: <IconFacebook />  },
-              { label: 'X',         icon: <IconX />         },
-            ].map(social => (
+            {SOCIALS.map(social => (
               <a
                 key={social.label}
                 href="#"
@@ -226,6 +229,55 @@ export default function Footer() {
                 {social.icon}
               </a>
             ))}
+          </div>
+        </div>
+
+        {/* Bottom bar — mobile/tablet (<1024px): legal row + copyright bar
+            stacked vertically, everything centered */}
+        <div
+          className="flex lg:hidden flex-col items-center gap-4 py-5 text-center"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          {/* Legal row */}
+          <div className="flex items-center justify-center gap-4">
+            <Link
+              href="/privacy"
+              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
+              style={{ fontSize: '12px' }}
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
+              style={{ fontSize: '12px' }}
+            >
+              Terms of Service
+            </Link>
+          </div>
+
+          {/* Copyright bar: diamond + copyright text + social icons */}
+          <div className="flex items-center justify-center flex-wrap gap-3">
+            <DiamondMark />
+            <p
+              className="font-sans"
+              style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}
+            >
+              &copy; {year} Black Diamond Marketplace. All rights reserved.
+            </p>
+            <div className="flex items-center">
+              {SOCIALS.map(social => (
+                <a
+                  key={social.label}
+                  href="#"
+                  aria-label={social.label}
+                  className="flex items-center justify-center text-white/35 hover:text-white/80 transition-colors"
+                  style={{ width: 44, height: 44 }}
+                >
+                  {social.icon}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
 

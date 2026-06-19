@@ -367,7 +367,8 @@ export default async function HomePage() {
           </h2>
 
           <div style={{ position: 'relative' }}>
-            <div style={{
+            {/* Connecting line — only makes sense between side-by-side desktop cards */}
+            <div className="hidden lg:block" style={{
               position: 'absolute',
               top: '50%',
               left: '8%',
@@ -378,10 +379,7 @@ export default async function HomePage() {
               transform: 'translateY(-50%)',
             }} />
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '24px',
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{
               position: 'relative',
               zIndex: 1,
             }}>

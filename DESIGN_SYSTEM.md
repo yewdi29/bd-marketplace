@@ -1,20 +1,20 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: June 2026 — v2.4
+> Last updated: June 2026 — v2.8
 
 ---
 
 ## 1. Brand Overview
 
-Black Diamond Marketplace is a premium B2B heavy equipment marketplace for the oil and gas industry. The design must communicate:
+Black Diamond Marketplace is a premium B2B heavy equipment marketplace serving any industry that relies on capital-intensive machinery — including oil & gas, construction, mining, and agriculture. The design must communicate:
 
-- **Authority** — we know this industry
+- **Authority** — we know these industries
 - **Trust** — buyers are spending $50K–$2M
 - **Approachability** — our users skew older, yet easy to use and modern
 - **Clarity** — specs and pricing front and center, no fluff
 
 **What we are not:** A dark developer tool, a flashy startup, a consumer app.
-**What we are:** A serious, clean, inviting business platform — like a premium real estate marketplace built for the oilfield.
+**What we are:** A serious, clean, inviting business platform — like a premium real estate marketplace built for heavy industry.
 
 ### Logo Mark
 - Small square icon: `28×28px`, `border-radius: 7px`, `background: --text (#1A1D20)`
@@ -207,8 +207,31 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Active nav link: white pill `bg-white shadow-card` with no border
 - Inactive nav link: `text-ink-2 hover:text-ink hover:bg-white/70` — transparent hover
 - Right side (logged out): ghost "Sign In" border-pill + orange "List Equipment" pill
-- Right side (logged in): `ProfileDropdown` component (avatar pill → dropdown panel)
-- Mobile: hamburger toggle → dropdown panel below navbar, `borderRadius: 16px`, `shadow-card-hover`
+- Right side (logged in, desktop ≥1024px): `ProfileDropdown` component (avatar pill → dropdown panel)
+- **Mobile/tablet (<1024px), homepage (`/`):** full wordmark logo + search icon button (opens `MobileSearchTakeover`) + hamburger/avatar trigger (opens `MobileMenu`)
+- **Mobile/tablet (<1024px), every other page:** icon-only logo (`/bd_logo-icon.svg`, 28px) + full-width inline search bar look-alike (`SearchBarTrigger` — tapping it also opens `MobileSearchTakeover`, it never accepts typed input itself) + the same hamburger/avatar trigger
+- The homepage/non-homepage split is route-based (`pathname === '/'`), not a separate breakpoint — both apply uniformly across the whole <1024px range
+
+### Mobile Menu (`src/components/layout/MobileMenu.tsx`)
+- **Portal required:** backdrop and panel render via `createPortal` to `document.body` — the navbar's `backdrop-filter` creates a containing block that traps `position: fixed` children inside the 64px header
+- **Backdrop:** `fixed inset-0`, `rgba(0,0,0,0.3)` + `backdrop-filter: blur(4px)`, `z-[100]`; tap or `Escape` closes
+- **Panel animation:** slides in from right, `translate-x-full` → `translate-x-0`, `duration-300`
+- **Width — unified across all of <1024px:** `min(75vw, 400px)` — never wider than 400px, scales down proportionally on narrow phones. (Superseded the old "full-screen mobile / 340px tablet" split — single rule now.)
+- Panel: `border-left: 1px solid #E8E9EA`, `box-shadow: -8px 0 32px rgba(0,0,0,0.10)`, `z-[110]`
+- Close button: top-right, 44×44px tap target
+- Scrollable content: `pb-[max(1.5rem,env(safe-area-inset-bottom))]` for notched phones
+- Body scroll locked while open
+- Logged-in: profile header (avatar, name, plan badge) + `PROFILE_MENU_LINKS` + upgrade/billing + sign out + primary nav links
+- Logged-out: Sell With Us + Sign In + primary nav links
+- Mutually exclusive with `MobileSearchTakeover` — opening either always closes the other first
+
+### Mobile Search Takeover (`src/components/layout/MobileSearchTakeover.tsx`)
+- Full-screen white overlay (`fixed inset-0 bg-white`, `z-[120]`), portaled to `document.body`
+- Input row pinned to top, `height: 64px`, `padding-top: env(safe-area-inset-top)`, close icon (44×44) + search icon + text input
+- Suggestion results capped at `max-height: 50vh`, scrollable — leaves the bottom half of the screen empty so the on-screen keyboard never covers results
+- Matching logic, live counts, and keyboard navigation are shared with the desktop nav `SearchBar` dropdown via the `useSearchSuggestions` hook (`src/hooks/useSearchSuggestions.ts`) — one fetch/keyboard-nav implementation, two presentations
+- Opens from either the homepage's search icon or the non-homepage `SearchBarTrigger`; closes via the close icon, `Escape`, or selecting/submitting a search (then navigates)
+- Body scroll locked while open
 
 ### Buttons (`src/components/ui/Button.tsx`)
 
@@ -532,6 +555,10 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.8 | June 2026 | **How It Works mobile overflow fix + DashboardNav adopts the mobile navbar pattern.** (1) Homepage "How It Works" step cards (`(public)/page.tsx`) switched from a hardcoded `repeat(3, 1fr)` grid to `grid-cols-1 lg:grid-cols-3` — single full-width column below 1024px (was overflowing/cut off), unchanged 3-up at desktop. The decorative connecting line between cards is now `hidden lg:block` since it only makes sense between side-by-side cards. (2) Extracted the <1024px navbar pieces (`LogoIcon`, `SearchIcon`, `SearchBarTrigger`, `MobileNavTrigger`, tap-target constants) out of `Navbar.tsx` into a shared `src/components/layout/MobileNavParts.tsx` so they aren't duplicated. (3) `DashboardNav.tsx` (used by every page under `(dashboard)/layout.tsx` — My Listings, Saved Equipment, Account Settings, Upgrade) now renders the same non-homepage mobile/tablet pattern below 1024px: icon-only logo, full-width inline `SearchBarTrigger` (opens `MobileSearchTakeover`), and `MobileNavTrigger` (always the avatar branch, since every dashboard page requires auth and `user` is never null) opening the same `MobileMenu` slide-in. Desktop (≥1024px) dashboard nav — the pill-shaped `ProfileDropdown` with name/chevron — is unchanged, just wrapped in `hidden lg:grid`. |
+| v2.7 | June 2026 | **Homepage vs. non-homepage mobile/tablet navbar split, full-screen search takeover.** Below 1024px, the navbar now branches on route: homepage (`/`) shows the full wordmark + a search icon button; every other page shows the icon-only logo (`/bd_logo-icon.svg`) + an always-visible full-width search bar look-alike (`SearchBarTrigger`). Both trigger the identical `MobileSearchTakeover` — a full-screen white overlay with the input pinned to top and suggestions capped at 50vh so the keyboard has room. Suggestion fetching/matching/keyboard-nav logic was extracted from `SearchBar.tsx` into a shared hook (`useSearchSuggestions`) so the desktop dropdown and the new takeover behave identically rather than duplicating logic. `MobileMenu`'s width is now a single `min(75vw, 400px)` rule across all of <1024px, replacing the old full-screen-mobile/340px-tablet split. **Bug fixes (not design changes, but required for the above to render correctly):** added the missing `<meta name="viewport">` (`export const viewport` in `app/layout.tsx`) — without it mobile browsers laid out against a wider assumed viewport, pushing right-aligned navbar icons outside the visible screen; added `overflow-x: hidden` to `html`/`body` in `globals.css` to contain the homepage globe's intentional edge-bleed, which was breaking `position: fixed` viewport anchoring on narrow screens. |
+| v2.6 | June 2026 | **Mobile menu fix.** `MobileMenu` portaled to `document.body` so the slide-in panel escapes the navbar `backdrop-filter` containing block and renders above page content. Mobile (<768px): full-screen slide-in from right. Tablet (768–1023px): unchanged 340px side panel. Added `Escape` to close and safe-area bottom padding. Documented in new §5 Mobile Menu subsection. |
+| v2.5 | June 2026 | **Brand scope broadened.** Updated Brand Overview (§1) to position Black Diamond as a multi-industry heavy equipment marketplace — oil & gas, construction, mining, and agriculture — not oil & gas only. No visual token or component changes. |
 | v2.4 | June 2026 | **Homepage section rebuild.** (1) `/listings` browse page renamed to `/search`; 308 permanent redirect added in `next.config.mjs`; all internal links updated. (2) Featured Equipment carousel (7 cards, horizontal scroll + arrow nav, swipeable): non-free seller listings only, tier-weighted (max→pro→starter), seeded shuffle resets every 5 days via `Math.floor(Date.now()/(5×86400000))`. (3) Browse by Category: 5 blocks (Oil & Gas/Construction/Mining/Agriculture/Trucks & Trailers) with Lucide icons, desktop 5-col, tablet 2-col, mobile 1-col, linking to `/search?category=`. (4) How It Works: unchanged. (5) "Knowledge Base" renamed to "The Operator Journal" across all nav, footer, and page labels (route/table unchanged); homepage section shows 3 most recent published articles with stub fallback. (6) SEO text section: 800px centered prose, 3-paragraph copy. (7) Newsletter section: updated headline to "Stay Ahead of the Market." (8) Footer rebuilt: black background (#1A1D20), 4 sitemap columns (Company/Industries/Resources/Business) + settings block (Language/Currency placeholder dropdowns), legal row (Privacy Policy/Terms of Service), bottom bar (diamond icon + copyright left; Instagram/LinkedIn/Facebook/X icons right). |
 | v2.3 | June 2026 | **Globe desktop positioning unified (≥1000px).** Removed separate sm-desktop (1000–1280px) and lg-desktop (1280–1500px) breakpoints entirely. All desktop widths now use one mode: globe **centered in the right half of the 1280px content container** using pure viewport math — `boundW = min(viewportWidth, 1280)`, `left = max(0, (w−1280)/2) + boundW×0.75 − size/2`. At sub-1280px viewports `boundW` adapts to the actual container width; at ≥1280px `boundW×0.75 = 960` (center of the right half of the 1280px container). Globe **top is aligned to the content card top** on every resize by reading `data-hero-card` via `getBoundingClientRect()` relative to `data-hero-section` (function `readCardTop()`). Globe size remains `max(h×1.2, 960)`. Hero section remains full viewport width at all sizes (no max-width constraint). Mobile (<730px) and tablet (730–1000px) flow layouts unchanged. `GlobeMode` type simplified to `'mobile' | 'tablet' | 'desktop'`. |
 | v2.2 | June 2026 | **Three UI improvements.** (1) Hero search bar glow amplified: `useGlowBorder` gains `glowIntensity` option (multiplier on all `shadowBlur` values); `HeroSearchForm` passes `arcLen: 78` (+30% arc length) and `glowIntensity: 1.4` (+40% spread) for a more expansive focus glow — all other callers (NavSearchBar, AI textarea) are unchanged. (2) Listings browse grid updated to 4-col at `xl` (1280px+), 3-col at `lg` (1024–1280px), 2-col at `md` (768–1024px), 1-col on mobile; `ListingCard` thumbnail container changed from `aspect-[4/3]` to `padding-bottom: 60%` (ratio trick) ensuring all thumbnails use a consistent height equal to 60% of the card width, object-cover, regardless of source image dimensions. (3) Globe component now self-manages positioning via a `resize` useEffect with 5 breakpoints. Flow modes — mobile (<730px) and tablet (730–1000px) — render the globe as an in-flow element below the content card (360px / 440px tall container, `overflow:hidden`, globe horizontally centered with its top anchored to the container so only the top hemisphere shows; sizes `innerWidth × 1.35` / `× 1.05`). Desktop modes — small (1000–1280px), large (1280–1500px), XL (1500px+) — position the globe `absolute` anchored to the **content card's right edge**, read live from the DOM via `data-hero-section` + `data-hero-card`: `left = cardRight − 60` (60px overlap into the card) and `top = cardTop − 60`, so the globe hugs the card at every width and never drifts into empty space on ultrawide monitors. Desktop sizes scale with viewport height (`×1.0 / ×1.1 / ×1.2`, min 760/860/960) and bleed off the right and bottom edges (clipped by the hero section's `overflow:hidden`). **Homepage hero breakpoint moved from `md` (768px) to `min-[1000px]`** so the layout stacks (card over globe) until 1000px, matching the globe's flow→absolute switch; globe wrapper div removed — `<Globe />` renders directly in the hero section and self-positions. |
