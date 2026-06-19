@@ -106,12 +106,41 @@ export default function PhotoGallery({ images, title, actions }: Props) {
   const next = useCallback(() => goTo(activeIdx + 1), [activeIdx, goTo])
   const prev = useCallback(() => goTo(activeIdx - 1), [activeIdx, goTo])
 
-  // Lock page scroll while a full-screen overlay is open
+  // Lock page scroll while a full-screen overlay is open. Body-only overflow
+  // is not enough on iOS — also lock html, fix body position, and block
+  // touchmove on the document except inside scrollable overlay regions.
   useEffect(() => {
     if (view === 'inline') return
-    const prevOverflow = document.body.style.overflow
+
+    const scrollY = window.scrollY
+    const prevHtmlOverflow = document.documentElement.style.overflow
+    const prevBodyOverflow = document.body.style.overflow
+    const prevBodyPosition = document.body.style.position
+    const prevBodyTop = document.body.style.top
+    const prevBodyWidth = document.body.style.width
+
+    document.documentElement.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prevOverflow }
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+
+    function preventTouchMove(e: TouchEvent) {
+      const target = e.target as Element | null
+      if (target?.closest('[data-gallery-overlay-scroll]')) return
+      e.preventDefault()
+    }
+    document.addEventListener('touchmove', preventTouchMove, { passive: false })
+
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow
+      document.body.style.overflow = prevBodyOverflow
+      document.body.style.position = prevBodyPosition
+      document.body.style.top = prevBodyTop
+      document.body.style.width = prevBodyWidth
+      window.scrollTo(0, scrollY)
+      document.removeEventListener('touchmove', preventTouchMove)
+    }
   }, [view])
 
   // Escape closes the current overlay — from the lightbox it skips the grid
@@ -175,7 +204,10 @@ export default function PhotoGallery({ images, title, actions }: Props) {
 
   // ── State 2: Full-screen masonry grid overlay ──────────────────────────────
   const gridOverlay = view === 'grid' && (
-    <div className="fixed inset-0 z-[1000] bg-white overflow-y-auto">
+    <div
+      className="fixed inset-0 z-[1000] bg-white overflow-y-auto overscroll-contain"
+      data-gallery-overlay-scroll
+    >
       <button
         onClick={() => setView('inline')}
         aria-label="Back to listing"
@@ -286,6 +318,7 @@ export default function PhotoGallery({ images, title, actions }: Props) {
           className="mx-auto mb-6 px-4 py-3 bg-white rounded-[14px]"
           style={{ maxWidth: '92vw' }}
           onClick={e => e.stopPropagation()}
+          data-gallery-overlay-scroll
         >
           <ThumbnailStrip images={sorted} activeIdx={activeIdx} onSelect={setActiveIdx} size={56} />
         </div>
@@ -362,9 +395,9 @@ export default function PhotoGallery({ images, title, actions }: Props) {
         )}
       </div>
 
-      {/* ── Thumbnail strip beneath the main image — synced with arrows/swipe ── */}
+      {/* Thumbnail strip — desktop only; mobile/tablet use swipe + arrows */}
       {total > 1 && (
-        <div className="px-3 py-3 bg-white">
+        <div className="hidden lg:block px-3 py-3 bg-white">
           <ThumbnailStrip images={sorted} activeIdx={activeIdx} onSelect={setActiveIdx} />
         </div>
       )}
