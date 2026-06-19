@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/formatPrice'
+import ListingCard from '@/components/ListingCard'
 import NewListingModal from '@/components/listings/NewListingModal'
 import EditListingModal from '@/components/listings/EditListingModal'
 import type { MembershipPlan } from '@/lib/types/database'
@@ -440,72 +441,6 @@ function MyListingCard({
   )
 }
 
-// ─── Saved Listing Card ───────────────────────────────────────────────────────
-
-function SavedCard({ listing, onRemove }: { listing: SavedListingItem; onRemove: (id: string) => void }) {
-  const [removing, setRemoving] = useState(false)
-  const primaryImage = listing.listing_images?.find(img => img.is_primary) ?? listing.listing_images?.[0]
-  const href = `/listings/${listing.slug ?? listing.id}`
-  const priceDisplay = formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible ?? true)
-  const locationParts = [listing.location_city, listing.location_state].filter(Boolean)
-  const locationText = locationParts.length > 0 ? locationParts.join(', ') : null
-
-  async function handleUnsave(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setRemoving(true)
-    try {
-      const res = await fetch(`/api/saved/${listing.id}`, { method: 'DELETE' })
-      if (res.ok) onRemove(listing.id)
-    } finally {
-      setRemoving(false)
-    }
-  }
-
-  return (
-    <Link
-      href={href}
-      className="group block bg-white border border-[#E8E9EA] hover:border-[#D4D5D7] rounded-[16px] overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
-      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-    >
-      <div className="relative w-full h-[140px] bg-[#F0F0F0] overflow-hidden">
-        {primaryImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={primaryImage.url} alt={listing.title} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-10 h-10 text-ink-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-        {/* Filled red heart — click removes from saved */}
-        <button
-          onClick={handleUnsave}
-          disabled={removing}
-          aria-label="Remove from saved"
-          className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center disabled:opacity-50"
-          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
-        >
-          <svg className="w-4 h-4" fill="#CC0000" viewBox="0 0 24 24" stroke="#CC0000" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
-      </div>
-      <div className="p-3">
-        <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{formatCategory(listing.category)}</p>
-        <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-2">{listing.title}</p>
-        <p className="font-mono text-sm font-medium text-orange">
-          {priceDisplay}
-        </p>
-        {locationText && (
-          <p className="text-[11px] text-ink-3 font-sans mt-1.5">{locationText}</p>
-        )}
-      </div>
-    </Link>
-  )
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -660,7 +595,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-8">
+    <div className="max-w-[1600px] mx-auto px-6 py-8">
 
       {/* Main tabs */}
       <div className="flex items-center gap-1 mb-8 border-b border-[#E8E9EA]">
@@ -836,10 +771,12 @@ export default function DashboardPage() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
               {savedListings.map(listing => (
-                <SavedCard
+                <ListingCard
                   key={listing.id}
                   listing={listing}
-                  onRemove={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
+                  isLoggedIn
+                  initialSaved
+                  onUnsave={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
                 />
               ))}
             </div>

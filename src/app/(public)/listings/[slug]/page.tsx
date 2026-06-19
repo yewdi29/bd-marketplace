@@ -255,7 +255,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
         {/* Breadcrumb */}
         <div
-          className="max-w-[1200px] mx-auto px-8 flex items-center gap-2 py-3"
+          className="max-w-[1600px] mx-auto px-8 flex items-center gap-2 py-5"
           style={{ fontSize: '12px' }}
         >
           <Link href="/listings" className="text-ink-3 hover:text-ink transition-colors font-sans">
@@ -263,7 +263,7 @@ export default async function ListingDetailPage({ params }: Props) {
           </Link>
           <span className="text-ink-3">/</span>
           <Link
-            href={`/listings?category=${l.category}`}
+            href={`/search?category=${l.category}`}
             className="text-ink-3 hover:text-ink transition-colors font-sans"
           >
             {catLabel(l.category)}
@@ -272,16 +272,16 @@ export default async function ListingDetailPage({ params }: Props) {
           <span className="text-ink font-sans font-medium truncate max-w-[300px]">{l.title}</span>
         </div>
 
-        {/* ── Two-column grid ── */}
+        {/* ── Two-column grid — gallery fills remaining space, info column fluid between 450–550px ── */}
         <div
-          className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr]"
+          className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_clamp(500px,30vw,600px)]"
           style={{ gap: '24px', padding: '0 32px 32px' }}
         >
 
           {/* ── Left column: sticky photo gallery ── */}
           <div className="lg:sticky self-start" style={{ top: '80px' }}>
             <div
-              className="bg-white border border-[#E8E9EA] rounded-[16px] p-4"
+              className="bg-white border border-[#E8E9EA] rounded-[16px] overflow-hidden"
               style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
             >
               <PhotoGallery
@@ -304,7 +304,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
           {/* ── Right column: all details, scrolls normally ── */}
           <div
-            className="flex flex-col min-w-0 bg-white border border-[#E8E9EA] rounded-[16px]"
+            className="flex flex-col min-w-0 w-full lg:min-w-[500px] lg:max-w-[600px] bg-white border border-[#E8E9EA] rounded-[16px]"
             style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)', padding: '24px' }}
           >
 
@@ -417,7 +417,7 @@ export default async function ListingDetailPage({ params }: Props) {
               <>
                 <div className="mb-5" style={{ borderTop: '1px solid #F0F1F2' }} />
 
-                <div style={{ maxWidth: '400px' }}>
+                <div>
                   <p
                     className="font-mono uppercase tracking-wider mb-4"
                     style={{ fontSize: '11px', color: '#B0B0B8' }}
@@ -481,7 +481,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
         {/* ── Related Listings — full width below grid ── */}
         {related && related.length > 0 && (
-          <div className="max-w-[1200px] mx-auto px-8">
+          <div className="max-w-[1600px] mx-auto px-8">
             <div className="border-t border-[#E8E9EA] mb-7" />
             <p className="font-sans font-bold text-ink mb-5" style={{ fontSize: '16px' }}>
               Related Listings

@@ -2,30 +2,34 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { buildTsQuery, stripMeasurements } from '@/lib/searchSynonyms'
+import { haversineMiles } from '@/lib/distance'
+import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
 
 // Columns that can be used as sort keys — prevents injecting arbitrary column names
 const ALLOWED_SORT_FIELDS = ['created_at', 'price'] as const
 
-// Price range boundaries
-const PRICE_RANGES: Record<string, { gte?: number; lte?: number; gt?: number; lt?: number }> = {
-  under_50k:  { lt: 50_000 },
-  '50k_200k': { gte: 50_000,  lte: 200_000 },
-  '200k_500k':{ gte: 200_000, lte: 500_000 },
-  over_500k:  { gt: 500_000 },
+interface ListingRow {
+  id: string
+  latitude: number | null
+  longitude: number | null
+  states: { latitude: number | null; longitude: number | null } | null
+  [key: string]: unknown
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
 
-  const category   = searchParams.get('category')
-  const tier       = searchParams.get('tier')
-  const q          = searchParams.get('q')
-  const conditions = searchParams.get('conditions')   // comma-separated: "new,like_new"
-  const priceRange = searchParams.get('priceRange')   // e.g. "under_50k"
-  const state      = searchParams.get('state')        // e.g. "TX"
-  const sort       = searchParams.get('sort') ?? 'created_at:desc'
-  const limit      = Math.min(parseInt(searchParams.get('limit') ?? '24'), 100)
-  const offset     = parseInt(searchParams.get('offset') ?? '0')
+  const category = searchParams.get('category')
+  const industry  = searchParams.get('industry')  // industry slug
+  const cat        = searchParams.get('cat')        // category slug
+  const country     = searchParams.get('country')    // country slug
+  const tier     = searchParams.get('tier')
+  const q        = searchParams.get('q')
+  const sort     = searchParams.get('sort') ?? 'created_at:desc'
+  const lat       = searchParams.get('lat')          // optional — browser geolocation
+  const lng       = searchParams.get('lng')
+  const limit    = Math.min(parseInt(searchParams.get('limit') ?? '24'), 100)
+  const offset   = parseInt(searchParams.get('offset') ?? '0')
 
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -39,11 +43,38 @@ export async function GET(request: NextRequest) {
     }
   )
 
+  // ── Resolve slug filters to ids ──────────────────────────────────────────────
+  let industryId: string | null = null
+  let categoryId: string | null = null
+  let countryId: string | null = null
+
+  if (industry) {
+    const { data } = await supabase.from('industries').select('id').eq('slug', industry).maybeSingle()
+    industryId = data?.id ?? null
+  }
+  if (cat) {
+    const { data } = await supabase.from('categories').select('id').eq('slug', cat).maybeSingle()
+    categoryId = data?.id ?? null
+  }
+  if (country) {
+    const { data } = await supabase.from('countries').select('id').eq('slug', country).maybeSingle()
+    countryId = data?.id ?? null
+  }
+
   // ── Sort params (shared by both search paths) ───────────────────────────────
+  const isClosest = sort === 'closest'
   const [rawField, rawDir] = sort.split(':')
   const sortField = (ALLOWED_SORT_FIELDS as readonly string[]).includes(rawField)
     ? rawField : 'created_at'
   const ascending = rawDir === 'asc'
+
+  // The states(...) embed depends on the location-taxonomy migration having
+  // been run — only request it when actually needed (closest-sort), so every
+  // other sort/filter keeps working unchanged on a database that hasn't been
+  // migrated yet.
+  const SELECT_COLUMNS = isClosest
+    ? '*, listing_images(*), states(latitude, longitude)'
+    : '*, listing_images(*)'
 
   // ── Helper: base query with all non-FTS filters applied ─────────────────────
   // Returns 'any' because each Supabase chain call narrows the TS return type,
@@ -53,27 +84,80 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = supabase
       .from('listings')
-      .select('*, listing_images(*)')
+      .select(SELECT_COLUMNS)
       .eq('status', 'active')
 
-    if (category) q = q.eq('category', category)
-    if (tier)     q = q.eq('tier', tier)
-    if (state)    q = q.eq('location_state', state)
-
-    if (conditions) {
-      const list = conditions.split(',').map((c: string) => c.trim()).filter(Boolean)
-      if (list.length) q = q.in('condition', list)
-    }
-
-    if (priceRange && PRICE_RANGES[priceRange]) {
-      const range = PRICE_RANGES[priceRange]
-      if (range.lt  != null) q = q.lt('price', range.lt)
-      if (range.lte != null) q = q.lte('price', range.lte)
-      if (range.gte != null) q = q.gte('price', range.gte)
-      if (range.gt  != null) q = q.gt('price', range.gt)
-    }
+    if (category)   q = q.eq('category', category)
+    if (industryId) q = q.eq('industry_id', industryId)
+    if (categoryId) q = q.eq('category_id', categoryId)
+    if (countryId)  q = q.eq('country_id', countryId)
+    if (tier)       q = q.eq('tier', tier)
 
     return q
+  }
+
+  // ── Resolve the user's coordinates for "Closest to Me" ───────────────────────
+  // 1. lat/lng query params — browser geolocation, obtained client-side.
+  // 2. Fall back to the authenticated user's saved profile state.
+  // 3. Neither available — sort falls back to best match, flagged for the UI.
+  let userCoords: { lat: number; lng: number } | null = null
+  let locationUnavailable = false
+
+  if (isClosest) {
+    if (lat && lng && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng))) {
+      userCoords = { lat: Number(lat), lng: Number(lng) }
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('state')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        const profileState = profile?.state?.trim()
+        if (profileState) {
+          const { data: stateRow } = await supabase
+            .from('states')
+            .select('latitude, longitude')
+            .or(`code.ilike.${profileState},name.ilike.${profileState}`)
+            .maybeSingle()
+
+          if (stateRow?.latitude != null && stateRow?.longitude != null) {
+            userCoords = { lat: stateRow.latitude, lng: stateRow.longitude }
+          }
+        }
+      }
+    }
+
+    if (!userCoords) locationUnavailable = true
+  }
+
+  // ── Helper: sort a listings array by distance from userCoords ───────────────
+  function sortByDistance(rows: ListingRow[]): ListingRow[] {
+    if (!userCoords) return rows
+    const withCoords: ListingRow[] = []
+    const withoutCoords: ListingRow[] = []
+
+    for (const row of rows) {
+      const rowLat = row.latitude ?? row.states?.latitude ?? null
+      const rowLng = row.longitude ?? row.states?.longitude ?? null
+      if (rowLat != null && rowLng != null) withCoords.push(row)
+      else withoutCoords.push(row)
+    }
+
+    withCoords.sort((a, b) => {
+      const aLat = a.latitude ?? a.states!.latitude!
+      const aLng = a.longitude ?? a.states!.longitude!
+      const bLat = b.latitude ?? b.states!.latitude!
+      const bLng = b.longitude ?? b.states!.longitude!
+      return (
+        haversineMiles(userCoords!.lat, userCoords!.lng, aLat, aLng) -
+        haversineMiles(userCoords!.lat, userCoords!.lng, bLat, bLng)
+      )
+    })
+
+    return [...withCoords, ...withoutCoords]
   }
 
   // ── Two-stage search when q is present ──────────────────────────────────────
@@ -114,35 +198,44 @@ export async function GET(request: NextRequest) {
     // Merge: Stage 1 (exact/size matches) first, then Stage 2 deduped by id.
     // If Stage 1 is empty, Stage 2 results fill the response on their own.
     const stage1Ids = new Set(stage1.map((r: { id: string }) => r.id))
-    const merged = [
+    let merged = [
       ...stage1,
       ...stage2.filter((r: { id: string }) => !stage1Ids.has(r.id)),
     ].slice(0, limit)
 
-    return NextResponse.json({ listings: merged, total: merged.length, limit, offset })
+    if (isClosest) merged = sortByDistance(merged)
+
+    return NextResponse.json({
+      listings: merged,
+      total: merged.length,
+      limit,
+      offset,
+      ...(isClosest ? { locationUnavailable } : {}),
+    })
   }
 
   // ── No search query — single query with exact count + cursor pagination ──────
   let query = supabase
     .from('listings')
-    .select('*, listing_images(*)', { count: 'exact' })
+    .select(SELECT_COLUMNS, { count: 'exact' })
     .eq('status', 'active')
 
-  if (category) query = query.eq('category', category)
-  if (tier)     query = query.eq('tier', tier)
-  if (state)    query = query.eq('location_state', state)
+  if (category)   query = query.eq('category', category)
+  if (industryId) query = query.eq('industry_id', industryId)
+  if (categoryId) query = query.eq('category_id', categoryId)
+  if (countryId)  query = query.eq('country_id', countryId)
+  if (tier)       query = query.eq('tier', tier)
 
-  if (conditions) {
-    const conditionList = conditions.split(',').map(c => c.trim()).filter(Boolean)
-    if (conditionList.length) query = query.in('condition', conditionList)
-  }
+  // "Closest to Me" needs the full matching set in memory to sort by distance —
+  // pagination is applied after sorting instead of via .range().
+  if (isClosest) {
+    const { data, error, count } = await query.order(sortField, { ascending })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  if (priceRange && PRICE_RANGES[priceRange]) {
-    const range = PRICE_RANGES[priceRange]
-    if (range.lt  != null) query = query.lt('price', range.lt)
-    if (range.lte != null) query = query.lte('price', range.lte)
-    if (range.gte != null) query = query.gte('price', range.gte)
-    if (range.gt  != null) query = query.gt('price', range.gt)
+    const sorted = sortByDistance((data ?? []) as unknown as ListingRow[])
+    const page = sorted.slice(offset, offset + limit)
+
+    return NextResponse.json({ listings: page, total: count, limit, offset, locationUnavailable })
   }
 
   query = query.order(sortField, { ascending }).range(offset, offset + limit - 1)
@@ -187,6 +280,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'price must be a positive number' }, { status: 400 })
   }
 
+  const { category_id, industry_id } = await resolveCategoryAndIndustryIds(supabase, title, category)
+
   const { data, error } = await supabase
     .from('listings')
     .insert({
@@ -194,6 +289,8 @@ export async function POST(request: NextRequest) {
       title,
       description,
       category,
+      category_id,
+      industry_id,
       manufacturer,
       model,
       year,

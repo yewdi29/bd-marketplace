@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
 
 const SYSTEM_PROMPT = `You are an expert equipment listing assistant for Black Diamond Marketplace, a premium B2B heavy equipment marketplace for the oil and gas industry.
 
@@ -140,12 +141,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Re-derive category_id/industry_id from the generated title/category
+  const resolvedTitle    = generated.title || 'Untitled Draft'
+  const resolvedCategory = generated.category || 'other'
+  const { category_id, industry_id } = await resolveCategoryAndIndustryIds(
+    adminClient, resolvedTitle, resolvedCategory
+  )
+
   // PATCH the draft with all generated fields (including meta_description for SEO)
   const { error: updateError } = await adminClient
     .from('listings')
     .update({
-      title: generated.title || 'Untitled Draft',
-      category: generated.category || 'other',
+      title: resolvedTitle,
+      category: resolvedCategory,
+      category_id,
+      industry_id,
       manufacturer: generated.manufacturer ?? null,
       model: generated.model ?? null,
       year: generated.year ?? null,

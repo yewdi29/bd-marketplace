@@ -22,7 +22,7 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
        * Dashboard is never the homepage, so SearchBar always shows.
        */}
       <div
-        className="max-w-[1280px] mx-auto px-6 h-full grid items-center"
+        className="max-w-[1600px] mx-auto px-6 h-full grid items-center"
         style={{ gridTemplateColumns: 'auto 1fr auto', gap: '16px' }}
       >
         {/* Col 1: Logo */}

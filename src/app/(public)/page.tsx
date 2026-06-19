@@ -2,7 +2,6 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import ListingCard from '@/components/ListingCard'
 import NewsletterForm from '@/components/NewsletterForm'
 import FeaturedCarousel from '@/components/home/FeaturedCarousel'
 import CategoryBrowse from '@/components/home/CategoryBrowse'
@@ -104,19 +103,11 @@ export default async function HomePage() {
         .sort((a, b) => b - a)
         .flatMap(w => seededShuffle(byWeight[w], windowSeed + w))
 
-      featuredCarousel = sorted.slice(0, 7)
+      featuredCarousel = sorted.slice(0, 6)
     }
   } catch {
     // Service role unavailable in local dev — skip carousel gracefully
   }
-
-  // ── Recently Listed ──────────────────────────────────────────────────────
-  const { data: recentListings } = await supabase
-    .from('listings')
-    .select('*, listing_images(*)')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(8)
 
   return (
     <>
@@ -152,7 +143,7 @@ export default async function HomePage() {
         <div
           data-hero-container
           className="flex flex-col min-[1000px]:grid min-[1000px]:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
-          style={{ maxWidth: '1280px', margin: '0 auto' }}
+          style={{ maxWidth: '1600px', margin: '0 auto' }}
         >
           {/* ── Left column ── */}
           <div className="px-4 py-10 min-[1000px]:pl-16 min-[1000px]:pr-0 min-[1000px]:py-[60px]">
@@ -311,7 +302,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Below-fold content ────────────────────────────────────────────────── */}
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
 
         {/* 1 ── Featured Equipment Carousel */}
         {featuredCarousel.length > 0 && (
@@ -345,39 +336,6 @@ export default async function HomePage() {
 
         {/* 2 ── Browse by Category */}
         <CategoryBrowse />
-
-        {/* 3 ── Recently Listed */}
-        {recentListings && recentListings.length > 0 && (
-          <section className="py-10 border-t border-[#E8E9EA]">
-            <div className="flex items-end justify-between mb-6">
-              <div>
-                <h2
-                  className="font-sans font-bold text-2xl text-ink"
-                  style={{ letterSpacing: '-0.02em' }}
-                >
-                  Recently Listed
-                </h2>
-                <p className="mt-1 text-sm font-sans text-ink-3">Fresh inventory added this week</p>
-              </div>
-              <Link
-                href="/search"
-                className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
-              >
-                View all →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {(recentListings as Listing[]).map(listing => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  isLoggedIn={!!user}
-                  initialSaved={savedIds.has(listing.id)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
 
       </div>
 
@@ -505,48 +463,12 @@ export default async function HomePage() {
       </section>
 
       {/* 5 ── Operator Journal */}
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
         <OperatorJournalSection />
       </div>
 
-      {/* 6 ── SEO Text */}
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
-        <section className="py-10 border-t border-[#E8E9EA]">
-          <div className="mx-auto" style={{ maxWidth: '800px' }}>
-            <p
-              className="font-sans text-ink-2"
-              style={{ fontSize: '15px', lineHeight: 1.8, marginBottom: '20px' }}
-            >
-              Black Diamond Marketplace connects buyers and sellers of heavy equipment across the oil
-              and gas, construction, mining, and agriculture industries. From drilling rigs and pipe
-              racks to excavators, loaders, and processing equipment, our platform serves operators
-              sourcing both new and used machinery for active job sites worldwide.
-            </p>
-            <p
-              className="font-sans text-ink-2"
-              style={{ fontSize: '15px', lineHeight: 1.8, marginBottom: '20px' }}
-            >
-              Equipment listed on Black Diamond spans every stage of operation — upstream drilling
-              assets like blowout preventers and mud pumps, midstream infrastructure including tanks
-              and compressors, and downstream processing units. Buyers can search by category,
-              location, price range, and specification, with AI-assisted listings that surface the
-              technical details that matter most to serious procurement decisions.
-            </p>
-            <p
-              className="font-sans text-ink-2"
-              style={{ fontSize: '15px', lineHeight: 1.8 }}
-            >
-              Whether you&apos;re a fleet manager replacing aging assets, an independent operator
-              scaling a new project, or a seller looking to move equipment efficiently, Black Diamond
-              Marketplace is built to remove the friction of traditional industrial equipment
-              sourcing — connecting verified buyers and sellers with transparency, speed, and trust.
-            </p>
-          </div>
-        </section>
-      </div>
-
       {/* 7 ── Newsletter */}
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
         <section className="py-10 border-t border-[#E8E9EA]">
           <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
             <h2

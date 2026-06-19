@@ -3,20 +3,40 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
-import { Listing } from '@/lib/types/database'
 import { formatPrice } from '@/lib/formatPrice'
 
+// Minimal shape the card actually renders — structurally compatible with both
+// the full `Listing` type and the narrower row shape returned by /api/saved.
+interface ListingCardListing {
+  id: string
+  slug: string | null
+  title: string
+  category: string
+  price: number
+  price_unit: string
+  price_visible: boolean | null
+  location_city: string | null
+  location_state: string | null
+  created_at: string
+  listing_images?: {
+    url: string
+    is_primary: boolean
+    alt_text?: string | null
+  }[]
+}
+
 interface ListingCardProps {
-  listing: Listing
+  listing: ListingCardListing
   initialSaved?: boolean
   isLoggedIn?: boolean
+  onUnsave?: (listingId: string) => void
 }
 
 function isNewListing(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000
 }
 
-export default function ListingCard({ listing, initialSaved = false, isLoggedIn = false }: ListingCardProps) {
+export default function ListingCard({ listing, initialSaved = false, isLoggedIn = false, onUnsave }: ListingCardProps) {
   const [saved, setSaved] = useState(initialSaved)
   const [saving, setSaving] = useState(false)
 
@@ -24,7 +44,7 @@ export default function ListingCard({ listing, initialSaved = false, isLoggedIn 
   const href = `/listings/${listing.slug ?? listing.id}`
   const isNew = isNewListing(listing.created_at)
 
-  const priceDisplay = formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible)
+  const priceDisplay = formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible ?? true)
 
   const locationParts = [listing.location_city, listing.location_state].filter(Boolean)
   const locationText = locationParts.length > 0 ? [...locationParts, 'United States'].join(', ') : null
@@ -40,7 +60,10 @@ export default function ListingCard({ listing, initialSaved = false, isLoggedIn 
     try {
       const method = saved ? 'DELETE' : 'POST'
       const res = await fetch(`/api/saved/${listing.id}`, { method })
-      if (res.ok) setSaved(s => !s)
+      if (res.ok) {
+        setSaved(s => !s)
+        if (saved) onUnsave?.(listing.id)
+      }
     } finally {
       setSaving(false)
     }

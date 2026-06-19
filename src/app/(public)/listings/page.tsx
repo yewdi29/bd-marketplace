@@ -92,7 +92,7 @@ function ListingsContent() {
   }, [fetchListings])
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
 
       {/* Results count */}
       <p className="font-sans font-bold text-sm text-ink mb-5">
@@ -147,7 +147,7 @@ export default function ListingsPage() {
 
       {/* Listings grid — separate Suspense to show skeleton independently */}
       <Suspense fallback={
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
           <div className="h-4 w-32 bg-[#F0F0F0] rounded-full mb-5 animate-pulse" />
           <SkeletonGrid />
         </div>

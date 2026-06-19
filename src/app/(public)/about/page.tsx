@@ -36,7 +36,7 @@ export default function AboutPage() {
 
       {/* ── 1. Hero ── */}
       <section style={{ background: '#1A1D20' }}>
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 text-center" style={{ paddingTop: '120px', paddingBottom: '120px' }}>
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 text-center" style={{ paddingTop: '120px', paddingBottom: '120px' }}>
           <h1
             className="font-sans font-extrabold text-white mb-5 mx-auto max-w-[820px]"
             style={{ fontSize: '36px', lineHeight: '1.15', letterSpacing: '-0.03em' }}
@@ -62,7 +62,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── 2. The Story ── */}
-      <section className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20" style={{ background: '#F7F8F9' }}>
+      <section className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20" style={{ background: '#F7F8F9' }}>
         <div className="mx-auto" style={{ maxWidth: '720px' }}>
           <p
             className="font-sans text-ink-2 text-left"
@@ -94,7 +94,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── 3. Photo Section ── */}
-      <section className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 bg-white" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
+      <section className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 bg-white" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
         <p
           className="font-mono text-center mb-6"
           style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#9CA3AF', textTransform: 'uppercase' }}
@@ -146,7 +146,7 @@ export default function AboutPage() {
 
       {/* ── 4. Mission ── */}
       <section style={{ background: '#1A1D20' }}>
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-start">
             <div>
               <div style={{ width: '40px', height: '2px', background: '#FF6B35', marginBottom: '20px' }} />
@@ -172,7 +172,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── 5. Why We're Different ── */}
-      <section className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20 bg-white">
+      <section className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20 bg-white">
         <h2
           className="font-sans font-bold text-ink text-center mb-10"
           style={{ fontSize: '28px', letterSpacing: '-0.02em' }}
@@ -207,7 +207,7 @@ export default function AboutPage() {
 
       {/* ── 6. CTA Section ── */}
       <section style={{ background: '#1A1D20' }}>
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20 text-center">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-16 md:py-20 text-center">
           <div className="mx-auto mb-5" style={{ width: '40px', height: '2px', background: '#FF6B35' }} />
           <h2
             className="font-sans font-bold text-white mb-8"

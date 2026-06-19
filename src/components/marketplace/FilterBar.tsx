@@ -1,57 +1,30 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useTransition, useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Checkbox } from '@/components/ui/checkbox'
+import { createClient } from '@/lib/supabase/client'
 
-// ─── Filter options ───────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  { label: 'All Categories',  value: '' },
-  { label: 'Drill Pipe',      value: 'drill_pipe' },
-  { label: 'Drilling Rigs',   value: 'rig' },
-  { label: 'BOP & Wellhead',  value: 'blowout_preventer' },
-  { label: 'Pumping Units',   value: 'pumping_unit' },
-  { label: 'Tubular Goods',   value: 'tubular_goods' },
-  { label: 'Coiled Tubing',   value: 'coiled_tubing' },
-  { label: 'Compressors',     value: 'compressor' },
-  { label: 'Tanks & Vessels', value: 'tank' },
-]
-
-const CONDITIONS = [
-  { label: 'New',        value: 'new' },
-  { label: 'Like New',   value: 'like_new' },
-  { label: 'Good',       value: 'good' },
-  { label: 'Fair',       value: 'fair' },
-  { label: 'Parts Only', value: 'parts_only' },
-]
-
-const PRICE_RANGES = [
-  { label: 'All Prices',    value: '' },
-  { label: 'Under $50K',    value: 'under_50k' },
-  { label: '$50K–$200K',    value: '50k_200k' },
-  { label: '$200K–$500K',   value: '200k_500k' },
-  { label: 'Over $500K',    value: 'over_500k' },
-]
-
-const LOCATIONS = [
-  { label: 'All Locations', value: '' },
-  { label: 'Texas',         value: 'TX' },
-  { label: 'Oklahoma',      value: 'OK' },
-  { label: 'New Mexico',    value: 'NM' },
-  { label: 'Louisiana',     value: 'LA' },
-  { label: 'Wyoming',       value: 'WY' },
-  { label: 'Colorado',      value: 'CO' },
-  { label: 'North Dakota',  value: 'ND' },
-]
+// ─── Static filter options ──────────────────────────────────────────────────
 
 const SORT_OPTIONS = [
-  { label: 'Newest First',       value: 'created_at:desc' },
-  { label: 'Price Low to High',  value: 'price:asc' },
-  { label: 'Price High to Low',  value: 'price:desc' },
-  { label: 'Most Viewed',        value: 'view_count:desc' },
+  { label: 'Best Match',                      value: 'best_match' },
+  { label: 'Closest to Me',                   value: 'closest' },
+  { label: 'Published: Newest to Oldest',     value: 'created_at:desc' },
+  { label: 'Published: Oldest to Newest',     value: 'created_at:asc' },
 ]
+
+// ─── Taxonomy types — fetched from the DB on mount ────────────────────────────
+
+interface IndustryOption { id: string; name: string; slug: string }
+interface CountryOption  { id: string; name: string; slug: string }
+interface CategoryOption {
+  id: string
+  name: string
+  slug: string
+  industrySlugs: string[]
+  industryNames: string[]
+}
 
 // ─── Shared pill class strings ────────────────────────────────────────────────
 
@@ -71,12 +44,6 @@ const POPOVER_CLASSES = [
   'data-[side=bottom]:slide-in-from-top-2',
   'data-[side=top]:slide-in-from-bottom-2',
 ].join(' ')
-
-// Checkbox override — orange checked state
-const CHECKBOX_CLASSES =
-  'h-4 w-4 rounded-sm border-[#D4D5D7] ring-offset-white ' +
-  'focus-visible:ring-2 focus-visible:ring-orange/20 focus-visible:ring-offset-2 ' +
-  'data-[state=checked]:bg-orange data-[state=checked]:border-orange data-[state=checked]:text-white'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -121,7 +88,7 @@ function SinglePill({
         </button>
       </PopoverTrigger>
       <PopoverContent className={POPOVER_CLASSES} align="start" sideOffset={8}>
-        <div className="flex flex-col">
+        <div className="flex flex-col max-h-[320px] overflow-y-auto">
           {options.map(opt => (
             <button
               key={opt.value}
@@ -143,29 +110,37 @@ function SinglePill({
   )
 }
 
-// ─── Multi-select popover pill (checkboxes) ───────────────────────────────────
+// ─── Category pill — flat when an Industry is selected, grouped when not ──────
 
-function MultiPill({
-  label,
-  values,
+function CategoryPill({
+  value,
   options,
+  industrySlug,
   onChange,
 }: {
-  label: string
-  values: string[]
-  options: { label: string; value: string }[]
-  onChange: (v: string[]) => void
+  value: string
+  options: CategoryOption[]
+  industrySlug: string
+  onChange: (v: string) => void
 }) {
-  const active = values.length > 0
-  const display = active
-    ? values.length === 1
-      ? options.find(o => o.value === values[0])?.label ?? label
-      : `${label} (${values.length})`
-    : label
+  const active = !!value
+  const display = active ? (options.find(o => o.slug === value)?.name ?? 'Category') : 'Category'
 
-  function toggle(v: string) {
-    onChange(values.includes(v) ? values.filter(x => x !== v) : [...values, v])
-  }
+  const visible = industrySlug
+    ? options.filter(o => o.industrySlugs.includes(industrySlug))
+    : options
+
+  // Grouped by industry when no Industry filter is active
+  const groups = useMemo(() => {
+    if (industrySlug) return null
+    const map = new Map<string, CategoryOption[]>()
+    for (const opt of visible) {
+      const groupLabel = opt.industryNames[0] ?? 'Other'
+      if (!map.has(groupLabel)) map.set(groupLabel, [])
+      map.get(groupLabel)!.push(opt)
+    }
+    return map
+  }, [visible, industrySlug])
 
   return (
     <Popover>
@@ -176,25 +151,61 @@ function MultiPill({
         </button>
       </PopoverTrigger>
       <PopoverContent className={POPOVER_CLASSES} align="start" sideOffset={8}>
-        <div className="flex flex-col">
-          {options.map(opt => (
-            <label
-              key={opt.value}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-[10px] cursor-pointer hover:bg-bg transition-colors"
-            >
-              <Checkbox
-                checked={values.includes(opt.value)}
-                onCheckedChange={() => toggle(opt.value)}
-                className={CHECKBOX_CLASSES}
-              />
-              <span className={[
-                'text-sm font-sans',
-                values.includes(opt.value) ? 'text-ink font-medium' : 'text-ink-2',
-              ].join(' ')}>
-                {opt.label}
-              </span>
-            </label>
-          ))}
+        <div className="flex flex-col max-h-[360px] overflow-y-auto" style={{ width: '240px' }}>
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className={[
+              'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors',
+              !value ? 'bg-[#FFF2ED] text-orange font-semibold' : 'text-ink-2 hover:bg-bg hover:text-ink',
+            ].join(' ')}
+          >
+            All Categories
+          </button>
+
+          {groups ? (
+            Array.from(groups.entries()).map(([groupLabel, opts]) => (
+              <div key={groupLabel}>
+                <p
+                  className="font-mono uppercase text-ink-3 px-3 pt-3 pb-1"
+                  style={{ fontSize: '10px', letterSpacing: '0.08em' }}
+                >
+                  {groupLabel}
+                </p>
+                {opts.map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onChange(opt.slug)}
+                    className={[
+                      'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors',
+                      opt.slug === value
+                        ? 'bg-[#FFF2ED] text-orange font-semibold'
+                        : 'text-ink-2 hover:bg-bg hover:text-ink',
+                    ].join(' ')}
+                  >
+                    {opt.name}
+                  </button>
+                ))}
+              </div>
+            ))
+          ) : (
+            visible.map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onChange(opt.slug)}
+                className={[
+                  'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors',
+                  opt.slug === value
+                    ? 'bg-[#FFF2ED] text-orange font-semibold'
+                    : 'text-ink-2 hover:bg-bg hover:text-ink',
+                ].join(' ')}
+              >
+                {opt.name}
+              </button>
+            ))
+          )}
         </div>
       </PopoverContent>
     </Popover>
@@ -208,43 +219,86 @@ export default function FilterBar() {
   const searchParams = useSearchParams()
   const [, startTransition] = useTransition()
 
-  // Current filter state from URL
-  const category   = searchParams.get('category')   ?? ''
-  const conditions = (searchParams.get('conditions') ?? '').split(',').filter(Boolean)
-  const priceRange = searchParams.get('priceRange')  ?? ''
-  const state      = searchParams.get('state')       ?? ''
-  const sort       = searchParams.get('sort')        ?? ''
-  const q          = searchParams.get('q')           ?? ''
+  const [industries, setIndustries] = useState<IndustryOption[]>([])
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [countries, setCountries]   = useState<CountryOption[]>([])
 
+  // ── Load taxonomy reference data — public read-only tables, anon client ────
+  useEffect(() => {
+    const supabase = createClient()
+
+    supabase.from('industries').select('id, name, slug').order('sort_order')
+      .then(({ data }) => setIndustries(data ?? []))
+
+    supabase.from('countries').select('id, name, slug')
+      .then(({ data }) => setCountries(data ?? []))
+
+    supabase
+      .from('categories')
+      .select('id, name, slug, category_industries(industries(slug, name))')
+      .order('name')
+      .then(({ data }) => {
+        type Row = {
+          id: string
+          name: string
+          slug: string
+          category_industries: { industries: { slug: string; name: string }[] }[] | null
+        }
+        const rows = (data ?? []) as unknown as Row[]
+        setCategories(rows.map(row => {
+          const industries = (row.category_industries ?? []).flatMap(ci => ci.industries ?? [])
+          return {
+            id: row.id,
+            name: row.name,
+            slug: row.slug,
+            industrySlugs: industries.map(i => i.slug),
+            industryNames: industries.map(i => i.name),
+          }
+        }))
+      })
+  }, [])
+
+  // Current filter state from URL
+  const industry = searchParams.get('industry') ?? ''
+  const cat       = searchParams.get('cat')       ?? ''
+  const country    = searchParams.get('country')    ?? ''
+  const sort      = searchParams.get('sort')      ?? ''
+  const q         = searchParams.get('q')         ?? ''
 
   // ── URL builder ─────────────────────────────────────────────────────────────
 
   function navigate(overrides: Partial<{
-    category: string
-    conditions: string[]
-    priceRange: string
-    state: string
+    industry: string
+    cat: string
+    country: string
     sort: string
     q: string
   }>) {
     const next = {
-      category,
-      conditions,
-      priceRange,
-      state,
+      industry,
+      cat,
+      country,
       sort,
       q,
       ...overrides,
     }
+
+    // Changing Industry clears the Category selection if it no longer applies
+    if ('industry' in overrides && next.cat) {
+      const selected = categories.find(c => c.slug === next.cat)
+      if (next.industry && selected && !selected.industrySlugs.includes(next.industry)) {
+        next.cat = ''
+      }
+    }
+
     const params = new URLSearchParams()
-    if (next.q)                    params.set('q',          next.q)
-    if (next.category)             params.set('category',   next.category)
-    if (next.conditions.length > 0)params.set('conditions', next.conditions.join(','))
-    if (next.priceRange)           params.set('priceRange', next.priceRange)
-    if (next.state)                params.set('state',      next.state)
-    if (next.sort)                 params.set('sort',       next.sort)
+    if (next.q)        params.set('q',        next.q)
+    if (next.industry) params.set('industry', next.industry)
+    if (next.cat)       params.set('cat',       next.cat)
+    if (next.country)   params.set('country',   next.country)
+    if (next.sort)      params.set('sort',      next.sort)
     startTransition(() => {
-      router.replace(`/listings${params.toString() ? `?${params.toString()}` : ''}`)
+      router.replace(`/search${params.toString() ? `?${params.toString()}` : ''}`)
     })
   }
 
@@ -253,22 +307,19 @@ export default function FilterBar() {
       const params = new URLSearchParams()
       if (q)    params.set('q',    q)
       if (sort) params.set('sort', sort)
-      router.replace(`/listings${params.toString() ? `?${params.toString()}` : ''}`)
+      router.replace(`/search${params.toString() ? `?${params.toString()}` : ''}`)
     })
   }
 
   // ── Active filter tag list ───────────────────────────────────────────────────
 
   const tags: { key: string; label: string; remove: () => void }[] = []
-  if (category)
-    tags.push({ key: 'cat', label: CATEGORIES.find(c => c.value === category)?.label ?? category, remove: () => navigate({ category: '' }) })
-  conditions.forEach(c =>
-    tags.push({ key: `cond_${c}`, label: CONDITIONS.find(o => o.value === c)?.label ?? c, remove: () => navigate({ conditions: conditions.filter(x => x !== c) }) })
-  )
-  if (priceRange)
-    tags.push({ key: 'price', label: PRICE_RANGES.find(p => p.value === priceRange)?.label ?? priceRange, remove: () => navigate({ priceRange: '' }) })
-  if (state)
-    tags.push({ key: 'state', label: LOCATIONS.find(l => l.value === state)?.label ?? state, remove: () => navigate({ state: '' }) })
+  if (industry)
+    tags.push({ key: 'industry', label: industries.find(i => i.slug === industry)?.name ?? industry, remove: () => navigate({ industry: '' }) })
+  if (cat)
+    tags.push({ key: 'cat', label: categories.find(c => c.slug === cat)?.name ?? cat, remove: () => navigate({ cat: '' }) })
+  if (country)
+    tags.push({ key: 'country', label: countries.find(c => c.slug === country)?.name ?? country, remove: () => navigate({ country: '' }) })
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -283,7 +334,7 @@ export default function FilterBar() {
         borderColor: 'rgba(232,233,234,0.25)',
       }}
     >
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
 
         {/* ── Pills row ─────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-0 py-3">
@@ -291,37 +342,28 @@ export default function FilterBar() {
           {/* Scrollable section: All Filters + divider + filter pills */}
           <div className="flex items-center gap-2 overflow-x-auto flex-1 no-scrollbar pr-3">
 
+            {/* Industry */}
+            <SinglePill
+              label="Industry"
+              value={industry}
+              options={[{ label: 'All Industries', value: '' }, ...industries.map(i => ({ label: i.name, value: i.slug }))]}
+              onChange={v => navigate({ industry: v })}
+            />
 
             {/* Category */}
-            <SinglePill
-              label="Category"
-              value={category}
-              options={CATEGORIES}
-              onChange={v => navigate({ category: v })}
+            <CategoryPill
+              value={cat}
+              options={categories}
+              industrySlug={industry}
+              onChange={v => navigate({ cat: v })}
             />
 
-            {/* Condition */}
-            <MultiPill
-              label="Condition"
-              values={conditions}
-              options={CONDITIONS}
-              onChange={v => navigate({ conditions: v })}
-            />
-
-            {/* Price */}
+            {/* Country */}
             <SinglePill
-              label="Price"
-              value={priceRange}
-              options={PRICE_RANGES}
-              onChange={v => navigate({ priceRange: v })}
-            />
-
-            {/* Location */}
-            <SinglePill
-              label="Location"
-              value={state}
-              options={LOCATIONS}
-              onChange={v => navigate({ state: v })}
+              label="Country"
+              value={country}
+              options={[{ label: 'All Countries', value: '' }, ...countries.map(c => ({ label: c.name, value: c.slug }))]}
+              onChange={v => navigate({ country: v })}
             />
 
             {/* Sort */}

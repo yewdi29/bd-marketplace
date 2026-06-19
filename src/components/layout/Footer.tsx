@@ -13,11 +13,11 @@ const SITEMAP = [
   {
     heading: 'Industries',
     links: [
-      { label: 'Oil & Gas', href: '/search?category=oil_gas' },
-      { label: 'Construction', href: '/search?category=construction' },
-      { label: 'Mining', href: '/search?category=mining' },
-      { label: 'Agriculture', href: '/search?category=agriculture' },
-      { label: 'Trucks & Trailers', href: '/search?category=trucks_trailers' },
+      { label: 'Oil & Gas', href: '/search?industry=oil_gas' },
+      { label: 'Construction', href: '/search?industry=construction' },
+      { label: 'Mining', href: '/search?industry=mining' },
+      { label: 'Agriculture', href: '/search?industry=agriculture' },
+      { label: 'Trucks & Trailers', href: '/search?industry=trucks_trailers' },
     ],
   },
   {
@@ -84,7 +84,7 @@ export default function Footer() {
 
   return (
     <footer style={{ background: '#1A1D20' }}>
-      <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-14 pb-0">
+      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 pt-14 pb-0">
 
         {/* Main grid: 3/4 sitemap + 1/4 settings */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 pb-10">
@@ -167,34 +167,13 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Legal row */}
-        <div
-          className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-5"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <Link
-            href="/privacy"
-            className="font-sans text-white/35 hover:text-white/60 transition-colors"
-            style={{ fontSize: '12px' }}
-          >
-            Privacy Policy
-          </Link>
-          <Link
-            href="/terms"
-            className="font-sans text-white/35 hover:text-white/60 transition-colors"
-            style={{ fontSize: '12px' }}
-          >
-            Terms of Service
-          </Link>
-        </div>
-
         {/* Bottom bar */}
         <div
-          className="flex items-center justify-between py-5"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-5"
           style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
-          {/* Left: diamond + copyright */}
-          <div className="flex items-center gap-3">
+          {/* Left: diamond + copyright + legal links */}
+          <div className="flex flex-wrap items-center gap-3">
             <div
               className="flex items-center justify-center shrink-0"
               style={{
@@ -214,6 +193,20 @@ export default function Footer() {
             >
               &copy; {year} Black Diamond Marketplace. All rights reserved.
             </p>
+            <Link
+              href="/privacy"
+              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
+              style={{ fontSize: '12px' }}
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
+              style={{ fontSize: '12px' }}
+            >
+              Terms of Service
+            </Link>
           </div>
 
           {/* Right: social icons */}

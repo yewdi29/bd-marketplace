@@ -40,12 +40,30 @@ function FilterBarFallback() {
   )
 }
 
+// Browser geolocation, resolved once per "Closest to Me" selection.
+// Resolves null on denial/failure so the API can fall back to the
+// user's saved profile location.
+function getBrowserCoords(): Promise<{ lat: number; lng: number } | null> {
+  return new Promise(resolve => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      resolve(null)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 5000 }
+    )
+  })
+}
+
 function SearchContent() {
   const searchParams = useSearchParams()
   const [listings, setListings]     = useState<Listing[]>([])
   const [total, setTotal]           = useState(0)
   const [loading, setLoading]       = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [locationUnavailable, setLocationUnavailable] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -56,26 +74,37 @@ function SearchContent() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      const q          = searchParams.get('q')
-      const category   = searchParams.get('category')
-      const conditions = searchParams.get('conditions')
-      const priceRange = searchParams.get('priceRange')
-      const state      = searchParams.get('state')
-      const sort       = searchParams.get('sort')
+      const q        = searchParams.get('q')
+      const category = searchParams.get('category')
+      const industry = searchParams.get('industry')
+      const cat      = searchParams.get('cat')
+      const country  = searchParams.get('country')
+      const sort     = searchParams.get('sort')
 
-      if (q)          params.set('q',          q)
-      if (category)   params.set('category',   category)
-      if (conditions) params.set('conditions', conditions)
-      if (priceRange) params.set('priceRange', priceRange)
-      if (state)      params.set('state',      state)
-      if (sort)       params.set('sort',       sort)
+      if (q)        params.set('q',        q)
+      if (category) params.set('category', category)
+      if (industry) params.set('industry', industry)
+      if (cat)      params.set('cat',      cat)
+      if (country)  params.set('country',  country)
+      if (sort)     params.set('sort',     sort)
       params.set('limit', '48')
+
+      // "Closest to Me" — try browser geolocation first; the API falls back
+      // to the user's saved profile location, then to best match, on its own.
+      if (sort === 'closest') {
+        const coords = await getBrowserCoords()
+        if (coords) {
+          params.set('lat', String(coords.lat))
+          params.set('lng', String(coords.lng))
+        }
+      }
 
       const res = await fetch(`/api/listings?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
         setListings(data.listings ?? [])
         setTotal(data.total ?? data.listings?.length ?? 0)
+        setLocationUnavailable(!!data.locationUnavailable)
       }
     } finally {
       setLoading(false)
@@ -87,13 +116,21 @@ function SearchContent() {
   }, [fetchListings])
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
       <p className="font-sans font-bold text-sm text-ink mb-5">
         {loading
           ? <span className="inline-block h-4 w-32 bg-[#F0F0F0] rounded-full animate-pulse" />
           : `${total} ${total === 1 ? 'listing' : 'listings'} found`
         }
       </p>
+
+      {!loading && locationUnavailable && (
+        <div className="mb-5 px-4 py-2.5 rounded-[10px] bg-[#FFF2ED] border border-orange-bdr">
+          <p className="text-sm font-sans text-orange">
+            Location wasn&apos;t available — showing Best Match results instead.
+          </p>
+        </div>
+      )}
 
       {loading ? (
         <SkeletonGrid />
@@ -132,7 +169,7 @@ export default function SearchPage() {
       </Suspense>
 
       <Suspense fallback={
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
           <div className="h-4 w-32 bg-[#F0F0F0] rounded-full mb-5 animate-pulse" />
           <SkeletonGrid />
         </div>

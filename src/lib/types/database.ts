@@ -63,6 +63,57 @@ export interface Listing {
   created_at: string
   updated_at: string
   listing_images?: ListingImage[]
+  // Industry / category taxonomy — nullable until a listing has been
+  // migrated or created against the new structure (see migrations).
+  industry_id: string | null
+  category_id: string | null
+  // Country / region / state taxonomy — same nullability rationale.
+  country_id: string | null
+  region_id: string | null
+  state_id: string | null
+  latitude: number | null
+  longitude: number | null
+}
+
+export interface Industry {
+  id: string
+  name: string
+  slug: string
+  sort_order: number
+  created_at: string
+}
+
+export interface Category {
+  id: string
+  name: string
+  slug: string
+  created_at: string
+}
+
+export interface Country {
+  id: string
+  name: string
+  slug: string
+  iso_code: string | null
+  created_at: string
+}
+
+export interface Region {
+  id: string
+  country_id: string
+  name: string
+  slug: string
+  created_at: string
+}
+
+export interface State {
+  id: string
+  region_id: string
+  name: string
+  code: string | null
+  latitude: number | null
+  longitude: number | null
+  created_at: string
 }
 
 export interface ListingImage {

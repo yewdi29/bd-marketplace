@@ -181,8 +181,15 @@ function TierCard({
         padding: '28px 24px 24px',
       }}
     >
-      {/* Most Popular badge — absolutely positioned top-right, no layout impact */}
-      {isPopular && (
+      {/* Corner badge — Current Plan takes priority over Most Popular, absolutely positioned, no layout impact */}
+      {isCurrent ? (
+        <span
+          className="absolute px-3 py-1 text-[10px] font-mono font-bold rounded-pill"
+          style={{ background: '#FFFFFF', color: '#1A1D20', border: '1.5px solid #D4D5D7', top: '20px', right: '20px', zIndex: 10 }}
+        >
+          CURRENT PLAN
+        </span>
+      ) : isPopular && (
         <span
           className="absolute px-3 py-1 text-[10px] font-mono font-bold rounded-pill text-white"
           style={{ background: '#FF6B35', top: '20px', right: '20px', zIndex: 10 }}
@@ -380,7 +387,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-8">
+    <div className="max-w-[1600px] mx-auto px-6 py-8">
 
       {/* ── Header ── */}
       <div className="mb-2">

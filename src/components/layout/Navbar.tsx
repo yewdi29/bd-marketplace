@@ -111,7 +111,7 @@ export default function Navbar() {
        * Search bar is visible on ALL pages — including homepage.
        */}
       <div
-        className="max-w-[1232px] mx-auto px-8 h-full grid items-center"
+        className="max-w-[1600px] mx-auto px-8 h-full grid items-center"
         style={{ gridTemplateColumns: 'auto 1fr auto', gap: '24px' }}
       >
         {/* Col 1: Logo */}

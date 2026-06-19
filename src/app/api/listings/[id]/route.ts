@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
 
 type Params = { params: { id: string } }
 
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // Ownership check
   const { data: listing } = await adminClient
     .from('listings')
-    .select('seller_id')
+    .select('seller_id, title, category')
     .eq('id', params.id)
     .single()
 
@@ -70,6 +71,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // Coerce numeric fields
   if ('price' in updates) updates.price = Number(updates.price) || 0
   if ('year' in updates) updates.year = updates.year ? Number(updates.year) : null
+
+  // Re-derive category_id/industry_id whenever title or category changes —
+  // title keywords catch cases the legacy category text alone gets wrong
+  // (e.g. "rental_tools" covers both pipe racks and generic fishing tools).
+  if ('title' in updates || 'category' in updates) {
+    const effectiveTitle    = (updates.title as string | undefined)    ?? listing.title
+    const effectiveCategory = (updates.category as string | undefined) ?? listing.category
+    const { category_id, industry_id } = await resolveCategoryAndIndustryIds(
+      adminClient, effectiveTitle, effectiveCategory
+    )
+    updates.category_id = category_id
+    updates.industry_id = industry_id
+  }
 
   // Only update the listing row if there are field changes beyond updated_at
   if (Object.keys(updates).length > 1) {
