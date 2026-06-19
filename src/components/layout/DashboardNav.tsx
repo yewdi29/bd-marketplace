@@ -1,12 +1,13 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import Link from 'next/link'
 import Image from 'next/image'
 import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
 import SearchBar from '@/components/marketplace/SearchBar'
 import MobileMenu from '@/components/layout/MobileMenu'
-import MobileSearchTakeover from '@/components/layout/MobileSearchTakeover'
+import MobileSearchTakeover, { type MobileSearchTakeoverHandle } from '@/components/layout/MobileSearchTakeover'
 import { LogoIcon, SearchBarTrigger, MobileNavTrigger } from '@/components/layout/MobileNavParts'
 
 const SEARCH_BAR_FALLBACK = (
@@ -16,11 +17,13 @@ const SEARCH_BAR_FALLBACK = (
 export default function DashboardNav({ user }: { user: ProfileUser }) {
   const [searchTakeoverOpen, setSearchTakeoverOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const searchTakeoverRef = useRef<MobileSearchTakeoverHandle>(null)
 
   // Mutually exclusive — opening one always closes the other first.
   function openSearchTakeover() {
     setMobileMenuOpen(false)
-    setSearchTakeoverOpen(true)
+    flushSync(() => setSearchTakeoverOpen(true))
+    searchTakeoverRef.current?.focusInput()
   }
   function openMobileMenu() {
     setSearchTakeoverOpen(false)
@@ -81,7 +84,11 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
       </div>
 
       <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={user} />
-      <MobileSearchTakeover open={searchTakeoverOpen} onClose={() => setSearchTakeoverOpen(false)} />
+      <MobileSearchTakeover
+        ref={searchTakeoverRef}
+        open={searchTakeoverOpen}
+        onClose={() => setSearchTakeoverOpen(false)}
+      />
     </header>
   )
 }

@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { flushSync } from 'react-dom'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
 import SearchBar from '@/components/marketplace/SearchBar'
 import MobileMenu from '@/components/layout/MobileMenu'
-import MobileSearchTakeover from '@/components/layout/MobileSearchTakeover'
+import MobileSearchTakeover, { type MobileSearchTakeoverHandle } from '@/components/layout/MobileSearchTakeover'
 import { LogoIcon, SearchIcon, SearchBarTrigger, MobileNavTrigger, TAP_TARGET, TAP_SIZE } from '@/components/layout/MobileNavParts'
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ export default function Navbar() {
   const [authReady, setAuthReady] = useState(false)
   const [searchTakeoverOpen, setSearchTakeoverOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const searchTakeoverRef = useRef<MobileSearchTakeoverHandle>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -85,7 +87,8 @@ export default function Navbar() {
   // one always closes the other, so they can never visually conflict.
   function openSearchTakeover() {
     setMobileMenuOpen(false)
-    setSearchTakeoverOpen(true)
+    flushSync(() => setSearchTakeoverOpen(true))
+    searchTakeoverRef.current?.focusInput()
   }
   function openMobileMenu() {
     setSearchTakeoverOpen(false)
@@ -179,7 +182,11 @@ export default function Navbar() {
       </div>
 
       <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={authUser} />
-      <MobileSearchTakeover open={searchTakeoverOpen} onClose={() => setSearchTakeoverOpen(false)} />
+      <MobileSearchTakeover
+        ref={searchTakeoverRef}
+        open={searchTakeoverOpen}
+        onClose={() => setSearchTakeoverOpen(false)}
+      />
     </header>
   )
 }
