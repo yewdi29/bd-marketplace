@@ -8,6 +8,7 @@ import { formatPrice } from '@/lib/formatPrice'
 import PhotoGallery from './PhotoGallery'
 import ListingActions from './ListingActions'
 import InquiryForm from './InquiryForm'
+import ListingBreadcrumb from './ListingBreadcrumb'
 import ListingCard from '@/components/ListingCard'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 
@@ -253,29 +254,13 @@ export default async function ListingDetailPage({ params }: Props) {
 
       <div className="bg-bg min-h-screen pb-20">
 
-        {/* Breadcrumb */}
-        <div
-          className="max-w-[1600px] mx-auto px-8 flex items-center gap-2 py-5"
-          style={{ fontSize: '12px' }}
-        >
-          <Link href="/listings" className="text-ink-3 hover:text-ink transition-colors font-sans">
-            Browse
-          </Link>
-          <span className="text-ink-3">/</span>
-          <Link
-            href={`/search?category=${l.category}`}
-            className="text-ink-3 hover:text-ink transition-colors font-sans"
-          >
-            {catLabel(l.category)}
-          </Link>
-          <span className="text-ink-3">/</span>
-          <span className="text-ink font-sans font-medium truncate max-w-[300px]">{l.title}</span>
-        </div>
+        {/* Breadcrumb (desktop) / Back button (mobile, tablet) */}
+        <ListingBreadcrumb category={l.category} categoryLabel={catLabel(l.category)} title={l.title} />
 
         {/* ── Two-column grid — gallery fills remaining space, info column fluid between 450–550px ── */}
         <div
-          className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_clamp(500px,30vw,600px)]"
-          style={{ gap: '24px', padding: '0 32px 32px' }}
+          className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_clamp(500px,30vw,600px)] px-4 sm:px-6 lg:px-8 pb-8"
+          style={{ gap: '24px' }}
         >
 
           {/* ── Left column: sticky photo gallery ── */}
@@ -481,7 +466,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
         {/* ── Related Listings — full width below grid ── */}
         {related && related.length > 0 && (
-          <div className="max-w-[1600px] mx-auto px-8">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="border-t border-[#E8E9EA] mb-7" />
             <p className="font-sans font-bold text-ink mb-5" style={{ fontSize: '16px' }}>
               Related Listings
