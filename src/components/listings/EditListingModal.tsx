@@ -2,58 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper, labelCls } from '@/components/listings/ListingTaxonomyFields'
+import {
+  EMPTY_TAXONOMY_VALUES,
+  useListingTaxonomy,
+  type ListingTaxonomyFormValues,
+} from '@/hooks/useListingTaxonomy'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  { value: 'drilling_rig', label: 'Drilling Rig' },
-  { value: 'drill_pipe', label: 'Drill Pipe' },
-  { value: 'drill_collar', label: 'Drill Collar' },
-  { value: 'blowout_preventer', label: 'Blowout Preventer (BOP)' },
-  { value: 'wellhead', label: 'Wellhead Equipment' },
-  { value: 'pumping_unit', label: 'Pumping Unit' },
-  { value: 'artificial_lift', label: 'Artificial Lift' },
-  { value: 'wireline', label: 'Wireline Equipment' },
-  { value: 'coiled_tubing', label: 'Coiled Tubing' },
-  { value: 'completion_equipment', label: 'Completion Equipment' },
-  { value: 'production_equipment', label: 'Production Equipment' },
-  { value: 'compressor', label: 'Compressor' },
-  { value: 'separator', label: 'Separator' },
-  { value: 'tank', label: 'Tank' },
-  { value: 'flowline', label: 'Flowline & Piping' },
-  { value: 'electrical', label: 'Electrical Equipment' },
-  { value: 'safety', label: 'Safety Equipment' },
-  { value: 'rental_tools', label: 'Rental Tools' },
-  { value: 'other', label: 'Other' },
-]
-
-const US_STATES = [
-  { value: 'AL', label: 'Alabama' }, { value: 'AK', label: 'Alaska' },
-  { value: 'AZ', label: 'Arizona' }, { value: 'AR', label: 'Arkansas' },
-  { value: 'CA', label: 'California' }, { value: 'CO', label: 'Colorado' },
-  { value: 'CT', label: 'Connecticut' }, { value: 'DE', label: 'Delaware' },
-  { value: 'FL', label: 'Florida' }, { value: 'GA', label: 'Georgia' },
-  { value: 'HI', label: 'Hawaii' }, { value: 'ID', label: 'Idaho' },
-  { value: 'IL', label: 'Illinois' }, { value: 'IN', label: 'Indiana' },
-  { value: 'IA', label: 'Iowa' }, { value: 'KS', label: 'Kansas' },
-  { value: 'KY', label: 'Kentucky' }, { value: 'LA', label: 'Louisiana' },
-  { value: 'ME', label: 'Maine' }, { value: 'MD', label: 'Maryland' },
-  { value: 'MA', label: 'Massachusetts' }, { value: 'MI', label: 'Michigan' },
-  { value: 'MN', label: 'Minnesota' }, { value: 'MS', label: 'Mississippi' },
-  { value: 'MO', label: 'Missouri' }, { value: 'MT', label: 'Montana' },
-  { value: 'NE', label: 'Nebraska' }, { value: 'NV', label: 'Nevada' },
-  { value: 'NH', label: 'New Hampshire' }, { value: 'NJ', label: 'New Jersey' },
-  { value: 'NM', label: 'New Mexico' }, { value: 'NY', label: 'New York' },
-  { value: 'NC', label: 'North Carolina' }, { value: 'ND', label: 'North Dakota' },
-  { value: 'OH', label: 'Ohio' }, { value: 'OK', label: 'Oklahoma' },
-  { value: 'OR', label: 'Oregon' }, { value: 'PA', label: 'Pennsylvania' },
-  { value: 'RI', label: 'Rhode Island' }, { value: 'SC', label: 'South Carolina' },
-  { value: 'SD', label: 'South Dakota' }, { value: 'TN', label: 'Tennessee' },
-  { value: 'TX', label: 'Texas' }, { value: 'UT', label: 'Utah' },
-  { value: 'VT', label: 'Vermont' }, { value: 'VA', label: 'Virginia' },
-  { value: 'WA', label: 'Washington' }, { value: 'WV', label: 'West Virginia' },
-  { value: 'WI', label: 'Wisconsin' }, { value: 'WY', label: 'Wyoming' },
-]
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -91,8 +47,6 @@ interface EditForm {
   price: string
   price_unit: string
   price_visible: boolean
-  location_city: string
-  location_state: string
   description: string
 }
 
@@ -102,47 +56,13 @@ interface Props {
   onSaved: () => void
 }
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
-
-const inputCls =
-  'w-full px-4 py-2.5 text-sm font-sans text-ink bg-white border border-[#D4D5D7] rounded-[10px] outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors placeholder:text-ink-3'
-
-const selectCls =
-  'w-full px-4 py-2.5 text-sm font-sans text-ink bg-white border border-[#D4D5D7] rounded-[10px] outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors appearance-none cursor-pointer'
-
-const labelCls = 'block text-sm font-semibold text-ink mb-1.5'
-
-function SelectWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative">
-      {children}
-      <svg
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3"
-        fill="none" viewBox="0 0 24 24" stroke="currentColor"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  )
-}
-
-function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className={labelCls}>
-        {label}
-        {required && <span className="ml-0.5 text-[#CC0000]">*</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EditListingModal({ listingId, onClose, onSaved }: Props) {
   const supabase = createClient()
+  const taxonomyData = useListingTaxonomy()
   const [form, setForm] = useState<EditForm | null>(null)
+  const [taxonomy, setTaxonomy] = useState<ListingTaxonomyFormValues>(EMPTY_TAXONOMY_VALUES)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -165,7 +85,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     async function fetchListing() {
       const { data, error: fetchError } = await supabase
         .from('listings')
-        .select('title, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, description, status, listing_images(id, url, sort_order, is_primary)')
+        .select('title, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, description, status, country_id, region_id, state_id, industry_id, category_id, listing_images(id, url, sort_order, is_primary)')
         .eq('id', listingId)
         .single()
 
@@ -185,9 +105,16 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
         price: data.price != null && data.price > 0 ? String(data.price) : '',
         price_unit: (data as { price_unit?: string }).price_unit ?? 'total',
         price_visible: data.price_visible !== false,
+        description: data.description ?? '',
+      })
+      setTaxonomy({
+        country_id: data.country_id ?? '',
+        region_id: data.region_id ?? '',
+        state_id: data.state_id ?? '',
+        industry_id: data.industry_id ?? '',
+        category_id: data.category_id ?? '',
         location_city: data.location_city ?? '',
         location_state: data.location_state ?? '',
-        description: data.description ?? '',
       })
 
       // Sort images: primary first, then by sort_order
@@ -269,9 +196,8 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
           price: parseFloat(form.price) || 0,
           price_unit: form.price_unit,
           price_visible: form.price_visible,
-          location_city: form.location_city || null,
-          location_state: form.location_state || null,
           description: form.description || null,
+          ...taxonomy,
         }),
       }),
     ]
@@ -367,12 +293,19 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  const countrySlug = taxonomyData.getCountrySlug(taxonomy.country_id)
+  const hasLocation = !!(
+    taxonomy.country_id &&
+    (countrySlug === 'mexico' || (taxonomy.location_city && taxonomy.state_id))
+  )
+
   const canPublish = !!(
     form &&
     form.title && form.title !== 'Untitled Draft' &&
-    form.category &&
+    taxonomy.industry_id && taxonomy.category_id &&
     parseFloat(form.price) > 0 &&
-    (form.location_city || form.location_state) &&
+    form.condition &&
+    hasLocation &&
     photos.length >= 1
   )
 
@@ -541,37 +474,28 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                 />
               </FormField>
 
-              {/* Category + Condition */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Category" required>
-                  <SelectWrapper>
-                    <select
-                      value={form.category}
-                      onChange={e => setForm(f => f ? { ...f, category: e.target.value } : f)}
-                      className={selectCls}
-                    >
-                      <option value="">Select category</option>
-                      {CATEGORIES.map(c => (
-                        <option key={c.value} value={c.value}>{c.label}</option>
-                      ))}
-                    </select>
-                  </SelectWrapper>
-                </FormField>
-                <FormField label="Condition" required>
-                  <SelectWrapper>
-                    <select
-                      value={form.condition}
-                      onChange={e => setForm(f => f ? { ...f, condition: e.target.value } : f)}
-                      className={selectCls}
-                    >
-                      <option value="">Select condition</option>
-                      {CONDITIONS.map(c => (
-                        <option key={c.value} value={c.value}>{c.label}</option>
-                      ))}
-                    </select>
-                  </SelectWrapper>
-                </FormField>
-              </div>
+              {/* Condition */}
+              <FormField label="Condition" required>
+                <SelectWrapper>
+                  <select
+                    value={form.condition}
+                    onChange={e => setForm(f => f ? { ...f, condition: e.target.value } : f)}
+                    className={selectCls}
+                  >
+                    <option value="">Select condition</option>
+                    {CONDITIONS.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </SelectWrapper>
+              </FormField>
+
+              {/* Industry, Category, Country, Region/State */}
+              <ListingTaxonomyFields
+                values={taxonomy}
+                onChange={setTaxonomy}
+                required
+              />
 
               {/* Manufacturer + Model */}
               <div className="grid grid-cols-2 gap-4">
@@ -668,33 +592,6 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                   </span>
                 </label>
               </FormField>
-
-              {/* Location */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="City" required>
-                  <input
-                    type="text"
-                    value={form.location_city}
-                    onChange={e => setForm(f => f ? { ...f, location_city: e.target.value } : f)}
-                    className={inputCls}
-                    placeholder="e.g. Midland"
-                  />
-                </FormField>
-                <FormField label="State" required>
-                  <SelectWrapper>
-                    <select
-                      value={form.location_state}
-                      onChange={e => setForm(f => f ? { ...f, location_state: e.target.value } : f)}
-                      className={selectCls}
-                    >
-                      <option value="">Select state</option>
-                      {US_STATES.map(s => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
-                    </select>
-                  </SelectWrapper>
-                </FormField>
-              </div>
 
               {/* Description */}
               <FormField label="Description">

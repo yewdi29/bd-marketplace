@@ -33,7 +33,14 @@ export async function PATCH(
 
   const { data: listing } = await adminClient
     .from('listings')
-    .select('seller_id, title, category, price, condition, location_city, location_state')
+    .select(`
+      seller_id, title, category, price, condition,
+      location_city, location_state,
+      country_id, region_id, state_id,
+      industry_id, category_id,
+      countries(slug),
+      listing_images(id)
+    `)
     .eq('id', params.id)
     .single()
 
@@ -66,13 +73,32 @@ export async function PATCH(
   }
 
   // Validate required fields before going live
+  type CountryEmbed = { slug: string } | { slug: string }[] | null
+  const countryEmbed = listing.countries as CountryEmbed
+  const countrySlug = Array.isArray(countryEmbed)
+    ? countryEmbed[0]?.slug ?? null
+    : countryEmbed?.slug ?? null
+  const hasCategory = !!(listing.category_id || (listing.category && listing.category !== 'other'))
+  const hasLocation = (() => {
+    if (!listing.country_id) return false
+    if (countrySlug === 'mexico') return true
+    return !!(listing.location_city && listing.state_id)
+  })()
+
   if (
     !listing.title || listing.title === 'Untitled Draft' ||
-    !listing.category || listing.category === 'other' ||
+    !hasCategory ||
     !listing.condition ||
-    !listing.location_city ||
-    !listing.location_state
+    !hasLocation
   ) {
+    return NextResponse.json(
+      { error: 'Listing is missing required fields. Complete all fields in the form before publishing.' },
+      { status: 400 }
+    )
+  }
+
+  const images = listing.listing_images as { id: string }[] | null
+  if (!images || images.length < 1) {
     return NextResponse.json(
       { error: 'Listing is missing required fields. Complete all fields in the form before publishing.' },
       { status: 400 }

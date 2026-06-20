@@ -66,7 +66,7 @@ export default async function HomePage() {
 
     const { data: eligibleListings } = await adminClient
       .from('listings')
-      .select('*, listing_images(*)')
+      .select('*, listing_images(*), countries(name, iso_code)')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(80)
@@ -155,7 +155,7 @@ export default async function HomePage() {
              */}
             <div
               data-hero-card
-              className="w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px]"
+              className="w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px] flex flex-col items-center text-center min-[1000px]:items-start min-[1000px]:text-left"
               style={{
                 background: 'rgba(255,255,255,0.20)',
                 backdropFilter: 'blur(20px)',
@@ -163,9 +163,6 @@ export default async function HomePage() {
                 border: '1px solid rgba(255,255,255,0.45)',
                 borderRadius: '20px',
                 boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
               }}
             >
               {/* Eyebrow pill */}
@@ -225,12 +222,8 @@ export default async function HomePage() {
 
               {/* Industry tags */}
               <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  marginBottom: '22px',
-                }}
+                className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 min-[1000px]:justify-start"
+                style={{ marginBottom: '22px' }}
               >
                 {INDUSTRY_TAGS.map(tag => (
                   <div key={tag.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -260,6 +253,7 @@ export default async function HomePage() {
 
               {/* Subtitle */}
               <p
+                className="mx-auto min-[1000px]:mx-0"
                 style={{
                   fontSize: '16px',
                   color: '#6A6D72',
@@ -274,7 +268,7 @@ export default async function HomePage() {
               </p>
 
               {/* CTA buttons */}
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div className="flex justify-center gap-3 min-[1000px]:justify-start" style={{ alignItems: 'center' }}>
                 <Link
                   href="/search"
                   className="inline-flex items-center px-[18px] py-2 bg-white text-ink border border-[#E8E9EA] rounded-pill font-bold text-[13px] no-underline whitespace-nowrap font-sans transition-all duration-200 hover:text-orange hover:border-orange"

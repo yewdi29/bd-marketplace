@@ -1,14 +1,18 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Camera } from 'lucide-react'
+import MobileLightbox from './MobileLightbox'
+import { useIsMobileGallery } from './useIsMobileGallery'
 import type { ListingImage } from '@/lib/types/database'
 
 interface Props {
   images: ListingImage[]
   title: string
   actions?: React.ReactNode
+  shareUrl?: string
+  shareTitle?: string
 }
 
 type View = 'inline' | 'grid' | 'lightbox'
@@ -82,19 +86,23 @@ function ThumbnailStrip({
   )
 }
 
-export default function PhotoGallery({ images, title, actions }: Props) {
+export default function PhotoGallery({ images, title, actions, shareUrl, shareTitle }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [view, setView] = useState<View>('inline')
   const [mounted, setMounted] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const isMobile = useIsMobileGallery()
 
   useEffect(() => { setMounted(true) }, [])
 
-  const sorted = [...images].sort((a, b) => {
-    if (a.is_primary && !b.is_primary) return -1
-    if (!a.is_primary && b.is_primary) return 1
-    return a.sort_order - b.sort_order
-  })
+  const sorted = useMemo(
+    () => [...images].sort((a, b) => {
+      if (a.is_primary && !b.is_primary) return -1
+      if (!a.is_primary && b.is_primary) return 1
+      return a.sort_order - b.sort_order
+    }),
+    [images],
+  )
 
   const active = sorted[activeIdx]
   const total = sorted.length
@@ -128,6 +136,8 @@ export default function PhotoGallery({ images, title, actions }: Props) {
     function preventTouchMove(e: TouchEvent) {
       const target = e.target as Element | null
       if (target?.closest('[data-gallery-overlay-scroll]')) return
+      if (target?.closest('[data-gallery-thumb-strip]')) return
+      if (target?.closest('.pswp')) return
       e.preventDefault()
     }
     document.addEventListener('touchmove', preventTouchMove, { passive: false })
@@ -149,15 +159,19 @@ export default function PhotoGallery({ images, title, actions }: Props) {
   useEffect(() => {
     if (view === 'inline') return
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setView('inline')
-      if (view === 'lightbox') {
+      if (e.key === 'Escape') {
+        if (view === 'lightbox' && isMobile) setView('grid')
+        else setView('inline')
+        return
+      }
+      if (view === 'lightbox' && !isMobile) {
         if (e.key === 'ArrowRight') next()
         if (e.key === 'ArrowLeft') prev()
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [view, next, prev])
+  }, [view, next, prev, isMobile])
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
@@ -252,8 +266,22 @@ export default function PhotoGallery({ images, title, actions }: Props) {
     </div>
   )
 
-  // ── State 3: Focused lightbox — dark background, single image ─────────────
-  const lightboxOverlay = view === 'lightbox' && (
+  // ── State 3a: Mobile lightbox (PhotoSwipe) ─────────────────────────────────
+  const mobileLightbox = view === 'lightbox' && isMobile && (
+    <MobileLightbox
+      open
+      images={sorted}
+      title={title}
+      initialIndex={activeIdx}
+      shareUrl={shareUrl}
+      shareTitle={shareTitle}
+      onIndexChange={setActiveIdx}
+      onClose={() => setView('grid')}
+    />
+  )
+
+  // ── State 3b: Desktop lightbox — dark background, single image ─────────────
+  const desktopLightboxOverlay = view === 'lightbox' && !isMobile && (
     <div
       className="fixed inset-0 z-[1100] flex flex-col"
       style={{ background: 'rgba(20,21,23,0.97)' }}
@@ -406,7 +434,8 @@ export default function PhotoGallery({ images, title, actions }: Props) {
           always paint above the fixed navbar regardless of ancestor stacking
           contexts created by this page's layout. */}
       {mounted && gridOverlay && createPortal(gridOverlay, document.body)}
-      {mounted && lightboxOverlay && createPortal(lightboxOverlay, document.body)}
+      {mounted && mobileLightbox}
+      {mounted && desktopLightboxOverlay && createPortal(desktopLightboxOverlay, document.body)}
     </>
   )
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import 'flag-icons/css/flag-icons.min.css'
 import './globals.css'
 
 const inter = Inter({

@@ -23,6 +23,10 @@ interface ListingCardListing {
     is_primary: boolean
     alt_text?: string | null
   }[]
+  countries?: {
+    name: string
+    iso_code: string | null
+  } | null
 }
 
 interface ListingCardProps {
@@ -36,6 +40,13 @@ function isNewListing(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000
 }
 
+function countryFlagClass(isoCode: string | null | undefined): string | null {
+  if (!isoCode) return null
+  const code = isoCode.trim().toLowerCase()
+  if (!/^[a-z]{2}$/.test(code)) return null
+  return `fi fis fi-${code}`
+}
+
 export default function ListingCard({ listing, initialSaved = false, isLoggedIn = false, onUnsave }: ListingCardProps) {
   const [saved, setSaved] = useState(initialSaved)
   const [saving, setSaving] = useState(false)
@@ -46,8 +57,13 @@ export default function ListingCard({ listing, initialSaved = false, isLoggedIn 
 
   const priceDisplay = formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible ?? true)
 
-  const locationParts = [listing.location_city, listing.location_state].filter(Boolean)
-  const locationText = locationParts.length > 0 ? [...locationParts, 'United States'].join(', ') : null
+  const locationParts = [
+    listing.location_city,
+    listing.location_state,
+    listing.countries?.name,
+  ].filter(Boolean)
+  const locationText = locationParts.length > 0 ? locationParts.join(', ') : null
+  const flagClass = countryFlagClass(listing.countries?.iso_code)
 
   async function handleSave(e: React.MouseEvent) {
     e.preventDefault()
@@ -151,7 +167,7 @@ export default function ListingCard({ listing, initialSaved = false, isLoggedIn 
         {/* Location pill */}
         {locationText && (
           <span
-            className="inline-block font-sans"
+            className="inline-flex items-center gap-1.5 font-sans"
             style={{
               background: '#F7F8F9',
               border: '1px solid #E8E9EA',
@@ -161,6 +177,18 @@ export default function ListingCard({ listing, initialSaved = false, isLoggedIn 
               padding: '3px 10px',
             }}
           >
+            {flagClass && (
+              <span
+                className="inline-flex shrink-0 rounded-full overflow-hidden border border-[#E8E9EA]"
+                style={{ width: 14, height: 14 }}
+                aria-hidden="true"
+              >
+                <span
+                  className={flagClass}
+                  style={{ width: 14, height: 14, backgroundSize: 'cover' }}
+                />
+              </span>
+            )}
             {locationText}
           </span>
         )}

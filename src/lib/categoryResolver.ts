@@ -81,3 +81,38 @@ export async function resolveCategoryAndIndustryIds(
 
   return { category_id: row.id, industry_id: industryId }
 }
+
+export async function resolveCategoryBySlugs(
+  client: CategoryLookupClient,
+  industrySlug: string | null | undefined,
+  categorySlug: string | null | undefined,
+): Promise<{ category_id: string | null; industry_id: string | null; legacyCategory: string | null }> {
+  if (!categorySlug) return { category_id: null, industry_id: null, legacyCategory: null }
+
+  const { data: category } = await client
+    .from('categories')
+    .select('id, slug, name, category_industries(industry_id, industries(slug))')
+    .eq('slug', categorySlug.trim().toLowerCase())
+    .maybeSingle()
+
+  if (!category) return { category_id: null, industry_id: null, legacyCategory: null }
+
+  type Row = {
+    id: string
+    slug: string
+    name: string
+    category_industries: { industry_id: string; industries: { slug: string } | null }[] | null
+  }
+  const row = category as Row
+  const links = row.category_industries ?? []
+
+  let industryId: string | null = links[0]?.industry_id ?? null
+  if (industrySlug) {
+    const match = links.find(l => l.industries?.slug === industrySlug.trim().toLowerCase())
+    if (match) industryId = match.industry_id
+  }
+
+  const legacyCategory = row.slug.replace(/-/g, '_')
+
+  return { category_id: row.id, industry_id: industryId, legacyCategory }
+}

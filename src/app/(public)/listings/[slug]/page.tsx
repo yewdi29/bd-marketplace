@@ -177,7 +177,7 @@ export default async function ListingDetailPage({ params }: Props) {
   // Related listings (same category, limit 3)
   const { data: related } = await supabase
     .from('listings')
-    .select('*, listing_images(*)')
+    .select('*, listing_images(*), countries(name, iso_code)')
     .eq('category', l.category)
     .eq('status', 'active')
     .neq('id', l.id)
@@ -259,12 +259,12 @@ export default async function ListingDetailPage({ params }: Props) {
 
         {/* ── Two-column grid — gallery fills remaining space, info column fluid between 450–550px ── */}
         <div
-          className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_clamp(500px,30vw,600px)] px-4 sm:px-6 lg:px-8 pb-8"
+          className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_clamp(500px,30vw,600px)] lg:items-start px-4 sm:px-6 lg:px-8 pb-8"
           style={{ gap: '24px' }}
         >
 
-          {/* ── Left column: sticky photo gallery ── */}
-          <div className="lg:sticky self-start" style={{ top: '80px' }}>
+          {/* ── Left column: sticky photo gallery (desktop only) ── */}
+          <div className="lg:sticky lg:top-20 lg:self-start lg:z-10">
             <div
               className="bg-white border border-[#E8E9EA] rounded-[16px] overflow-hidden"
               style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
@@ -272,6 +272,8 @@ export default async function ListingDetailPage({ params }: Props) {
               <PhotoGallery
                 images={images}
                 title={l.title}
+                shareUrl={listingUrl}
+                shareTitle={l.title}
                 actions={
                   <ListingActions
                     listingId={l.id}

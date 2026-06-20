@@ -2,40 +2,94 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
+import { loadLocationTaxonomy } from '@/lib/locationResolver'
+import { resolveAiTaxonomy } from '@/lib/listingTaxonomyUpdate'
 
-const SYSTEM_PROMPT = `You are an expert equipment listing assistant for Black Diamond Marketplace, a premium B2B heavy equipment marketplace for the oil and gas industry.
+function buildSystemPrompt(taxonomy: {
+  industries: { name: string; slug: string }[]
+  categories: { name: string; slug: string; industrySlugs: string[] }[]
+  countries: { name: string; slug: string }[]
+  states: { name: string; code: string | null; countrySlug: string }[]
+}): string {
+  const industryList = taxonomy.industries
+    .map(i => `  - ${i.name} (slug: ${i.slug})`)
+    .join('\n')
+
+  const categoryList = taxonomy.categories
+    .map(c => `  - ${c.name} (slug: ${c.slug}; industries: ${c.industrySlugs.join(', ')})`)
+    .join('\n')
+
+  const countryList = taxonomy.countries
+    .map(c => `  - ${c.name} (slug: ${c.slug})`)
+    .join('\n')
+
+  const stateList = taxonomy.states
+    .slice(0, 80)
+    .map(s => `  - ${s.name}${s.code ? ` (${s.code})` : ''} — ${s.countrySlug}`)
+    .join('\n')
+
+  return `You are an expert equipment listing assistant for Black Diamond Marketplace, a premium B2B heavy equipment marketplace serving oil & gas, construction, mining, agriculture, and trucking.
 
 The user will describe a piece of equipment in plain language. Extract all relevant details and return them as a single valid JSON object. Return ONLY the raw JSON — no markdown, no explanation, no code fences.
 
 Use exactly these field names and value constraints:
 
 {
-  "title": "Equipment title following this exact pattern: [Manufacturer] [Model] [Equipment Type] — [Key Spec]. Max 80 characters. The key spec after the em dash must be the single most important differentiator — size, grade, PSI rating, or condition if nothing else is available. If manufacturer is unknown, use the equipment type as the first word. Never use generic sales words like 'Quality', 'Excellent', 'Available', or 'For Sale'. Always include manufacturer if mentioned. Always include model or grade if mentioned. Title must read like a professional equipment catalog entry, not a sales pitch. Examples: 'National 12-P-160 Drilling Rig — Full Package', 'Cameron Type U BOP Stack — 13⅝\" 5000 PSI', 'Gardner Denver PZ-11 Triplex Pump — Good Condition', '5\" Grade S-135 Drill Pipe — 19.5 lbs/ft Range 2'.",
-  "category": "One of exactly: drilling_rig | drill_pipe | drill_collar | blowout_preventer | wellhead | pumping_unit | artificial_lift | wireline | coiled_tubing | completion_equipment | production_equipment | compressor | separator | tank | flowline | electrical | safety | rental_tools | other",
+  "title": "Equipment title following this exact pattern: [Manufacturer] [Model] [Equipment Type] — [Key Spec]. Max 80 characters.",
+  "category": "Legacy oilfield category slug — one of: drilling_rig | drill_pipe | drill_collar | blowout_preventer | wellhead | pumping_unit | artificial_lift | wireline | coiled_tubing | completion_equipment | production_equipment | compressor | separator | tank | flowline | electrical | safety | rental_tools | other. Use only as fallback when industry_slug/category_slug cannot be determined.",
+  "industry_slug": "One of the industry slugs below, or null if you cannot confidently classify the equipment.",
+  "category_slug": "One of the category slugs below that belongs to the chosen industry, or null if you cannot confidently classify.",
   "manufacturer": "Manufacturer or brand name, or null if unknown",
   "model": "Model number or name, or null if unknown",
-  "year": 2012 (integer year, or null if unknown),
+  "year": 2012,
   "condition": "One of exactly: new | like_new | good | fair | parts_only",
-  "price": 75000 (number, no currency symbol, or null if not mentioned),
-  "price_unit": "One of exactly: total | per_foot | per_piece | per_ton | per_set | per_meter. Default to 'total' unless the description explicitly mentions per-unit pricing (e.g. '$25 per foot', '$150/piece', '$500 per ton'). Use 'total' for any lump-sum or full-lot price.",
+  "price": 75000,
+  "price_unit": "One of exactly: total | per_foot | per_piece | per_ton | per_set | per_meter",
+  "country_slug": "One of: united-states | canada | mexico — infer from the location mentioned. Use null if no location is mentioned or you cannot determine the country confidently.",
   "location_city": "City name, or null if not mentioned",
-  "location_state": "US state two-letter abbreviation (e.g. TX), or null if not mentioned",
-  "description": "Professional 3–5 sentence listing description for the public marketplace page. Highlight key specs, condition, and end with a call to action. Optimized for oil and gas buyers.",
-  "meta_description": "Single sentence, 130–160 characters, SEO meta description for search engines.",
+  "location_state": "For United States: 2-letter state code (e.g. TX). For Canada: full province name (e.g. Alberta, Ontario). For Mexico: null. Null if not mentioned or uncertain.",
+  "description": "Professional 3–5 sentence listing description for the public marketplace page.",
+  "meta_description": "Single sentence, 130–160 characters, SEO meta description.",
   "tags": ["array", "of", "relevant", "keyword", "strings"],
-  "specs": {"Size": "5\"", "Grade": "S-135"} (flat key-value object of all equipment specs mentioned — use human-readable keys like "Size", "Grade", "Weight per foot", "Connection type", "Range", "Horsepower", "Pressure rating", "Capacity", "API standard", "OD", "ID", "Wall thickness", "Drive type", "Stroke length", "Hook load", "Drawworks", "BHP", "RPM" etc. Only include specs the seller actually mentioned, never invent or assume values. Use null if no additional specs beyond the basic fields were mentioned.)
-}`
+  "specs": {"Size": "5\\""}
+}
+
+LOCATION RULES:
+- If the seller mentions a US city/state (e.g. "Midland, Texas" or "Houston, TX"), set country_slug to united-states and location_state to the 2-letter code.
+- If the seller mentions a Canadian city/province (e.g. "Calgary, Alberta" or "Toronto, Ontario"), set country_slug to canada and location_state to the full province name.
+- If the seller mentions Mexico or a Mexican city without a province, set country_slug to mexico and leave location_state null.
+- If location is ambiguous or not mentioned, set country_slug, location_city, and location_state all to null — do NOT guess.
+
+INDUSTRY & CATEGORY RULES:
+- Classify equipment into the best matching industry_slug and category_slug from the lists below.
+- category_slug MUST belong to the chosen industry.
+- If you cannot confidently match any category, set both industry_slug and category_slug to null.
+
+INDUSTRIES:
+${industryList}
+
+CATEGORIES:
+${categoryList}
+
+COUNTRIES:
+${countryList}
+
+STATES & PROVINCES (sample — match mentioned locations against these):
+${stateList}`
+}
 
 interface ClaudeGenerated {
   title: string
   category: string
+  industry_slug: string | null
+  category_slug: string | null
   manufacturer: string | null
   model: string | null
   year: number | null
   condition: string
   price: number | null
   price_unit: string | null
+  country_slug: string | null
   location_city: string | null
   location_state: string | null
   description: string
@@ -45,9 +99,6 @@ interface ClaudeGenerated {
 }
 
 // POST /api/listings/generate
-// Calls Claude to extract structured listing data from a free-text description.
-// PATCHes the draft listing with all fields.
-// Returns all fields EXCEPT meta_description (backend-only).
 export async function POST(request: NextRequest) {
   const body = await request.json() as { prompt?: string; listing_id?: string }
   const { prompt, listing_id } = body
@@ -59,7 +110,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Description is too short. Tell us more about the equipment.' }, { status: 400 })
   }
 
-  // Auth check
   const cookieStore = await cookies()
   const authClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,7 +124,6 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Verify ownership of the draft
   const { data: listing } = await adminClient
     .from('listings')
     .select('seller_id, status')
@@ -88,7 +137,48 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Can only generate for draft listings' }, { status: 400 })
   }
 
-  // Call Claude API — wrapped so any network failure returns clean JSON (not HTML)
+  // Build taxonomy-aware system prompt
+  const [locationTaxonomy, industriesRes, categoriesRes] = await Promise.all([
+    loadLocationTaxonomy(adminClient),
+    adminClient.from('industries').select('name, slug').order('sort_order'),
+    adminClient
+      .from('categories')
+      .select('name, slug, category_industries(industries(slug))')
+      .order('name'),
+  ])
+
+  type CatRow = {
+    name: string
+    slug: string
+    category_industries: { industries: { slug: string } | { slug: string }[] | null }[] | null
+  }
+  const categories = ((categoriesRes.data ?? []) as unknown as CatRow[]).map(row => ({
+    name: row.name,
+    slug: row.slug,
+    industrySlugs: (row.category_industries ?? []).flatMap(ci => {
+      const ind = ci.industries
+      if (!ind) return []
+      return Array.isArray(ind) ? ind.map(i => i.slug) : [ind.slug]
+    }),
+  }))
+
+  const countryById = new Map(locationTaxonomy.countries.map(c => [c.id, c.slug]))
+  const regionCountry = new Map(locationTaxonomy.regions.map(r => [r.id, r.country_id]))
+
+  const statesForPrompt = locationTaxonomy.states.map(s => {
+    const regionId = s.region_id
+    const countryId = regionCountry.get(regionId)
+    const countrySlug = countryId ? countryById.get(countryId) ?? '' : ''
+    return { name: s.name, code: s.code, countrySlug }
+  })
+
+  const systemPrompt = buildSystemPrompt({
+    industries: (industriesRes.data ?? []) as { name: string; slug: string }[],
+    categories,
+    countries: locationTaxonomy.countries,
+    states: statesForPrompt,
+  })
+
   let anthropicRes: Response
   try {
     anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -101,7 +191,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'claude-opus-4-5',
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -126,7 +216,6 @@ export async function POST(request: NextRequest) {
 
   const rawText = anthropicData.content?.[0]?.text?.trim() ?? ''
 
-  // Parse JSON — handle if Claude wraps it in a code block
   let generated: ClaudeGenerated
   try {
     generated = JSON.parse(rawText)
@@ -141,21 +230,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Re-derive category_id/industry_id from the generated title/category
-  const resolvedTitle    = generated.title || 'Untitled Draft'
-  const resolvedCategory = generated.category || 'other'
-  const { category_id, industry_id } = await resolveCategoryAndIndustryIds(
-    adminClient, resolvedTitle, resolvedCategory
-  )
+  const resolvedTitle = generated.title || 'Untitled Draft'
+  const taxonomy = await resolveAiTaxonomy(adminClient, {
+    country_slug: generated.country_slug,
+    location_city: generated.location_city,
+    location_state: generated.location_state,
+    industry_slug: generated.industry_slug,
+    category_slug: generated.category_slug,
+    title: resolvedTitle,
+    category: generated.category,
+  })
 
-  // PATCH the draft with all generated fields (including meta_description for SEO)
   const { error: updateError } = await adminClient
     .from('listings')
     .update({
       title: resolvedTitle,
-      category: resolvedCategory,
-      category_id,
-      industry_id,
+      category: taxonomy.legacyCategory,
+      category_id: taxonomy.category_id,
+      industry_id: taxonomy.industry_id,
+      country_id: taxonomy.country_id,
+      region_id: taxonomy.region_id,
+      state_id: taxonomy.state_id,
       manufacturer: generated.manufacturer ?? null,
       model: generated.model ?? null,
       year: generated.year ?? null,
@@ -163,8 +258,8 @@ export async function POST(request: NextRequest) {
       price: generated.price ?? 0,
       price_unit: generated.price_unit ?? 'total',
       price_visible: generated.price != null,
-      location_city: generated.location_city ?? null,
-      location_state: generated.location_state ?? null,
+      location_city: taxonomy.location_city,
+      location_state: taxonomy.location_state,
       description: generated.description ?? null,
       meta_description: generated.meta_description ?? null,
       tags: generated.tags ?? [],
@@ -177,7 +272,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  // Return all fields EXCEPT meta_description — that is backend-only
   const { meta_description: _omit, ...publicFields } = generated
-  return NextResponse.json({ listing: { ...publicFields, price: generated.price ?? 0 } })
+  return NextResponse.json({
+    listing: {
+      ...publicFields,
+      price: generated.price ?? 0,
+      category: taxonomy.legacyCategory,
+      country_id: taxonomy.country_id,
+      region_id: taxonomy.region_id,
+      state_id: taxonomy.state_id,
+      industry_id: taxonomy.industry_id,
+      category_id: taxonomy.category_id,
+      location_city: taxonomy.location_city,
+      location_state: taxonomy.location_state,
+    },
+  })
 }
