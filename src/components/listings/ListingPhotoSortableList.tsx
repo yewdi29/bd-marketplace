@@ -134,14 +134,13 @@ function SortablePhotoItem({
         type="button"
         aria-label={isHorizontal ? undefined : 'Drag to reorder photo'}
         aria-hidden={isHorizontal ? true : undefined}
-        tabIndex={isHorizontal ? -1 : undefined}
         className={[
           'absolute bottom-0 inset-x-0 z-[2] flex items-center justify-center',
           'bg-ink/55 text-white touch-none select-none',
           isHorizontal ? 'h-7 pointer-events-none' : 'h-6 opacity-0 group-hover:opacity-100 transition-opacity',
         ].join(' ')}
         style={touchBlockStyle}
-        {...(!isHorizontal ? { ...attributes, ...listeners } : {})}
+        {...(isHorizontal ? { tabIndex: -1 } : { ...attributes, ...listeners })}
       >
         <GripVertical className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden />
       </button>
