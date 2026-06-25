@@ -20,7 +20,7 @@ export async function GET(_request: NextRequest) {
 
   const { data, error } = await supabase
     .from('listings')
-    .select('id, title, category, price, price_unit, price_visible, status, slug, created_at, location_city, location_state, listing_images(url, is_primary, sort_order)')
+    .select('id, title, category, price, price_unit, price_visible, status, slug, created_at, location_city, location_state, specs, listing_images(url, is_primary, sort_order)')
     .eq('seller_id', user.id)
     .neq('status', 'removed')
     .order('created_at', { ascending: false })
@@ -30,6 +30,7 @@ export async function GET(_request: NextRequest) {
   const listings = (data ?? []).map(listing => {
     const imgs = (listing.listing_images ?? []) as { url: string; is_primary: boolean; sort_order: number }[]
     const primary = imgs.find(i => i.is_primary) ?? imgs.sort((a, b) => a.sort_order - b.sort_order)[0] ?? null
+    const specs = listing.specs as Record<string, string> | null
     return {
       id: listing.id,
       title: listing.title,
@@ -43,6 +44,7 @@ export async function GET(_request: NextRequest) {
       location_city: listing.location_city ?? null,
       location_state: listing.location_state ?? null,
       primary_image_url: primary?.url ?? null,
+      seller_prompt: specs?.seller_prompt ?? null,
     }
   })
 

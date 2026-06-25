@@ -137,7 +137,7 @@ export default function Navbar() {
         height: '64px',
       }}
     >
-      <div className="max-w-[1600px] mx-auto h-full">
+      <div className="max-w-[1450px] mx-auto h-full">
 
         {/* ── Desktop (≥1024px) — unchanged ───────────────────────────────────── */}
         <div

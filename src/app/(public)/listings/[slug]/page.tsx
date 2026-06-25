@@ -10,6 +10,7 @@ import ListingActions from './ListingActions'
 import InquiryForm from './InquiryForm'
 import ListingBreadcrumb from './ListingBreadcrumb'
 import ListingCard from '@/components/ListingCard'
+import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -253,13 +254,14 @@ export default async function ListingDetailPage({ params }: Props) {
       />
 
       <div className="bg-bg min-h-screen pb-20">
+        <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Breadcrumb (desktop) / Back button (mobile, tablet) */}
         <ListingBreadcrumb category={l.category} categoryLabel={catLabel(l.category)} title={l.title} />
 
         {/* ── Two-column grid — gallery fills remaining space, info column fluid between 450–550px ── */}
         <div
-          className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_clamp(500px,30vw,600px)] lg:items-start px-4 sm:px-6 lg:px-8 pb-8"
+          className="grid grid-cols-1 lg:grid-cols-[1fr_clamp(500px,30vw,600px)] lg:items-start pb-8"
           style={{ gap: '24px' }}
         >
 
@@ -466,21 +468,22 @@ export default async function ListingDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* ── Related Listings — full width below grid ── */}
+        {/* ── Related Listings ── */}
         {related && related.length > 0 && (
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+          <>
             <div className="border-t border-[#E8E9EA] mb-7" />
             <p className="font-sans font-bold text-ink mb-5" style={{ fontSize: '16px' }}>
               Related Listings
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <ListingCardGrid>
               {(related as Listing[]).map(rel => (
                 <ListingCard key={rel.id} listing={rel} isLoggedIn={!!user} />
               ))}
-            </div>
-          </div>
+            </ListingCardGrid>
+          </>
         )}
 
+        </div>
       </div>
     </>
   )

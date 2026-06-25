@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { formatPrice } from '@/lib/formatPrice'
-import ListingCard from '@/components/ListingCard'
+import ListingCard, { toListingCardListing } from '@/components/ListingCard'
+import ListingCardGrid from '@/components/listings/ListingCardGrid'
+import ListingCardSkeleton from '@/components/listings/ListingCardSkeleton'
 import NewListingModal from '@/components/listings/NewListingModal'
 import EditListingModal from '@/components/listings/EditListingModal'
 import type { MembershipPlan } from '@/lib/types/database'
@@ -27,6 +28,7 @@ interface MyListing {
   location_city: string | null
   location_state: string | null
   primary_image_url: string | null
+  seller_prompt: string | null
 }
 
 interface SavedListingItem {
@@ -46,14 +48,13 @@ interface SavedListingItem {
 type FilterTab = 'all' | 'active' | 'draft' | 'sold'
 type MainTab = 'listings' | 'saved'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatCategory(cat: string): string {
-  return cat
-    .split('_')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
+function isStepOneDraft(listing: MyListing): boolean {
+  return listing.status === 'draft'
+    && listing.title === 'Untitled Draft'
+    && !!listing.seller_prompt
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadge(status: ListingStatus): { bg: string; text: string; border: string; label: string } {
   switch (status) {
@@ -71,16 +72,7 @@ function statusBadge(status: ListingStatus): { bg: string; text: string; border:
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-[16px] overflow-hidden animate-pulse" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-      <div className="w-full h-[140px] bg-[#F0F0F0]" />
-      <div className="p-3 space-y-2">
-        <div className="h-3 bg-[#F0F0F0] rounded-full w-3/4" />
-        <div className="h-3 bg-[#F0F0F0] rounded-full w-1/2" />
-        <div className="h-4 bg-[#F0F0F0] rounded-full w-1/3 mt-2" />
-      </div>
-    </div>
-  )
+  return <ListingCardSkeleton />
 }
 
 // ─── Limit Reached Modal ──────────────────────────────────────────────────────
@@ -163,6 +155,7 @@ function CardOverlay({
   listing,
   onClose,
   onAction,
+  onDelete,
   onEdit,
   atLimit,
   onLimitReached,
@@ -170,6 +163,7 @@ function CardOverlay({
   listing: MyListing
   onClose: () => void
   onAction: (id: string, action: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
   onEdit: (id: string) => void
   atLimit: boolean
   onLimitReached: () => void
@@ -200,7 +194,7 @@ function CardOverlay({
             tooltip: !draftReady ? 'Complete all required fields in the editor before publishing' : undefined,
           },
           { label: 'Edit Draft', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
-          { label: 'Delete Draft', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
+          { label: 'Delete Draft', icon: <TrashIcon />, onClick: () => { onClose(); onDelete(listing.id) }, danger: true },
         ]
       }
       case 'sold':
@@ -213,7 +207,7 @@ function CardOverlay({
               await onAction(listing.id, 'publish'); onClose()
             },
           },
-          { label: 'Archive', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
+          { label: 'Archive', icon: <TrashIcon />, onClick: () => { onClose(); onDelete(listing.id) }, danger: true },
         ]
       case 'pending_review':
         return [
@@ -226,42 +220,52 @@ function CardOverlay({
               await onAction(listing.id, 'publish'); onClose()
             },
           },
-          { label: 'Archive', icon: <TrashIcon />, onClick: async () => { await onAction(listing.id, 'archive'); onClose() }, danger: true },
+          { label: 'Archive', icon: <TrashIcon />, onClick: () => { onClose(); onDelete(listing.id) }, danger: true },
         ]
     }
   })()
 
   return (
     <div
-      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 p-3 rounded-[16px]"
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 p-3 rounded-[12px]"
       style={{ background: 'rgba(255,255,255,0.50)', backdropFilter: 'blur(8px)' }}
+      onClick={e => e.stopPropagation()}
+      onMouseDown={e => e.stopPropagation()}
+      onTouchStart={e => e.stopPropagation()}
     >
-      {actions.map(action => (
-        <button
-          key={action.label}
-          onClick={action.disabled ? undefined : action.onClick}
-          title={action.tooltip}
-          disabled={action.disabled}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-semibold border transition-colors ${
-            action.disabled
-              ? 'opacity-40 cursor-not-allowed border-[#D4D5D7] bg-white text-ink-2'
-              : action.danger
-                ? 'border-[#FFCCCC] hover:opacity-80'
+      {actions.map(action =>
+        action.danger ? (
+          <HoldToDeleteButton
+            key={action.label}
+            label={action.label}
+            icon={action.icon}
+            onComplete={action.onClick}
+            disabled={action.disabled}
+          />
+        ) : (
+          <button
+            key={action.label}
+            onClick={action.disabled ? undefined : action.onClick}
+            title={action.tooltip}
+            disabled={action.disabled}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-semibold border transition-colors ${
+              action.disabled
+                ? 'opacity-40 cursor-not-allowed border-[#D4D5D7] bg-white text-ink-2'
                 : action.primary
                   ? 'border-orange hover:opacity-90'
                   : 'bg-white text-[#1A1D20] border-[#D4D5D7] hover:border-[#9A9DA2]'
-          }`}
-          style={
-            action.disabled ? undefined :
-            action.danger ? { background: '#FFF0F0', color: '#CC0000' } :
-            action.primary ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(255,107,53,0.25)' } :
-            undefined
-          }
-        >
-          <span className="w-4 h-4 shrink-0">{action.icon}</span>
-          {action.label}
-        </button>
-      ))}
+            }`}
+            style={
+              action.disabled ? undefined :
+              action.primary ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(255,107,53,0.25)' } :
+              undefined
+            }
+          >
+            <span className="w-4 h-4 shrink-0">{action.icon}</span>
+            {action.label}
+          </button>
+        )
+      )}
       <div className="w-full border-t border-[#E8E9EA] mt-2 pt-2">
         <button
           onClick={onClose}
@@ -271,6 +275,149 @@ function CardOverlay({
           Cancel
         </button>
       </div>
+    </div>
+  )
+}
+
+// ─── Hold-to-delete button (tap shows "Hold to delete" tip; 1.5s hold fires deletion) ──
+
+const HOLD_DELETE_MS = 1500
+const HOLD_TAP_THRESHOLD_MS = 300
+const HOLD_TIP_DURATION_MS = 2000
+
+function HoldToDeleteButton({
+  label,
+  icon,
+  onComplete,
+  disabled,
+}: {
+  label: string
+  icon: React.ReactNode
+  onComplete: () => void
+  disabled?: boolean
+}) {
+  const [progress, setProgress] = useState(0)
+  const [showTip, setShowTip] = useState(false)
+  const rafRef = useRef<number | null>(null)
+  const startRef = useRef(0)
+  const completedRef = useRef(false)
+  const tipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+      if (tipTimerRef.current) clearTimeout(tipTimerRef.current)
+    }
+  }, [])
+
+  function cancelHoldLoop() {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+  }
+
+  function tick() {
+    const elapsed = Date.now() - startRef.current
+    const pct = Math.min(100, (elapsed / HOLD_DELETE_MS) * 100)
+    setProgress(pct)
+    if (pct >= 100) {
+      completedRef.current = true
+      cancelHoldLoop()
+      onComplete()
+      return
+    }
+    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  function stopEvent(e: React.MouseEvent | React.TouchEvent) {
+    e.stopPropagation()
+  }
+
+  function startHold(e: React.MouseEvent | React.TouchEvent) {
+    if (disabled) return
+    stopEvent(e)
+    if ('button' in e && e.button !== 0) return
+
+    completedRef.current = false
+    setShowTip(false)
+    if (tipTimerRef.current) clearTimeout(tipTimerRef.current)
+    startRef.current = Date.now()
+    setProgress(0)
+    cancelHoldLoop()
+    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  function endHold(e?: React.MouseEvent | React.TouchEvent) {
+    if (disabled) return
+    e?.stopPropagation()
+    if (completedRef.current) return
+
+    const elapsed = startRef.current ? Date.now() - startRef.current : 0
+    cancelHoldLoop()
+    setProgress(0)
+
+    if (elapsed > 0 && elapsed < HOLD_TAP_THRESHOLD_MS) {
+      setShowTip(true)
+      if (tipTimerRef.current) clearTimeout(tipTimerRef.current)
+      tipTimerRef.current = setTimeout(() => setShowTip(false), HOLD_TIP_DURATION_MS)
+    }
+  }
+
+  return (
+    <div className="relative w-full">
+      {showTip && !disabled && (
+        <div
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-semibold text-white whitespace-nowrap pointer-events-none z-20"
+          style={{ background: '#1A1D20' }}
+          role="tooltip"
+        >
+          Hold to delete
+        </div>
+      )}
+
+      <button
+        type="button"
+        disabled={disabled}
+        onMouseDown={startHold}
+        onMouseUp={endHold}
+        onMouseLeave={() => endHold()}
+        onTouchStart={startHold}
+        onTouchEnd={endHold}
+        onTouchCancel={endHold}
+        onClick={stopEvent}
+        onContextMenu={e => e.preventDefault()}
+        className={`relative w-full overflow-hidden rounded-pill text-sm font-semibold border select-none touch-none ${
+          disabled ? 'opacity-40 cursor-not-allowed border-[#D4D5D7] bg-white text-ink-2' : 'border-[#FFCCCC] text-[#CC0000]'
+        }`}
+      >
+        {/* Base + progress layers */}
+        {!disabled && (
+          <>
+            <span
+              className="absolute inset-0 rounded-pill"
+              style={{ background: '#FFF0F0' }}
+              aria-hidden
+            />
+            {progress > 0 && (
+              <span
+                className="absolute inset-y-0 left-0"
+                style={{
+                  width: `${progress}%`,
+                  background: 'rgba(220,38,38,0.45)',
+                }}
+                aria-hidden
+              />
+            )}
+          </>
+        )}
+
+        {/* Label — stays above progress fill */}
+        <span className="relative z-10 flex items-center gap-2 px-3 py-2">
+          <span className="w-4 h-4 shrink-0">{icon}</span>
+          {label}
+        </span>
+      </button>
     </div>
   )
 }
@@ -338,105 +485,90 @@ function MyListingCard({
   isManaging,
   onCloseManage,
   onAction,
+  onDelete,
   onEdit,
   atLimit,
   onLimitReached,
+  isDeleting,
 }: {
   listing: MyListing
   onManage: (l: MyListing) => void
   isManaging: boolean
   onCloseManage: () => void
   onAction: (id: string, action: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
   onEdit: (id: string) => void
   atLimit: boolean
   onLimitReached: () => void
+  isDeleting: boolean
 }) {
   const badge = statusBadge(listing.status)
   const isNavigable = listing.status === 'active' && !!listing.slug
 
   function handleCardClick() {
-    if (isManaging) return
+    if (isManaging || isDeleting) return
     if (isNavigable) window.open(`/listings/${listing.slug}`, '_blank')
   }
 
   return (
     <div
-      className="bg-white rounded-[16px] overflow-hidden relative group transition-shadow"
-      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.10)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)')}
+      className={`relative rounded-[12px] overflow-hidden${isManaging ? ' z-20' : ''}`}
+      style={{
+        opacity: isDeleting ? 0 : 1,
+        transform: isDeleting ? 'scale(0.94)' : 'scale(1)',
+        transition: 'opacity 300ms ease, transform 300ms ease',
+        pointerEvents: isDeleting ? 'none' : undefined,
+      }}
     >
-      {/* On-card manage overlay (B010) */}
       {isManaging && (
         <CardOverlay
           listing={listing}
           onClose={onCloseManage}
           onAction={onAction}
+          onDelete={onDelete}
           onEdit={onEdit}
           atLimit={atLimit}
           onLimitReached={onLimitReached}
         />
       )}
 
-      {/* Clickable area — navigates to public listing (B008) */}
-      <div
-        className={isNavigable && !isManaging ? 'cursor-pointer' : ''}
+      <ListingCard
+        listing={toListingCardListing(listing)}
+        mode="clickable"
         onClick={handleCardClick}
-      >
-        {/* Image */}
-        <div className="w-full h-[140px] bg-[#F0F0F0] relative overflow-hidden">
-          {listing.primary_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={listing.primary_image_url}
-              alt={listing.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <svg className="w-10 h-10 text-ink-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+        showSave={false}
+        showShare={false}
+        disableHoverLift={isManaging || isDeleting}
+        thumbnailOverlay={
+          <>
+            <div className="absolute top-2 left-2">
+              <span
+                className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-bold rounded-pill border"
+                style={{ background: badge.bg, color: badge.text, borderColor: badge.border }}
+              >
+                {badge.label}
+              </span>
             </div>
-          )}
-          {/* Status badge */}
-          <div className="absolute top-2 left-2">
-            <span
-              className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-bold rounded-pill border"
-              style={{ background: badge.bg, color: badge.text, borderColor: badge.border }}
-            >
-              {badge.label}
-            </span>
-          </div>
-          {/* External link hint for active listings */}
-          {isNavigable && !isManaging && (
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="w-6 h-6 bg-white border border-[#E8E9EA] rounded-full flex items-center justify-center text-[#1A1D20] hover:border-[#9A9DA2] transition-colors">
-                <ExternalLinkIcon />
+            {isNavigable && !isManaging && (
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="w-6 h-6 bg-white border border-[#E8E9EA] rounded-full flex items-center justify-center text-[#1A1D20] hover:border-[#9A9DA2] transition-colors">
+                  <ExternalLinkIcon />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="p-3 pb-2">
-          <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{formatCategory(listing.category)}</p>
-          <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-2">{listing.title}</p>
-          <p className="font-mono text-sm font-medium text-orange tracking-tight mb-0">
-            {formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible ?? true)}
-          </p>
-        </div>
-      </div>
-
-      {/* Manage button — stops propagation so card click doesn't fire */}
-      <div className="px-3 pb-3 pt-2">
-        <button
-          onClick={e => { e.stopPropagation(); onManage(listing) }}
-          className="w-full py-1.5 text-xs font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
-        >
-          Manage
-        </button>
-      </div>
+            )}
+          </>
+        }
+        footer={
+          <div className="px-3 pb-3 pt-0">
+            <button
+              onClick={e => { e.stopPropagation(); onManage(listing) }}
+              className="w-full py-1.5 text-xs font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
+            >
+              Manage
+            </button>
+          </div>
+        }
+      />
     </div>
   )
 }
@@ -454,7 +586,9 @@ export default function DashboardPage() {
   const [manageListing, setManageListing] = useState<MyListing | null>(null)
   const [editListingId, setEditListingId] = useState<string | null>(null)
   const [showNewListing, setShowNewListing] = useState(false)
+  const [resumeListingId, setResumeListingId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
   const [showLimitModal, setShowLimitModal] = useState(false)
   const router = useRouter()
@@ -557,6 +691,52 @@ export default function DashboardPage() {
     }
   }
 
+  const DELETE_FADE_MS = 320
+
+  async function handleDelete(id: string) {
+    setManageListing(prev => (prev?.id === id ? null : prev))
+    setActionLoading(`${id}:delete`)
+    try {
+      const listing = listings.find(l => l.id === id)
+      const stepOneDraft = listing ? isStepOneDraft(listing) : false
+      const res = await fetch(
+        stepOneDraft ? `/api/listings/${id}` : `/api/listings/${id}/archive`,
+        { method: stepOneDraft ? 'DELETE' : 'PATCH' },
+      )
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({})) as { error?: string }
+        // Listing may already have been hard-deleted — drop ghost card from UI
+        if (res.status === 403 || res.status === 404) {
+          setDeletingIds(prev => new Set(prev).add(id))
+          setTimeout(() => {
+            setListings(prev => prev.filter(l => l.id !== id))
+            setDeletingIds(prev => {
+              const next = new Set(prev)
+              next.delete(id)
+              return next
+            })
+            showToast('Listing deleted')
+          }, DELETE_FADE_MS)
+          return
+        }
+        console.error('Delete failed:', json.error)
+        return
+      }
+      setDeletingIds(prev => new Set(prev).add(id))
+      setTimeout(() => {
+        setListings(prev => prev.filter(l => l.id !== id))
+        setDeletingIds(prev => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+        showToast('Listing deleted')
+      }, DELETE_FADE_MS)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   function showToast(message: string) {
     setToast(message)
     setTimeout(() => setToast(null), 4000)
@@ -569,7 +749,18 @@ export default function DashboardPage() {
       router.push('/dashboard/upgrade')
       return
     }
+    setResumeListingId(null)
     setShowNewListing(true)
+  }
+
+  function handleEditListing(listing: MyListing) {
+    setManageListing(null)
+    if (isStepOneDraft(listing)) {
+      setResumeListingId(listing.id)
+      setShowNewListing(true)
+    } else {
+      setEditListingId(listing.id)
+    }
   }
 
   // Grouped arrays — used for sectioned "All" view and filter counts
@@ -595,7 +786,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="max-w-[1600px] mx-auto px-6 py-8">
+    <div className="max-w-[1450px] mx-auto px-6 py-8">
 
       {/* Main tabs */}
       <div className="flex items-center gap-1 mb-8 border-b border-[#E8E9EA]">
@@ -677,9 +868,9 @@ export default function DashboardPage() {
 
           {/* Content */}
           {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+            <ListingCardGrid gap="dashboard">
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
+            </ListingCardGrid>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-14 h-14 rounded-[14px] bg-[#F0F0F0] flex items-center justify-center mb-4">
@@ -709,7 +900,7 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+            <ListingCardGrid gap="dashboard">
               {filtered.map(listing => (
                 <MyListingCard
                   key={listing.id}
@@ -718,12 +909,14 @@ export default function DashboardPage() {
                   isManaging={manageListing?.id === listing.id}
                   onCloseManage={() => setManageListing(null)}
                   onAction={handleAction}
-                  onEdit={id => { setManageListing(null); setEditListingId(id) }}
+                  onDelete={handleDelete}
+                  onEdit={() => handleEditListing(listing)}
                   atLimit={activeCount >= PLAN_LIMITS[plan]}
                   onLimitReached={() => setShowLimitModal(true)}
+                  isDeleting={deletingIds.has(listing.id)}
                 />
               ))}
-            </div>
+            </ListingCardGrid>
           )}
 
           {/* Click-outside backdrop — dismisses the card manage overlay */}
@@ -746,9 +939,9 @@ export default function DashboardPage() {
           </div>
 
           {savedLoading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+            <ListingCardGrid gap="dashboard">
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
+            </ListingCardGrid>
           ) : savedListings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-14 h-14 rounded-[14px] bg-[#F0F0F0] flex items-center justify-center mb-4">
@@ -769,7 +962,7 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '14px' }}>
+            <ListingCardGrid gap="dashboard">
               {savedListings.map(listing => (
                 <ListingCard
                   key={listing.id}
@@ -779,7 +972,7 @@ export default function DashboardPage() {
                   onUnsave={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
                 />
               ))}
-            </div>
+            </ListingCardGrid>
           )}
         </>
       )}
@@ -811,9 +1004,19 @@ export default function DashboardPage() {
       {/* New Listing Modal */}
       {showNewListing && (
         <NewListingModal
-          onClose={() => setShowNewListing(false)}
+          resumeListingId={resumeListingId}
+          onClose={() => {
+            setShowNewListing(false)
+            setResumeListingId(null)
+          }}
+          onDraftRemoved={(id) => {
+            setListings(prev => prev.filter(l => l.id !== id))
+            setShowNewListing(false)
+            setResumeListingId(null)
+          }}
           onSuccess={(message) => {
             setShowNewListing(false)
+            setResumeListingId(null)
             fetchData()
             if (message) showToast(message)
           }}

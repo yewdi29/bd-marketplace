@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { formatPrice } from '@/lib/formatPrice'
 import { useGlowBorder } from '@/hooks/useGlowBorder'
 import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper, labelCls } from '@/components/listings/ListingTaxonomyFields'
+import NewListingMobileFlow from '@/components/listings/NewListingMobileFlow'
+import { useIsBelowLg } from '@/hooks/useIsBelowLg'
 import {
   EMPTY_TAXONOMY_VALUES,
   type ListingTaxonomyFormValues,
@@ -33,12 +36,12 @@ const STEP_LABELS = ['Describe', 'Review & Refine', 'Photos & Video', 'Publish']
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface PhotoState {
+export interface PhotoState {
   id: string
   url: string
 }
 
-interface ListingForm {
+export interface ListingForm {
   title: string
   category: string
   manufacturer: string
@@ -69,6 +72,10 @@ const EMPTY_FORM: ListingForm = {
 interface Props {
   onClose: () => void
   onSuccess: (toast?: string) => void
+  /** Called when a draft row is gone (discard or failed resume) so dashboard can drop stale cards. */
+  onDraftRemoved?: (listingId: string) => void
+  /** Resume an in-progress step-1 draft (seller_prompt saved in specs). */
+  resumeListingId?: string | null
 }
 
 // ─── Shared styles (re-exported from ListingTaxonomyFields where needed) ────────
@@ -129,7 +136,7 @@ function Breadcrumb({ step }: { step: number }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function NewListingModal({ onClose, onSuccess }: Props) {
+export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, resumeListingId = null }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [listingId, setListingId] = useState<string | null>(null)
   const [prompt, setPrompt] = useState('')
@@ -151,6 +158,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
   const draftCreated = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const isMobileFlow = useIsBelowLg()
 
   // ── AI prompt canvas glow — always-on when modal is open ───────────────────
   const promptCanvasRef    = useRef<HTMLCanvasElement>(null)
@@ -166,10 +174,35 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
     promptGlowFocus()
   }, [promptGlowFocus])
 
-  // Create draft on mount — exactly once (ref guards against Strict Mode double-invoke)
+  // Create draft on mount — or resume an existing step-1 draft.
   useEffect(() => {
     if (draftCreated.current) return
     draftCreated.current = true
+
+    if (resumeListingId) {
+      const supabase = createClient()
+      void (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('listings')
+            .select('id, status, specs')
+            .eq('id', resumeListingId)
+            .single()
+          if (error || !data || data.status !== 'draft') {
+            setError('Could not resume this draft. Please try again.')
+            onDraftRemoved?.(resumeListingId)
+            return
+          }
+          setListingId(data.id)
+          const specs = data.specs as Record<string, string> | null
+          if (specs?.seller_prompt) setPrompt(specs.seller_prompt)
+          setStep(1)
+        } catch {
+          setError('Network error. Please try again.')
+        }
+      })()
+      return
+    }
 
     fetch('/api/listings/draft', { method: 'POST' })
       .then(r => r.json())
@@ -184,7 +217,7 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
         }
       })
       .catch(() => setError('Network error. Please try again.'))
-  }, [])
+  }, [resumeListingId, onDraftRemoved])
 
   // ── Step 1: Generate ────────────────────────────────────────────────────────
 
@@ -376,19 +409,33 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
 
   async function handleSaveAsDraft() {
     if (!listingId) return
-    // Price is required even when saving as draft from step 2
     if (step === 2 && !validatePrice()) return
     setStepLoading(true)
+    setError('')
 
-    await fetch(`/api/listings/${listingId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'draft' }),
-    })
+    const body: Record<string, unknown> = { status: 'draft' }
+    if (prompt.trim()) {
+      body.specs = { seller_prompt: prompt.trim() }
+    }
 
-    setStepLoading(false)
-    onSuccess()
-    onClose()
+    try {
+      const res = await fetch(`/api/listings/${listingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const d = await res.json() as { error?: string }
+        setError(d.error ?? 'Save failed. Please try again.')
+        return
+      }
+      onSuccess('Draft saved')
+      onClose()
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setStepLoading(false)
+    }
   }
 
   async function handlePublish() {
@@ -413,17 +460,24 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
 
   const handleDiscard = useCallback(async () => {
     if (listingId) {
-      await fetch(`/api/listings/${listingId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/listings/${listingId}`, { method: 'DELETE' })
+      if (res.ok) {
+        onSuccess()
+        return
+      }
+      setError('Could not discard draft. Please try again.')
+      setDiscardConfirm(false)
+      return
     }
     onClose()
-  }, [listingId, onClose])
+  }, [listingId, onClose, onSuccess])
 
   function handleCloseAttempt() {
-    if (listingId) {
-      setDiscardConfirm(true)
-    } else {
-      onClose()
+    if (step === 1 && !prompt.trim()) {
+      handleDiscard()
+      return
     }
+    setDiscardConfirm(true)
   }
 
   // ── Navigation ─────────────────────────────────────────────────────────────
@@ -475,6 +529,46 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  if (isMobileFlow) {
+    return (
+      <NewListingMobileFlow
+        onClose={onClose}
+        step={step}
+        setStep={setStep}
+        prompt={prompt}
+        setPrompt={setPrompt}
+        generating={generating}
+        stepLoading={stepLoading}
+        error={error}
+        upgradePrompt={upgradePrompt}
+        form={form}
+        setForm={setForm}
+        taxonomy={taxonomy}
+        setTaxonomy={setTaxonomy}
+        photos={photos}
+        uploadingPhoto={uploadingPhoto}
+        videoUrl={videoUrl}
+        setVideoUrl={setVideoUrl}
+        setVideoError={setVideoError}
+        videoError={videoError}
+        priceError={priceError}
+        setPriceError={setPriceError}
+        promptContainerRef={promptContainerRef}
+        promptCanvasRef={promptCanvasRef}
+        fileInputRef={fileInputRef}
+        handleGenerate={handleGenerate}
+        handleSaveFields={handleSaveFields}
+        handleSavePhotos={handleSavePhotos}
+        handlePublish={handlePublish}
+        handleSaveAsDraft={handleSaveAsDraft}
+        handleDiscard={handleDiscard}
+        handleRemovePhoto={handleRemovePhoto}
+        handleFileSelect={handleFileSelect}
+        router={router}
+      />
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}>
@@ -998,14 +1092,14 @@ export default function NewListingModal({ onClose, onSuccess }: Props) {
               )}
 
               <div className="flex items-center gap-2">
-                {/* Save as Draft — available from step 2 onwards (B017) */}
-                {step >= 2 && (
+                {/* Save as Draft — step 1 when prompt has text, or step 2+ */}
+                {(step >= 2 || prompt.trim().length > 0) && (
                   <button
                     onClick={handleSaveAsDraft}
                     disabled={stepLoading || !listingId}
                     className="px-4 py-2.5 text-sm font-bold text-ink border border-[#D4D5D7] rounded-pill hover:border-ink transition-colors disabled:opacity-40"
                   >
-                    Save as Draft
+                    {stepLoading ? 'Saving…' : 'Save as Draft'}
                   </button>
                 )}
 

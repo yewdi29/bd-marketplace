@@ -1,4 +1,5 @@
 import ListingCard from '@/components/ListingCard'
+import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import type { Listing } from '@/lib/types/database'
 
 interface FeaturedCarouselProps {
@@ -11,7 +12,7 @@ export default function FeaturedCarousel({ listings, isLoggedIn, savedIds }: Fea
   if (!listings.length) return null
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <ListingCardGrid>
       {listings.map(listing => (
         <ListingCard
           key={listing.id}
@@ -20,6 +21,6 @@ export default function FeaturedCarousel({ listings, isLoggedIn, savedIds }: Fea
           initialSaved={savedIds.includes(listing.id)}
         />
       ))}
-    </div>
+    </ListingCardGrid>
   )
 }

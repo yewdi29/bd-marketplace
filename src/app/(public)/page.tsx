@@ -143,7 +143,7 @@ export default async function HomePage() {
         <div
           data-hero-container
           className="flex flex-col min-[1000px]:grid min-[1000px]:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
-          style={{ maxWidth: '1600px', margin: '0 auto' }}
+          style={{ maxWidth: '1450px', margin: '0 auto' }}
         >
           {/* ── Left column ── */}
           <div className="px-4 py-10 min-[1000px]:pl-16 min-[1000px]:pr-0 min-[1000px]:py-[60px]">
@@ -296,7 +296,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Below-fold content ────────────────────────────────────────────────── */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10">
 
         {/* 1 ── Featured Equipment Carousel */}
         {featuredCarousel.length > 0 && (
@@ -455,12 +455,12 @@ export default async function HomePage() {
       </section>
 
       {/* 5 ── Operator Journal */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10">
         <OperatorJournalSection />
       </div>
 
       {/* 7 ── Newsletter */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10">
         <section className="py-10 border-t border-[#E8E9EA]">
           <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
             <h2

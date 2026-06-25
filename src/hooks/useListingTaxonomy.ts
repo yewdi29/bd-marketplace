@@ -11,6 +11,7 @@ export interface TaxonomyCountry {
   id: string
   name: string
   slug: string
+  iso_code: string | null
 }
 
 export interface TaxonomyRegion {
@@ -73,7 +74,7 @@ export function useListingTaxonomy() {
     const supabase = createClient()
 
     Promise.all([
-      supabase.from('countries').select('id, name, slug').order('name'),
+      supabase.from('countries').select('id, name, slug, iso_code').order('name'),
       supabase.from('regions').select('id, country_id, name, slug').order('name'),
       supabase.from('states').select('id, region_id, name, code').order('name'),
       supabase.from('industries').select('id, name, slug, sort_order').order('sort_order'),

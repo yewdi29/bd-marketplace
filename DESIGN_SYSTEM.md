@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: June 2026 — v2.8
+> Last updated: June 2026 — v2.9
 
 ---
 
@@ -153,10 +153,10 @@ Use multiples of 4px:
 `4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80`
 
 ### Layout
-- Max content width: `1280px` (most pages) / `1200px` (listing detail page)
+- Max content width: `1450px` inner cap on navbar, homepage, search, listing detail, business directory, business profile, `/dashboard`, and footer; `1600px` global page shell retained on remaining public pages
 - Page padding: `px-4` mobile, `px-6` tablet, `px-10` desktop
 - Card gap: `12–16px` (`gap-3` to `gap-4`)
-- Dashboard card grid gap: `14px`
+- **Listing card grid:** `.listing-card-grid` — fixed columns: 1 / 2 / 3 / 4 / 5 at 480 / 768 / 1024 / 1280px breakpoints; gap `16px` (dashboard variant: `14px`)
 - Section padding: `py-10` between homepage sections
 
 ### Shadows
@@ -266,8 +266,14 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Image placeholder area: `bg-[#F0F0F0]` (neutral gray, slightly darker than `--bg`)
 
 ### Listing Cards (`src/components/ListingCard.tsx`)
-- Image area: `aspect-[4/3]` ratio, `bg-bg`, `overflow-hidden`; image scales on hover with `group-hover:scale-105`
-- **Save/heart button:** top-right of image, `w-7 h-7` white circle, subtle shadow — **only visible on hover** (`opacity-0 group-hover:opacity-100`)
+- Card: `border-radius: 12px`, `overflow: hidden`, design base width `225px`
+- Thumbnail: height = 60% of card width (`padding-bottom: 60%`, 135px at base), `border-radius: 12px 12px 0 0`, `object-cover`
+- Content padding: `10px` all sides
+- Title: `13px`, `font-weight: 500`, `line-height: 1.35`
+- Price: `14px`, `font-weight: 500`, `#FF6B35`
+- Category label + location pill + save button: unchanged (location pill flag: `20×20px` circle, `5px` gap to text)
+- Grid wrapper: `ListingCardGrid` → `.listing-card-grid` in `globals.css`
+- **Save/heart button:** top-right of image, `w-8 h-8` white circle — browse cards only (`showSave` prop)
 - Badges overlay top-left of image: only "BD Verified" badge appears (when `listing.featured = true`), using orange badge styling
 - **No "New Listing" badge on public listing cards** — it appears on the detail page only
 - Category label: `font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3`
@@ -368,6 +374,17 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Steps 1–3: Back (outline pill) left + optional "Save as Draft" (outline) + primary Next/Generate button right
 - Step 4 (Publish): Back (outline) left + "Save as Draft" (outline) + "Publish Listing" (orange primary) right
 
+**Mobile/tablet flow (<1024px) — `NewListingMobileFlow.tsx`:**
+- Full-screen white overlay (`z-[130]`), slides up from bottom on open — no backdrop blur, no modal card, covers navbar
+- Fixed header on all steps: left = back chevron (steps 2–4) or close X (step 1); center = four-segment progress bar (active `#FF6B35`, completed `#D4D5D7`, upcoming `#E8E9EA`); right = close X
+- Step transitions: horizontal slide (`nl-step-forward` / `nl-step-back` keyframes in `globals.css`)
+- Exit confirmation: inline banner below header ("Are you sure you want to exit? Your progress will be lost") with Cancel / Exit — never `window.confirm`
+- Step 1: large heading + tall flex textarea + character counter; fixed bottom "Generate Listing →" with `visualViewport` keyboard inset
+- Step 2: single-column scrollable fields (no side-by-side grids)
+- Step 3: full-width "Add Photos" tap zone; `accept="image/*"` (no `capture` — iOS shows Take Photo + Library); horizontal thumbnail strip with always-visible remove X
+- Step 4: compact summary card + membership line (`Starter plan · N of M listings remaining`) + "Back to Edit" text link (jumps to step 2) + fixed "Publish Listing" CTA
+- Desktop (≥1024px): unchanged floating modal — see above
+
 ### Profile Dropdown (`src/components/ui/ProfileDropdown.tsx`)
 - Trigger: pill button `px-3 py-1.5 bg-white border border-[#E8E9EA] rounded-pill shadow-card`
 - Avatar: `w-6 h-6 rounded-full bg-orange` with white initials `text-[10px] font-bold`
@@ -440,7 +457,7 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 - No tier badges visible to public
 
 ### Listing Detail Page
-- Max content width: `1200px` (not 1280px)
+- Two-column gallery + info panel: `max-width: 1450px` page body wrapper (`margin: 0 auto`) including breadcrumb, gallery/info grid, and related listings; page background full viewport
 - Breadcrumb: `font-sans text-[12px]`, `text-ink-3` links → `text-ink` current — at `py-3` above gallery
 - Full-width photo gallery (PhotoGallery component) — see component file
 - Two-column layout: `1fr 320px`, `gap: 24px`, padding `24px 32px`
@@ -470,8 +487,8 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 - Header: H2 `font-bold text-2xl -0.02em` + orange "New Listing" button right
 - Plan usage line (free plan only): `font-mono` fraction in `text-ink-3`
 - Filter tab pills row (All / Active / Drafts / Sold) with count chips
-- Card grid: `repeat(auto-fill, minmax(220px, 1fr))` with `gap-14px`
-- Dashboard listing cards: `h-[140px]` image, `p-3` info, status badge top-left
+- Card grid: `.listing-card-grid` / `ListingCardGrid` — fixed 1–5 columns by breakpoint, 225px card design base
+- Dashboard listing cards: shared `ListingCard` with status badge overlay + Manage footer, same 4:3 thumbnail
 - Status badge colors: Active = green, Draft = neutral gray, Unpublished = gold, Sold = red
 - "Manage" button below each card: outline pill `text-xs font-semibold text-ink-2`
 - On-card manage overlay: frosted white glass + action pills
@@ -555,6 +572,18 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.21 | June 2026 | **1450px content cap — public surfaces.** Navbar, homepage (hero + all sections), search page (+ FilterBar via prop), listing detail (replaces prior `1300px` inner cap), business directory, and business profile inner content constrained to `1450px`. Footer and dashboard unchanged from v2.20. Global `1600px` shell retained on other pages. |
+| v2.20 | June 2026 | **Dashboard + footer max-width.** `/dashboard` page body constrained to `1450px` (`margin: 0 auto`). Footer inner content (sitemap, settings, legal, copyright) constrained to `1450px`; footer `#1A1D20` background remains full viewport. Global `1600px` shell and navbar unchanged. |
+| v2.19 | June 2026 | **Listing detail two-column max-width.** Gallery + info panel grid capped at `1300px` (`margin: 0 auto`) inside the global `1600px` page container; breadcrumb and related listings unchanged at `1600px`. |
+| v2.18 | June 2026 | **Listing card share button.** Shared `ListingCard` thumbnail now shows a frosted-glass share circle (`.gallery-action-pill`, `32×32px`) left of the save/heart button, opening the same 6-option share popover as listing detail (Copy Link, Email, Facebook, Messenger, WhatsApp, LinkedIn) via extracted `ListingSharePopover` component. Share visible on all card locations without login; save button updated to matching frosted-glass styling. |
+| v2.17 | June 2026 | **Listing card location flag size.** Flag icon in location pill increased to `20×20px` circle with `5px` gap to text. |
+| v2.16 | June 2026 | **Unified listing card grid + size.** All five card locations use fixed 1–5 column grid and single 225px-base card (10px padding, title 13px, price 14px). Removed dashboard compact variant and `size="sm"` prop. |
+| v2.15 | June 2026 | **Dashboard listing card compact variant.** My Listings + Saved Equipment tabs: fixed grid columns (1/2/3/4/5 by breakpoint), `ListingCard size="sm"` (225px base, 10px padding, title 13px, price 14px). Public grids unchanged at 282px. |
+| v2.14 | June 2026 | **Listing card price size.** Price font reduced from `16px` to `13px` on shared `ListingCard`. |
+| v2.13 | June 2026 | **Listing card design tokens.** Card `12px` radius; grid min column `282px`; thumbnail `60%` of card width with top corners `12px`; body padding `12px`; title `15px/500/1.35`; price `16px/500/#FF6B35`. Applied via shared `ListingCard` across all five grid locations. |
+| v2.11 | June 2026 | **Listing card grid size reduction.** Grid column min reduced from `clamp(260px, 22vw, 320px)` to `clamp(220px, 18vw, 280px)` — ~5 cards across at 1440px instead of 4 oversized cards. Applies globally via `.listing-card-grid`. |
+| v2.10 | June 2026 | **Listing card grid + thumbnail system.** Unified fluid grid (`.listing-card-grid`: `repeat(auto-fill, minmax(clamp(260px, 22vw, 320px), 1fr))`) across Featured Equipment, search, saved listings, My Listings, seller profile, and related listings. `ListingCard` thumbnail switched to fixed `aspect-[4/3]`; content area uses fixed `12px 14px` padding; title/price use `clamp()` for fluid typography. Consolidated seller profile `ActiveCard`/`SoldCard` and dashboard `MyListingCard` onto shared `ListingCard` with mode/overlay props. |
+| v2.9 | June 2026 | **New Listing modal — mobile/tablet full-screen step flow.** Below 1024px, `NewListingModal` renders `NewListingMobileFlow`: full-screen white overlay sliding up from bottom (`z-[130]`), fixed header with back/close + four-segment progress bar + close X, horizontal step slide animations (`nl-step-forward` / `nl-step-back`), inline exit confirmation (no browser dialog), keyboard-aware fixed bottom CTAs via `visualViewport`, single-column review fields, camera-roll-friendly photo upload (`accept="image/*"`), horizontal photo strip, publish summary with membership remaining count. Desktop (≥1024px) modal unchanged. Added `useIsBelowLg` hook. |
 | v2.8 | June 2026 | **How It Works mobile overflow fix + DashboardNav adopts the mobile navbar pattern.** (1) Homepage "How It Works" step cards (`(public)/page.tsx`) switched from a hardcoded `repeat(3, 1fr)` grid to `grid-cols-1 lg:grid-cols-3` — single full-width column below 1024px (was overflowing/cut off), unchanged 3-up at desktop. The decorative connecting line between cards is now `hidden lg:block` since it only makes sense between side-by-side cards. (2) Extracted the <1024px navbar pieces (`LogoIcon`, `SearchIcon`, `SearchBarTrigger`, `MobileNavTrigger`, tap-target constants) out of `Navbar.tsx` into a shared `src/components/layout/MobileNavParts.tsx` so they aren't duplicated. (3) `DashboardNav.tsx` (used by every page under `(dashboard)/layout.tsx` — My Listings, Saved Equipment, Account Settings, Upgrade) now renders the same non-homepage mobile/tablet pattern below 1024px: icon-only logo, full-width inline `SearchBarTrigger` (opens `MobileSearchTakeover`), and `MobileNavTrigger` (always the avatar branch, since every dashboard page requires auth and `user` is never null) opening the same `MobileMenu` slide-in. Desktop (≥1024px) dashboard nav — the pill-shaped `ProfileDropdown` with name/chevron — is unchanged, just wrapped in `hidden lg:grid`. |
 | v2.7 | June 2026 | **Homepage vs. non-homepage mobile/tablet navbar split, full-screen search takeover.** Below 1024px, the navbar now branches on route: homepage (`/`) shows the full wordmark + a search icon button; every other page shows the icon-only logo (`/bd_logo-icon.svg`) + an always-visible full-width search bar look-alike (`SearchBarTrigger`). Both trigger the identical `MobileSearchTakeover` — a full-screen white overlay with the input pinned to top and suggestions capped at 50vh so the keyboard has room. Suggestion fetching/matching/keyboard-nav logic was extracted from `SearchBar.tsx` into a shared hook (`useSearchSuggestions`) so the desktop dropdown and the new takeover behave identically rather than duplicating logic. `MobileMenu`'s width is now a single `min(75vw, 400px)` rule across all of <1024px, replacing the old full-screen-mobile/340px-tablet split. **Bug fixes (not design changes, but required for the above to render correctly):** added the missing `<meta name="viewport">` (`export const viewport` in `app/layout.tsx`) — without it mobile browsers laid out against a wider assumed viewport, pushing right-aligned navbar icons outside the visible screen; added `overflow-x: hidden` to `html`/`body` in `globals.css` to contain the homepage globe's intentional edge-bleed, which was breaking `position: fixed` viewport anchoring on narrow screens. |
 | v2.6 | June 2026 | **Mobile menu fix.** `MobileMenu` portaled to `document.body` so the slide-in panel escapes the navbar `backdrop-filter` containing block and renders above page content. Mobile (<768px): full-screen slide-in from right. Tablet (768–1023px): unchanged 340px side panel. Added `Escape` to close and safe-area bottom padding. Documented in new §5 Mobile Menu subsection. |

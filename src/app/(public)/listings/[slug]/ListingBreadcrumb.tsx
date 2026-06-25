@@ -24,7 +24,7 @@ export default function ListingBreadcrumb({ category, categoryLabel, title }: Pr
   const router = useRouter()
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-4">
+    <div className="py-3 lg:py-4">
       <button
         type="button"
         onClick={() => router.back()}

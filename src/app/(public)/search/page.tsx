@@ -4,30 +4,22 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import ListingCard from '@/components/ListingCard'
+import ListingCardGrid from '@/components/listings/ListingCardGrid'
+import ListingCardSkeleton from '@/components/listings/ListingCardSkeleton'
 import FilterBar from '@/components/marketplace/FilterBar'
 import type { Listing } from '@/lib/types/database'
 
 // ─── Skeleton cards ───────────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-[16px] overflow-hidden border border-[#E8E9EA] animate-pulse">
-      <div className="bg-[#F0F0F0]" style={{ paddingBottom: '60%' }} />
-      <div className="p-4 space-y-2.5">
-        <div className="h-3 bg-[#F0F0F0] rounded-full w-24" />
-        <div className="h-4 bg-[#F0F0F0] rounded-full w-full" />
-        <div className="h-4 bg-[#F0F0F0] rounded-full w-3/4" />
-        <div className="h-4 bg-[#F0F0F0] rounded-full w-20" />
-      </div>
-    </div>
-  )
+  return <ListingCardSkeleton />
 }
 
 function SkeletonGrid() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <ListingCardGrid>
       {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
-    </div>
+    </ListingCardGrid>
   )
 }
 
@@ -116,7 +108,7 @@ function SearchContent() {
   }, [fetchListings])
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+    <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
       <p className="font-sans font-bold text-sm text-ink mb-5">
         {loading
           ? <span className="inline-block h-4 w-32 bg-[#F0F0F0] rounded-full animate-pulse" />
@@ -135,7 +127,7 @@ function SearchContent() {
       {loading ? (
         <SkeletonGrid />
       ) : listings.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <ListingCardGrid>
           {listings.map(listing => (
             <ListingCard
               key={listing.id}
@@ -144,7 +136,7 @@ function SearchContent() {
               initialSaved={false}
             />
           ))}
-        </div>
+        </ListingCardGrid>
       ) : (
         <div className="bg-white rounded-[16px] flex flex-col items-center justify-center py-24 text-center shadow-card">
           <div className="text-4xl mb-4">🔍</div>
@@ -165,11 +157,11 @@ export default function SearchPage() {
   return (
     <div className="-mt-6">
       <Suspense fallback={<FilterBarFallback />}>
-        <FilterBar />
+        <FilterBar maxContentWidth={1450} />
       </Suspense>
 
       <Suspense fallback={
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+        <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
           <div className="h-4 w-32 bg-[#F0F0F0] rounded-full mb-5 animate-pulse" />
           <SkeletonGrid />
         </div>

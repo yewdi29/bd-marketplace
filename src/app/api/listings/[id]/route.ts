@@ -71,6 +71,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (key in fields) updates[key] = fields[key]
   }
 
+  // Merge specs patches so seller_prompt is preserved alongside other spec keys
+  if ('specs' in fields && fields.specs !== null && typeof fields.specs === 'object') {
+    const { data: currentRow } = await adminClient
+      .from('listings')
+      .select('specs')
+      .eq('id', params.id)
+      .single()
+    const existing = (currentRow?.specs as Record<string, unknown> | null) ?? {}
+    updates.specs = { ...existing, ...(fields.specs as Record<string, unknown>) }
+  }
+
   // Coerce numeric fields
   if ('price' in updates) updates.price = Number(updates.price) || 0
   if ('year' in updates) updates.year = updates.year ? Number(updates.year) : null

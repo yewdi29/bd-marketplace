@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import type { Listing } from '@/lib/types/database'
-import { formatPrice } from '@/lib/formatPrice'
-import Link from 'next/link'
+import ListingCard from '@/components/ListingCard'
+import ListingCardGrid from '@/components/listings/ListingCardGrid'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,99 +17,7 @@ type SortKey = 'newest' | 'price_asc' | 'price_desc'
 
 const PAGE_SIZE = 9
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getPrimaryImage(listing: Listing) {
-  const imgs = listing.listing_images ?? []
-  return imgs.find(i => i.is_primary) ?? imgs.sort((a, b) => a.sort_order - b.sort_order)[0] ?? null
-}
-
-function catLabel(val: string) {
-  return val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
-
-// ─── Sold Card ────────────────────────────────────────────────────────────────
-
-function SoldCard({ listing }: { listing: Listing }) {
-  const img = getPrimaryImage(listing)
-  return (
-    <div
-      className="bg-white border border-[#E8E9EA] rounded-[16px] overflow-hidden"
-      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-    >
-      <div className="relative aspect-[4/3] bg-[#F0F0F0] overflow-hidden">
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={img.url}
-            alt={listing.title}
-            className="w-full h-full object-cover opacity-60 grayscale"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-10 h-10 text-ink-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span
-            className="px-3 py-1 text-[11px] font-mono font-bold rounded-pill border"
-            style={{ background: '#FFF0F0', color: '#CC0000', borderColor: '#FFCCCC' }}
-          >
-            SOLD
-          </span>
-        </div>
-      </div>
-      <div className="p-3">
-        <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{catLabel(listing.category)}</p>
-        <p className="text-sm font-semibold text-ink-2 leading-snug line-clamp-2 mb-1.5">{listing.title}</p>
-        <p className="font-mono text-sm font-medium text-ink-3">
-          {formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible)}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-// ─── Active Card ──────────────────────────────────────────────────────────────
-
-function ActiveCard({ listing }: { listing: Listing }) {
-  const img = getPrimaryImage(listing)
-  return (
-    <Link
-      href={`/listings/${listing.slug}`}
-      className="group block bg-white border border-[#E8E9EA] rounded-[16px] overflow-hidden transition-all hover:-translate-y-0.5"
-      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-    >
-      <div className="relative aspect-[4/3] bg-[#F0F0F0] overflow-hidden">
-        {img ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={img.url}
-            alt={listing.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-10 h-10 text-ink-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-      </div>
-      <div className="p-3">
-        <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1">{catLabel(listing.category)}</p>
-        <p className="text-sm font-semibold text-ink leading-snug line-clamp-2 mb-1.5">{listing.title}</p>
-        <p className="font-mono text-sm font-medium" style={{ color: '#FF6B35' }}>
-          {formatPrice(listing.price, listing.price_unit ?? 'total', listing.price_visible)}
-        </p>
-      </div>
-    </Link>
-  )
-}
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
+// ─── Pagination ─────────────────────────────────────────────────────────────
 
 interface PaginationProps {
   page: number
@@ -120,7 +28,6 @@ interface PaginationProps {
 function Pagination({ page, totalPages, onPage }: PaginationProps) {
   if (totalPages <= 1) return null
 
-  // Build page number list with ellipsis logic
   const pages: (number | '…')[] = []
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) pages.push(i)
@@ -136,7 +43,6 @@ function Pagination({ page, totalPages, onPage }: PaginationProps) {
 
   return (
     <div className="flex items-center justify-center gap-1.5 mt-8">
-      {/* Prev */}
       <button
         onClick={() => onPage(page - 1)}
         disabled={page === 1}
@@ -168,7 +74,6 @@ function Pagination({ page, totalPages, onPage }: PaginationProps) {
         )
       )}
 
-      {/* Next */}
       <button
         onClick={() => onPage(page + 1)}
         disabled={page === totalPages}
@@ -181,6 +86,17 @@ function Pagination({ page, totalPages, onPage }: PaginationProps) {
     </div>
   )
 }
+
+const soldOverlay = (
+  <div className="absolute inset-0 flex items-center justify-center">
+    <span
+      className="px-3 py-1 text-[11px] font-mono font-bold rounded-pill border"
+      style={{ background: '#FFF0F0', color: '#CC0000', borderColor: '#FFCCCC' }}
+    >
+      SOLD
+    </span>
+  </div>
+)
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
@@ -221,10 +137,7 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
 
   return (
     <div>
-      {/* Controls row: tab pills + sort dropdown */}
       <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-
-        {/* Tab pills */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => switchTab('active')}
@@ -273,7 +186,6 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
           )}
         </div>
 
-        {/* Sort dropdown */}
         <select
           value={sort}
           onChange={e => switchSort(e.target.value as SortKey)}
@@ -285,7 +197,6 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
         </select>
       </div>
 
-      {/* Grid */}
       {paginated.length === 0 ? (
         <div
           className="bg-white border border-[#E8E9EA] rounded-[16px] py-16 text-center"
@@ -294,16 +205,25 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
           <p className="font-sans text-ink-3 text-sm">No listings to show.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ListingCardGrid>
           {paginated.map(listing =>
-            tab === 'active'
-              ? <ActiveCard key={listing.id} listing={listing} />
-              : <SoldCard key={listing.id} listing={listing} />
+            tab === 'active' ? (
+              <ListingCard key={listing.id} listing={listing} showSave={false} />
+            ) : (
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                mode="static"
+                showSave={false}
+                priceMuted
+                imageClassName="opacity-60 grayscale"
+                thumbnailOverlay={soldOverlay}
+              />
+            )
           )}
-        </div>
+        </ListingCardGrid>
       )}
 
-      {/* Pagination */}
       <Pagination page={page} totalPages={totalPages} onPage={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
     </div>
   )

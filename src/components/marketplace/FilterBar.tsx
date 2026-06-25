@@ -214,7 +214,12 @@ function CategoryPill({
 
 // ─── FilterBar ────────────────────────────────────────────────────────────────
 
-export default function FilterBar() {
+interface FilterBarProps {
+  /** Inner content max-width — search page uses 1450px; default 1600px elsewhere. */
+  maxContentWidth?: 1450 | 1600
+}
+
+export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [, startTransition] = useTransition()
@@ -334,7 +339,7 @@ export default function FilterBar() {
         borderColor: 'rgba(232,233,234,0.25)',
       }}
     >
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className={`${maxContentWidth === 1450 ? 'max-w-[1450px]' : 'max-w-[1600px]'} mx-auto px-4 sm:px-6 lg:px-10`}>
 
         {/* ── Pills row ─────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-0 py-3">

@@ -231,7 +231,7 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
         Back
       </button>
 
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-10 pt-20 pb-16">
+      <div className="max-w-[1450px] mx-auto px-6 sm:px-10 pt-20 pb-16">
         <p className="font-sans font-bold text-ink mb-6" style={{ fontSize: '18px' }}>
           {total} Photos
         </p>

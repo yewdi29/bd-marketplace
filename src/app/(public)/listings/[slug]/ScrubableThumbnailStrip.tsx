@@ -5,6 +5,11 @@ import type { ListingImage } from '@/lib/types/database'
 
 const GAP_PX = 8
 
+function normalizeIndex(idx: number, length: number) {
+  if (length <= 0) return 0
+  return ((idx % length) + length) % length
+}
+
 interface Props {
   images: ListingImage[]
   activeIdx: number
@@ -31,16 +36,21 @@ export default function ScrubableThumbnailStrip({
   useEffect(() => {
     if (scrubbingRef.current) return
     const el = thumbRefs.current[activeIdx]
-    el?.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' })
+    el?.scrollIntoView({ inline: 'center', behavior: 'instant', block: 'nearest' })
     lastEmittedIdx.current = activeIdx
   }, [activeIdx])
 
   function emitIndexFromScroll() {
+    // Only scrub the main viewer when the user is actively dragging the strip.
+    // Programmatic scrollIntoView (from swipe sync) also fires onScroll and was
+    // pulling PhotoSwipe back — e.g. capping navigation around image 5.
+    if (!scrubbingRef.current) return
+
     const container = scrollRef.current
     if (!container) return
     const center = container.scrollLeft + container.clientWidth / 2
     const raw = Math.round((center - size / 2) / stride)
-    const idx = Math.max(0, Math.min(images.length - 1, raw))
+    const idx = normalizeIndex(raw, images.length)
     if (idx !== lastEmittedIdx.current) {
       lastEmittedIdx.current = idx
       onScrub(idx)

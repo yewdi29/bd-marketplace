@@ -34,6 +34,11 @@ function ShareIcon() {
   )
 }
 
+function normalizeIndex(idx: number, length: number) {
+  if (length <= 0) return 0
+  return ((idx % length) + length) % length
+}
+
 export default function MobileLightbox({
   open,
   images,
@@ -50,7 +55,6 @@ export default function MobileLightbox({
 
   const pswpRef = useRef<PhotoSwipe | null>(null)
   const uiVisibleRef = useRef(false)
-  const syncingFromStripRef = useRef(false)
   const onIndexChangeRef = useRef(onIndexChange)
   const onCloseRef = useRef(onClose)
 
@@ -64,13 +68,12 @@ export default function MobileLightbox({
   }, [open, initialIndex])
 
   const goToIndex = useCallback((idx: number) => {
-    const clamped = Math.max(0, Math.min(images.length - 1, idx))
-    if (pswpRef.current && pswpRef.current.currIndex !== clamped) {
-      syncingFromStripRef.current = true
-      pswpRef.current.goTo(clamped)
+    const wrapped = normalizeIndex(idx, images.length)
+    if (pswpRef.current && pswpRef.current.currIndex !== wrapped) {
+      pswpRef.current.goTo(wrapped)
     }
-    setActiveIdx(clamped)
-    onIndexChangeRef.current(clamped)
+    setActiveIdx(wrapped)
+    onIndexChangeRef.current(wrapped)
   }, [images.length])
 
   // PhotoSwipe instance — mount when open, destroy on close.
@@ -86,11 +89,13 @@ export default function MobileLightbox({
       alt: img.alt_text ?? title,
     }))
 
-    const startIndex = initialIndex
+    const startIndex = normalizeIndex(initialIndex, images.length)
 
     const pswp = new PhotoSwipe({
       dataSource,
       index: startIndex,
+      loop: images.length > 2,
+      preload: [2, 4],
       bgOpacity: 1,
       showHideAnimationType: 'fade',
       showAnimationDuration: 280,
@@ -126,12 +131,9 @@ export default function MobileLightbox({
     })
 
     pswp.on('change', () => {
-      syncingFromStripRef.current = false
       const idx = pswp.currIndex
       setActiveIdx(idx)
-      if (!syncingFromStripRef.current) {
-        onIndexChangeRef.current(idx)
-      }
+      onIndexChangeRef.current(idx)
     })
 
     pswp.on('close', () => {

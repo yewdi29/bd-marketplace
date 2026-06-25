@@ -81,6 +81,36 @@ body {
   background: var(--orange);
 }
 
+/* ─── Listing card grid — fixed columns, shared across all listing grids ─── */
+.listing-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+.listing-card-grid--dashboard {
+  gap: 14px;
+}
+@media (min-width: 480px) {
+  .listing-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .listing-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .listing-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .listing-card-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 /* ─── Article body typography (knowledge base detail page) ───────────────── */
 /* Scoped to .article-body so it only affects rendered HTML article content.   */
 .article-body {
@@ -157,6 +187,18 @@ body {
 /* ─── Utility: hide scrollbar while keeping scroll behavior ──────────────── */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* New Listing mobile step transitions */
+@keyframes nl-step-forward {
+  from { transform: translateX(100%); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes nl-step-back {
+  from { transform: translateX(-100%); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.nl-step-forward { animation: nl-step-forward 0.28s cubic-bezier(0.4, 0, 0.22, 1) both; }
+.nl-step-back { animation: nl-step-back 0.28s cubic-bezier(0.4, 0, 0.22, 1) both; }
 
 /* ─── Search bar: hero moving-glow border ─────────────────────────────────── */
 /* Applied only to variant="hero" search bar on focus.                         */

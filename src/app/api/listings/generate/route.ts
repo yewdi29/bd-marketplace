@@ -35,7 +35,7 @@ The user will describe a piece of equipment in plain language. Extract all relev
 Use exactly these field names and value constraints:
 
 {
-  "title": "Equipment title following this exact pattern: [Manufacturer] [Model] [Equipment Type] — [Key Spec]. Max 80 characters.",
+  "title": "Equipment title — see TITLE RULES below for the exact required structure.",
   "category": "Legacy oilfield category slug — one of: drilling_rig | drill_pipe | drill_collar | blowout_preventer | wellhead | pumping_unit | artificial_lift | wireline | coiled_tubing | completion_equipment | production_equipment | compressor | separator | tank | flowline | electrical | safety | rental_tools | other. Use only as fallback when industry_slug/category_slug cannot be determined.",
   "industry_slug": "One of the industry slugs below, or null if you cannot confidently classify the equipment.",
   "category_slug": "One of the category slugs below that belongs to the chosen industry, or null if you cannot confidently classify.",
@@ -53,6 +53,18 @@ Use exactly these field names and value constraints:
   "tags": ["array", "of", "relevant", "keyword", "strings"],
   "specs": {"Size": "5\\""}
 }
+
+TITLE RULES:
+Build the title using this exact priority structure, in order:
+[Year or Size] [Brand/Manufacturer] [Main Equipment Type/Category] — [Unique Descriptor or Quantity]
+
+- First element — lead with the model year if the equipment has one (e.g. "2012"). If there is no year, lead with a size or spec only if that size is the primary differentiator for this kind of equipment (e.g. "5 1/2\"", "42\" x 28'"). If neither a year nor a meaningfully differentiating size/spec exists, skip this element.
+- Second element — the brand or manufacturer name if it is known or confidently mentioned (e.g. "Serva Group", "Caterpillar", "Komatsu"). Omit this element entirely if the manufacturer is unknown — never guess a brand.
+- Third element — the main equipment type using industry-standard terminology that matches the category taxonomy provided below (e.g. "Coil Tubing Trailer", "Tricone Drill Bit", "Drill Pipe", "Crawler Dozer"). This element is required.
+- Fourth element — after a dash separator ("—"), add one concise, specific descriptor or quantity that adds real differentiation: something unique, measurable, or operationally relevant (e.g. "Enclosed Operator Cab", "Sealed Bearing", "255 Joints", "4,200 Hours"). Omit this element if nothing specific and confidently known can be said.
+- Keep the full title under 80 characters where possible.
+- Never use generic filler words or vague superlatives such as "Heavy Duty", "High Quality", "Great Condition", "Excellent", "Premium", or similar — every word must carry real informational value.
+- If any element (year/size, brand, or descriptor) is unknown or cannot be confidently inferred from the seller's description, omit that element entirely rather than guessing or inserting a placeholder. Never fabricate a year, brand, or spec that wasn't stated or clearly implied.
 
 LOCATION RULES:
 - If the seller mentions a US city/state (e.g. "Midland, Texas" or "Houston, TX"), set country_slug to united-states and location_state to the 2-letter code.
