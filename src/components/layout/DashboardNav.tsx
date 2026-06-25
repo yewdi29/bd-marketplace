@@ -32,19 +32,20 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 border-b border-[#E8E9EA]"
+      className="fixed top-0 left-0 right-0 z-50"
       style={{
-        height: '56px',
-        background: 'rgba(255,255,255,0.92)',
+        background: 'rgba(255,255,255,0.20)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(232,233,234,0.30)',
+        height: '64px',
       }}
     >
       {/* ── Desktop (≥1024px) — unchanged ─────────────────────────────────────
        * 3-column grid: Logo | SearchBar | Profile
        * Dashboard is never the homepage, so SearchBar always shows. */}
       <div
-        className="hidden lg:grid max-w-[1600px] mx-auto px-6 h-full items-center"
+        className="hidden lg:grid max-w-[1450px] mx-auto px-6 h-full items-center"
         style={{ gridTemplateColumns: 'auto 1fr auto', gap: '16px' }}
       >
         {/* Col 1: Logo */}

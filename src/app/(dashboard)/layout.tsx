@@ -33,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen flex flex-col bg-bg">
       <DashboardNav user={profile} />
-      <main className="flex-1 pt-14">
+      <main className="flex-1 pt-[64px]">
         {children}
       </main>
     </div>

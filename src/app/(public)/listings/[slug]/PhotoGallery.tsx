@@ -16,6 +16,7 @@ interface Props {
 }
 
 type View = 'inline' | 'grid' | 'lightbox'
+type LightboxOrigin = 'direct' | 'grid'
 
 function ChevronLeft() {
   return (
@@ -89,6 +90,7 @@ function ThumbnailStrip({
 export default function PhotoGallery({ images, title, actions, shareUrl, shareTitle }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [view, setView] = useState<View>('inline')
+  const [lightboxOrigin, setLightboxOrigin] = useState<LightboxOrigin | null>(null)
   const [mounted, setMounted] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const isMobile = useIsMobileGallery()
@@ -113,6 +115,17 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
 
   const next = useCallback(() => goTo(activeIdx + 1), [activeIdx, goTo])
   const prev = useCallback(() => goTo(activeIdx - 1), [activeIdx, goTo])
+
+  const openLightbox = useCallback((origin: LightboxOrigin, idx?: number) => {
+    if (idx !== undefined) setActiveIdx(idx)
+    setLightboxOrigin(origin)
+    setView('lightbox')
+  }, [])
+
+  const closeLightbox = useCallback(() => {
+    setView(lightboxOrigin === 'grid' ? 'grid' : 'inline')
+    setLightboxOrigin(null)
+  }, [lightboxOrigin])
 
   // Lock page scroll while a full-screen overlay is open. Body-only overflow
   // is not enough on iOS — also lock html, fix body position, and block
@@ -153,14 +166,13 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     }
   }, [view])
 
-  // Escape closes the current overlay — from the lightbox it skips the grid
-  // and goes straight back to the inline view as a convenience. Arrow keys
-  // navigate photos while the lightbox is open.
+  // Escape closes the current overlay — lightbox close respects entry origin.
+  // Arrow keys navigate photos while the desktop lightbox is open.
   useEffect(() => {
     if (view === 'inline') return
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (view === 'lightbox' && isMobile) setView('grid')
+        if (view === 'lightbox') closeLightbox()
         else setView('inline')
         return
       }
@@ -171,7 +183,7 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [view, next, prev, isMobile])
+  }, [view, next, prev, isMobile, closeLightbox])
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
@@ -222,16 +234,18 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
       className="fixed inset-0 z-[1000] bg-white overflow-y-auto overscroll-contain"
       data-gallery-overlay-scroll
     >
-      <button
-        onClick={() => setView('inline')}
-        aria-label="Back to listing"
-        className="fixed top-5 left-5 z-10 flex items-center gap-1.5 bg-white border border-[#E8E9EA] rounded-pill shadow-card-hover px-4 py-2 text-sm font-sans font-semibold text-ink hover:border-[#D4D5D7] transition-all duration-200"
-      >
-        <ChevronLeft />
-        Back
-      </button>
+      <div className="max-w-[1450px] mx-auto px-6 sm:px-10 pb-16">
+        <div className="sticky top-0 z-10 pt-5 pb-4 bg-white">
+          <button
+            onClick={() => setView('inline')}
+            aria-label="Back to listing"
+            className="inline-flex items-center gap-1.5 bg-white border border-[#E8E9EA] rounded-pill shadow-card-hover px-4 py-2 text-sm font-sans font-semibold text-ink hover:border-[#D4D5D7] transition-all duration-200"
+          >
+            <ChevronLeft />
+            Back
+          </button>
+        </div>
 
-      <div className="max-w-[1450px] mx-auto px-6 sm:px-10 pt-20 pb-16">
         <p className="font-sans font-bold text-ink mb-6" style={{ fontSize: '18px' }}>
           {total} Photos
         </p>
@@ -241,12 +255,11 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
               key={img.id}
               role="button"
               tabIndex={0}
-              onClick={() => { setActiveIdx(idx); setView('lightbox') }}
+              onClick={() => openLightbox('grid', idx)}
               onKeyDown={e => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  setActiveIdx(idx)
-                  setView('lightbox')
+                  openLightbox('grid', idx)
                 }
               }}
               aria-label={`Open photo ${idx + 1}`}
@@ -275,8 +288,9 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
       initialIndex={activeIdx}
       shareUrl={shareUrl}
       shareTitle={shareTitle}
+      lightboxOrigin={lightboxOrigin ?? 'direct'}
       onIndexChange={setActiveIdx}
-      onClose={() => setView('grid')}
+      onClose={closeLightbox}
     />
   )
 
@@ -285,18 +299,18 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     <div
       className="fixed inset-0 z-[1100] flex flex-col"
       style={{ background: 'rgba(20,21,23,0.97)' }}
-      onClick={() => setView('inline')}
+      onClick={closeLightbox}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Close — steps back to the grid, one level at a time */}
+      {/* Close — returns to listing (direct) or masonry grid (via grid) */}
       <button
-        onClick={e => { e.stopPropagation(); setView('grid') }}
-        aria-label="Close"
+        onClick={e => { e.stopPropagation(); closeLightbox() }}
+        aria-label={lightboxOrigin === 'grid' ? 'Back to photo grid' : 'Back to listing'}
         className="fixed top-5 left-5 z-10 flex items-center gap-1.5 rounded-pill px-4 py-2 text-sm font-sans font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors"
       >
         <CloseIcon />
-        Close
+        {lightboxOrigin === 'grid' ? 'Back' : 'Close'}
       </button>
 
       {/* Image area — fills remaining space above the thumbnail strip */}
@@ -374,7 +388,7 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
           alt={active.alt_text ?? title}
           key={active.id}
           className="absolute inset-0 w-full h-full object-cover cursor-pointer"
-          onClick={() => setView('grid')}
+          onClick={() => openLightbox('direct')}
         />
 
         {/* Arrow navigation — desktop */}
@@ -397,23 +411,22 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
           </>
         )}
 
-        {/* Photo count — bottom-right, opens the full grid */}
-        {total > 1 && (
-          <button
-            onClick={e => { e.stopPropagation(); setView('grid') }}
-            aria-label="View all photos"
-            className="gallery-action-pill absolute bottom-3 right-3 z-10 flex items-center gap-1.5 text-ink transition-opacity"
-            style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              padding: '8px 16px',
-              borderRadius: '100px',
-            }}
-          >
-            <Camera className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
-            <span className="font-mono">{activeIdx + 1} / {total}</span>
-          </button>
-        )}
+        {/* View all — bottom-right, opens masonry grid */}
+        <button
+          onClick={e => { e.stopPropagation(); setView('grid') }}
+          aria-label={`View all ${total} photos`}
+          className="gallery-action-pill absolute bottom-3 right-3 z-10 flex items-center gap-1.5 text-ink transition-opacity"
+          style={{
+            fontSize: '13px',
+            fontWeight: 600,
+            padding: '8px 16px',
+            borderRadius: '100px',
+          }}
+        >
+          <Camera className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden />
+          <span className="font-sans">View all</span>
+          <span className="font-sans text-ink-3">({total})</span>
+        </button>
 
         {/* Save / Share overlay — top-right */}
         {actions && (

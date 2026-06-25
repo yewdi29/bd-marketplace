@@ -477,7 +477,7 @@ export default async function ListingDetailPage({ params }: Props) {
             </p>
             <ListingCardGrid>
               {(related as Listing[]).map(rel => (
-                <ListingCard key={rel.id} listing={rel} isLoggedIn={!!user} />
+                <ListingCard key={rel.id} listing={rel} isLoggedIn={!!user} openInNewTab />
               ))}
             </ListingCardGrid>
           </>

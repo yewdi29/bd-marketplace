@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { formatPrice } from '@/lib/formatPrice'
 import { useGlowBorder } from '@/hooks/useGlowBorder'
+import ListingCard, { type ListingCardListing } from '@/components/ListingCard'
+import ListingPhotoSortableList from '@/components/listings/ListingPhotoSortableList'
 import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper, labelCls } from '@/components/listings/ListingTaxonomyFields'
 import NewListingMobileFlow from '@/components/listings/NewListingMobileFlow'
 import { useIsBelowLg } from '@/hooks/useIsBelowLg'
 import {
   EMPTY_TAXONOMY_VALUES,
+  useListingTaxonomy,
   type ListingTaxonomyFormValues,
 } from '@/hooks/useListingTaxonomy'
 
@@ -148,8 +150,6 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
   const [taxonomy, setTaxonomy] = useState<ListingTaxonomyFormValues>(EMPTY_TAXONOMY_VALUES)
   const [photos, setPhotos] = useState<PhotoState[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  const [dragIdx, setDragIdx] = useState<number | null>(null)
-  const [dropIdx, setDropIdx] = useState<number | null>(null)
   const [videoUrl, setVideoUrl] = useState('')
   const [videoError, setVideoError] = useState('')
   const [priceError, setPriceError] = useState('')
@@ -159,6 +159,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const isMobileFlow = useIsBelowLg()
+  const taxonomyData = useListingTaxonomy()
 
   // ── AI prompt canvas glow — always-on when modal is open ───────────────────
   const promptCanvasRef    = useRef<HTMLCanvasElement>(null)
@@ -357,20 +358,6 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     setPhotos(prev => prev.filter(p => p.id !== imageId))
   }
 
-  function handleDrop(targetIdx: number) {
-    if (dragIdx === null || dragIdx === targetIdx) {
-      setDragIdx(null)
-      setDropIdx(null)
-      return
-    }
-    const reordered = [...photos]
-    const [moved] = reordered.splice(dragIdx, 1)
-    reordered.splice(targetIdx, 0, moved)
-    setPhotos(reordered)
-    setDragIdx(null)
-    setDropIdx(null)
-  }
-
   function isValidYouTubeUrl(url: string): boolean {
     return /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)[\w-]{11}/.test(url)
   }
@@ -505,28 +492,33 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     (step === 1 && (generating || prompt.trim().length < 10)) ||
     stepLoading
 
-  // ── Category label helper ───────────────────────────────────────────────────
+  const previewListing = useMemo((): ListingCardListing => {
+    const categorySlug = taxonomyData.categories.find(c => c.id === taxonomy.category_id)?.slug
+      ?? form.category
+      ?? 'other'
+    const previewCountry = taxonomyData.countries.find(c => c.id === taxonomy.country_id)
 
-  function condLabel(val: string) {
-    return CONDITIONS.find(c => c.value === val)?.label ?? val
-  }
-
-  function condPillStyle(val: string): React.CSSProperties {
-    switch (val) {
-      case 'new':
-        return { background: '#FFF2ED', color: '#FF6B35', borderColor: '#FF6B35' }
-      case 'like_new':
-        return { background: '#F0FFF0', color: '#1A5C18', borderColor: '#C8F5C4' }
-      case 'good':
-        return { background: '#EFF6FF', color: '#1E40AF', borderColor: '#BFDBFE' }
-      case 'fair':
-        return { background: '#FDF6E3', color: '#7A5C00', borderColor: '#F0D98A' }
-      case 'parts_only':
-        return { background: '#FFF0F0', color: '#CC0000', borderColor: '#FFCCCC' }
-      default:
-        return { borderColor: '#E8E9EA', color: '#9A9DA2' }
+    return {
+      id: listingId ?? 'preview',
+      slug: null,
+      title: form.title || 'Untitled Draft',
+      category: categorySlug,
+      price: parseFloat(form.price) || 0,
+      price_unit: form.price_unit,
+      price_visible: form.price_visible,
+      location_city: taxonomy.location_city || null,
+      location_state: taxonomy.location_state || null,
+      created_at: '1970-01-01T00:00:00.000Z',
+      listing_images: photos.map((p, i) => ({
+        url: p.url,
+        is_primary: i === 0,
+        alt_text: form.title || null,
+      })),
+      countries: previewCountry
+        ? { name: previewCountry.name, iso_code: previewCountry.iso_code }
+        : null,
     }
-  }
+  }, [taxonomyData.categories, taxonomyData.countries, taxonomy, form, photos, listingId])
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -565,6 +557,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         handleDiscard={handleDiscard}
         handleRemovePhoto={handleRemovePhoto}
         handleFileSelect={handleFileSelect}
+        onPhotoReorder={setPhotos}
         router={router}
       />
     )
@@ -850,7 +843,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                 Photos &amp; video
               </h2>
               <p className="text-sm text-ink-2 mb-5">
-                Add up to 20 photos. Drag to reorder — the first photo is the cover image.
+                Add up to 20 photos. Drag the grip to reorder — the first photo is the cover image.
               </p>
 
               {/* Drop zone */}
@@ -902,48 +895,12 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
 
               {/* Thumbnail grid */}
               {photos.length > 0 && (
-                <div
-                  className="grid gap-2 mt-2"
-                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))' }}
-                >
-                  {photos.map((photo, idx) => (
-                    <div
-                      key={photo.id}
-                      draggable
-                      onDragStart={() => setDragIdx(idx)}
-                      onDragOver={e => { e.preventDefault(); setDropIdx(idx) }}
-                      onDrop={() => handleDrop(idx)}
-                      onDragEnd={() => { setDragIdx(null); setDropIdx(null) }}
-                      className="relative aspect-square rounded-[10px] overflow-hidden group cursor-grab border-2 transition-colors"
-                      style={{
-                        borderColor: dropIdx === idx && dragIdx !== idx ? '#FF6B35' : 'transparent',
-                        opacity: dragIdx === idx ? 0.5 : 1,
-                      }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photo.url} alt="" className="w-full h-full object-cover" />
-
-                      {/* Primary star */}
-                      {idx === 0 && (
-                        <div className="absolute top-1 left-1 w-5 h-5 bg-orange rounded-full flex items-center justify-center shadow-sm">
-                          <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                          </svg>
-                        </div>
-                      )}
-
-                      {/* Remove button */}
-                      <button
-                        onClick={e => { e.stopPropagation(); handleRemovePhoto(photo.id) }}
-                        className="absolute top-1 right-1 w-5 h-5 bg-ink/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-ink"
-                      >
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <ListingPhotoSortableList
+                  photos={photos}
+                  onReorder={setPhotos}
+                  onRemove={id => { void handleRemovePhoto(id) }}
+                  layout="grid"
+                />
               )}
 
               {/* Video section */}
@@ -972,77 +929,8 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               </p>
 
               {/* Preview card — constrained width, centered */}
-              <div style={{ maxWidth: '420px', margin: '0 auto' }}>
-              <div className="border border-[#E8E9EA] rounded-[16px] overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                {/* Primary photo */}
-                <div className="w-full h-[220px] bg-[#F0F0F0] relative">
-                  {photos[0] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={photos[0].url} alt={form.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <svg className="w-12 h-12 text-ink-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                  {/* Photo count badge */}
-                  {photos.length > 1 && (
-                    <div className="absolute bottom-2 right-2 bg-ink/60 text-white text-xs font-mono px-2 py-0.5 rounded-pill">
-                      {photos.length} photos
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="p-5">
-                  {/* Category badge */}
-                  <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-2">
-                    {form.category ? form.category.replace(/_/g, ' ') : 'Uncategorized'}
-                  </p>
-
-                  {/* Title + Price */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <h3 className="font-sans font-bold text-base text-ink leading-snug" style={{ letterSpacing: '-0.01em' }}>
-                      {form.title || 'Untitled Draft'}
-                    </h3>
-                    <div className="shrink-0 text-right">
-                      {(() => {
-                        const priceStr = formatPrice(parseFloat(form.price) || 0, form.price_unit, form.price_visible)
-                        return priceStr === 'Contact for price'
-                          ? <span className="text-sm font-sans text-ink-2 italic">Contact for price</span>
-                          : <span className="font-mono font-bold text-base" style={{ color: '#FF6B35' }}>{priceStr}</span>
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Location + Condition */}
-                  <div className="flex items-center gap-3 mb-3 text-sm text-ink-2">
-                    {(taxonomy.location_city || taxonomy.location_state || taxonomy.country_id) && (
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {[taxonomy.location_city, taxonomy.location_state].filter(Boolean).join(', ')}
-                      </span>
-                    )}
-                    {form.condition && (
-                      <span
-                        className="px-2 py-0.5 text-xs font-mono font-bold rounded-pill border"
-                        style={condPillStyle(form.condition)}
-                      >
-                        {condLabel(form.condition)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Description excerpt */}
-                  {form.description && (
-                    <p className="text-sm text-ink-2 leading-relaxed line-clamp-3">{form.description}</p>
-                  )}
-                </div>
-              </div>
+              <div style={{ maxWidth: '282px', margin: '0 auto' }}>
+                <ListingCard preview listing={previewListing} />
               </div>
             </div>
           )}

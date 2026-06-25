@@ -19,6 +19,7 @@ export default function FeaturedCarousel({ listings, isLoggedIn, savedIds }: Fea
           listing={listing}
           isLoggedIn={isLoggedIn}
           initialSaved={savedIds.includes(listing.id)}
+          openInNewTab
         />
       ))}
     </ListingCardGrid>

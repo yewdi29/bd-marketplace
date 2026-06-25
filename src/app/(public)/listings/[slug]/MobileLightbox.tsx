@@ -14,6 +14,8 @@ interface Props {
   initialIndex: number
   shareUrl?: string
   shareTitle?: string
+  /** How the lightbox was opened — controls back/close destination. */
+  lightboxOrigin?: 'direct' | 'grid'
   onIndexChange: (idx: number) => void
   onClose: () => void
 }
@@ -46,6 +48,7 @@ export default function MobileLightbox({
   initialIndex,
   shareUrl,
   shareTitle,
+  lightboxOrigin = 'direct',
   onIndexChange,
   onClose,
 }: Props) {
@@ -197,11 +200,11 @@ export default function MobileLightbox({
         <button
           type="button"
           onClick={() => pswpRef.current?.close()}
-          aria-label="Back to photo grid"
+          aria-label={lightboxOrigin === 'grid' ? 'Back to photo grid' : 'Back to listing'}
           className="flex items-center gap-1.5 rounded-pill px-4 py-2 text-sm font-sans font-semibold text-white bg-white/10 border border-white/20"
         >
           <ChevronLeft />
-          Back
+          {lightboxOrigin === 'grid' ? 'Back' : 'Close'}
         </button>
 
         {shareUrl && (

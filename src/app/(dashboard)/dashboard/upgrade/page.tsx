@@ -203,14 +203,6 @@ function TierCard({
         <span className="font-sans font-bold text-ink" style={{ fontSize: '22px', letterSpacing: '-0.02em' }}>
           {tier.name}
         </span>
-        {isCurrent && (
-          <span
-            className="ml-auto text-[10px] font-mono font-bold px-2.5 py-1 rounded-pill border"
-            style={{ background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }}
-          >
-            CURRENT
-          </span>
-        )}
       </div>
 
       {/* Price */}
@@ -387,7 +379,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto px-6 py-8">
+    <div className="max-w-[1450px] mx-auto px-6 py-8">
 
       {/* ── Header ── */}
       <div className="mb-2">

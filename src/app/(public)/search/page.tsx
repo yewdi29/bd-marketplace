@@ -134,6 +134,7 @@ function SearchContent() {
               listing={listing}
               isLoggedIn={isLoggedIn}
               initialSaved={false}
+              openInNewTab
             />
           ))}
         </ListingCardGrid>

@@ -62,6 +62,13 @@ body {
   overflow-x: clip;
 }
 
+/* Prevent iOS Safari auto-zoom on input focus — inputs below 16px trigger zoom */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
+}
+
 ::selection {
   background-color: var(--orange-bg);
   color: var(--orange);

@@ -208,7 +208,7 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
         <ListingCardGrid>
           {paginated.map(listing =>
             tab === 'active' ? (
-              <ListingCard key={listing.id} listing={listing} showSave={false} />
+              <ListingCard key={listing.id} listing={listing} showSave={false} openInNewTab />
             ) : (
               <ListingCard
                 key={listing.id}

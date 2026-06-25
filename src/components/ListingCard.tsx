@@ -43,6 +43,8 @@ interface ListingCardProps {
   showSave?: boolean
   /** Show share button on thumbnail (default: true when not preview). */
   showShare?: boolean
+  /** Open listing detail in a new browser tab (default: false). */
+  openInNewTab?: boolean
   disableHoverLift?: boolean
   /** Extra nodes over the thumbnail (status badge, sold overlay, external link hint). */
   thumbnailOverlay?: ReactNode
@@ -76,6 +78,7 @@ export default function ListingCard({
   onClick,
   showSave,
   showShare,
+  openInNewTab = false,
   disableHoverLift = false,
   thumbnailOverlay,
   imageClassName = '',
@@ -313,7 +316,11 @@ export default function ListingCard({
   }
 
   return (
-    <Link href={href} className={cardClass}>
+    <Link
+      href={href}
+      className={cardClass}
+      {...(openInNewTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+    >
       {cardInner}
     </Link>
   )
