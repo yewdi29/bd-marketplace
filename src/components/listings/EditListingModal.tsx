@@ -457,7 +457,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                 )}
 
                 {photos.length > 0 && (
-                  <p className="text-xs text-ink-3 mt-1.5">Drag the grip to reorder — first photo is the cover image</p>
+                  <p className="text-xs text-ink-3 mt-1.5">Drag to reorder — first photo is the cover image</p>
                 )}
               </div>
 

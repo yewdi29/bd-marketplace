@@ -146,7 +146,8 @@ interface CardAction {
   icon: React.ReactNode
   onClick: () => void
   danger?: boolean
-  primary?: boolean
+  /** Light orange tint — publish actions (matches delete-draft outline pattern) */
+  accent?: boolean
   disabled?: boolean
   tooltip?: string
 }
@@ -186,10 +187,10 @@ function CardOverlay({
         )
         return [
           {
-            label: 'Publish Listing',
+            label: 'Publish',
             icon: <CheckCircleIcon />,
             onClick: async () => { await onAction(listing.id, 'publish'); onClose() },
-            primary: true,
+            accent: true,
             disabled: !draftReady,
             tooltip: !draftReady ? 'Complete all required fields in the editor before publishing' : undefined,
           },
@@ -211,15 +212,16 @@ function CardOverlay({
         ]
       case 'pending_review':
         return [
-          { label: 'Edit Listing', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
           {
-            label: 'Republish',
+            label: 'Publish',
             icon: <CheckCircleIcon />,
             onClick: async () => {
               if (atLimit) { onClose(); onLimitReached(); return }
               await onAction(listing.id, 'publish'); onClose()
             },
+            accent: true,
           },
+          { label: 'Edit Listing', icon: <PencilIcon />, onClick: () => { onClose(); onEdit(listing.id) } },
           { label: 'Archive', icon: <TrashIcon />, onClick: () => { onClose(); onDelete(listing.id) }, danger: true },
         ]
     }
@@ -251,15 +253,10 @@ function CardOverlay({
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-semibold border transition-colors ${
               action.disabled
                 ? 'opacity-40 cursor-not-allowed border-[#D4D5D7] bg-white text-ink-2'
-                : action.primary
-                  ? 'border-orange hover:opacity-90'
+                : action.accent
+                  ? 'bg-orange-bg text-orange border-orange-bdr hover:border-orange'
                   : 'bg-white text-[#1A1D20] border-[#D4D5D7] hover:border-[#9A9DA2]'
             }`}
-            style={
-              action.disabled ? undefined :
-              action.primary ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 4px 12px rgba(255,107,53,0.25)' } :
-              undefined
-            }
           >
             <span className="w-4 h-4 shrink-0">{action.icon}</span>
             {action.label}

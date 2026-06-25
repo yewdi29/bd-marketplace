@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -49,6 +50,22 @@ function SortablePhotoItem({
     isDragging,
   } = useSortable({ id: photo.id })
 
+  const [pointerDown, setPointerDown] = useState(false)
+  const showGrabbing = isDragging || pointerDown
+
+  useEffect(() => {
+    if (!pointerDown || isDragging) return
+    function clearPointerDown() {
+      setPointerDown(false)
+    }
+    window.addEventListener('pointerup', clearPointerDown)
+    window.addEventListener('pointercancel', clearPointerDown)
+    return () => {
+      window.removeEventListener('pointerup', clearPointerDown)
+      window.removeEventListener('pointercancel', clearPointerDown)
+    }
+  }, [pointerDown, isDragging])
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -73,6 +90,7 @@ function SortablePhotoItem({
         isHorizontal ? 'shrink-0 w-24 h-24' : 'aspect-square w-full',
         isDragging ? 'shadow-card-hover border-orange' : '',
         !isHorizontal ? 'group' : '',
+        showGrabbing ? 'cursor-grabbing' : 'cursor-grab',
       ].filter(Boolean).join(' ')}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -84,22 +102,21 @@ function SortablePhotoItem({
         style={{ ...touchBlockStyle, WebkitUserDrag: 'none' } as React.CSSProperties}
       />
 
-      {/* Blocks iOS long-press save/share menu on the image; on mobile the whole tile is draggable */}
-      {isHorizontal ? (
-        <div
-          aria-label="Drag to reorder photo"
-          className="absolute inset-0 z-[1] touch-none select-none cursor-grab active:cursor-grabbing"
-          style={touchBlockStyle}
-          {...attributes}
-          {...listeners}
-        />
-      ) : (
-        <div
-          aria-hidden
-          className="absolute inset-x-0 top-0 z-[1] touch-none select-none"
-          style={{ ...touchBlockStyle, bottom: '24px' }}
-        />
-      )}
+      {/* Full-tile drag surface — blocks iOS image callout; grab anywhere to reorder */}
+      <div
+        aria-label="Drag to reorder photo"
+        className={[
+          'absolute inset-0 z-[1] touch-none select-none',
+          showGrabbing ? 'cursor-grabbing' : 'cursor-grab',
+        ].join(' ')}
+        style={touchBlockStyle}
+        {...attributes}
+        {...listeners}
+        onPointerDown={e => {
+          setPointerDown(true)
+          listeners?.onPointerDown?.(e)
+        }}
+      />
 
       {index === 0 && (
         <div className="absolute top-1 left-1 z-[2] w-5 h-5 bg-orange rounded-full flex items-center justify-center shadow-sm pointer-events-none">
@@ -118,7 +135,7 @@ function SortablePhotoItem({
         onPointerDown={e => e.stopPropagation()}
         aria-label="Remove photo"
         className={[
-          'absolute top-1 right-1 z-[3] rounded-full flex items-center justify-center',
+          'absolute top-1 right-1 z-[3] rounded-full flex items-center justify-center cursor-pointer',
           isHorizontal
             ? 'w-6 h-6 bg-ink/70'
             : 'w-5 h-5 bg-ink/60 opacity-0 group-hover:opacity-100 hover:bg-ink transition-opacity',
@@ -129,21 +146,18 @@ function SortablePhotoItem({
         </svg>
       </button>
 
-      {/* Grip — visual hint on mobile; drag target on desktop grid */}
-      <button
-        type="button"
-        aria-label={isHorizontal ? undefined : 'Drag to reorder photo'}
-        aria-hidden={isHorizontal ? true : undefined}
+      {/* Grip — visual hint only (full tile is the drag target) */}
+      <div
+        aria-hidden
         className={[
-          'absolute bottom-0 inset-x-0 z-[2] flex items-center justify-center',
+          'absolute bottom-0 inset-x-0 z-[2] flex items-center justify-center pointer-events-none',
           'bg-ink/55 text-white touch-none select-none',
-          isHorizontal ? 'h-7 pointer-events-none' : 'h-6 opacity-0 group-hover:opacity-100 transition-opacity',
+          isHorizontal ? 'h-7' : 'h-6 opacity-0 group-hover:opacity-100 transition-opacity',
         ].join(' ')}
         style={touchBlockStyle}
-        {...(isHorizontal ? { tabIndex: -1 } : { ...attributes, ...listeners })}
       >
         <GripVertical className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden />
-      </button>
+      </div>
     </div>
   )
 }

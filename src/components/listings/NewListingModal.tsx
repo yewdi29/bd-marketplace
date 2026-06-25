@@ -858,7 +858,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                 Photos &amp; video
               </h2>
               <p className="text-sm text-ink-2 mb-5">
-                Add up to 20 photos. Drag the grip to reorder — the first photo is the cover image.
+                Add up to 20 photos. Drag to reorder — the first photo is the cover image.
               </p>
 
               {/* Drop zone */}

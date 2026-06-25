@@ -103,7 +103,7 @@ export default async function HomePage() {
         .sort((a, b) => b - a)
         .flatMap(w => seededShuffle(byWeight[w], windowSeed + w))
 
-      featuredCarousel = sorted.slice(0, 6)
+      featuredCarousel = sorted.slice(0, 5)
     }
   } catch {
     // Service role unavailable in local dev — skip carousel gracefully
