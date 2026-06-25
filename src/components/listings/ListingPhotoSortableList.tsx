@@ -58,6 +58,12 @@ function SortablePhotoItem({
 
   const isHorizontal = layout === 'horizontal'
 
+  const touchBlockStyle: React.CSSProperties = {
+    WebkitTouchCallout: 'none',
+    WebkitUserSelect: 'none',
+    userSelect: 'none',
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -75,11 +81,28 @@ function SortablePhotoItem({
         alt=""
         draggable={false}
         className="w-full h-full object-cover pointer-events-none select-none"
-        style={{ WebkitTouchCallout: 'none' }}
+        style={{ ...touchBlockStyle, WebkitUserDrag: 'none' } as React.CSSProperties}
       />
 
+      {/* Blocks iOS long-press save/share menu on the image; on mobile the whole tile is draggable */}
+      {isHorizontal ? (
+        <div
+          aria-label="Drag to reorder photo"
+          className="absolute inset-0 z-[1] touch-none select-none cursor-grab active:cursor-grabbing"
+          style={touchBlockStyle}
+          {...attributes}
+          {...listeners}
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 z-[1] touch-none select-none"
+          style={{ ...touchBlockStyle, bottom: '24px' }}
+        />
+      )}
+
       {index === 0 && (
-        <div className="absolute top-1 left-1 w-5 h-5 bg-orange rounded-full flex items-center justify-center shadow-sm pointer-events-none">
+        <div className="absolute top-1 left-1 z-[2] w-5 h-5 bg-orange rounded-full flex items-center justify-center shadow-sm pointer-events-none">
           <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
@@ -88,10 +111,14 @@ function SortablePhotoItem({
 
       <button
         type="button"
-        onClick={() => onRemove(photo.id)}
+        onClick={e => {
+          e.stopPropagation()
+          onRemove(photo.id)
+        }}
+        onPointerDown={e => e.stopPropagation()}
         aria-label="Remove photo"
         className={[
-          'absolute top-1 right-1 rounded-full flex items-center justify-center',
+          'absolute top-1 right-1 z-[3] rounded-full flex items-center justify-center',
           isHorizontal
             ? 'w-6 h-6 bg-ink/70'
             : 'w-5 h-5 bg-ink/60 opacity-0 group-hover:opacity-100 hover:bg-ink transition-opacity',
@@ -102,18 +129,19 @@ function SortablePhotoItem({
         </svg>
       </button>
 
-      {/* Drag handle — touch/long-press target; avoids iOS image preview on the photo itself */}
+      {/* Grip — visual hint on mobile; drag target on desktop grid */}
       <button
         type="button"
-        aria-label="Drag to reorder photo"
+        aria-label={isHorizontal ? undefined : 'Drag to reorder photo'}
+        aria-hidden={isHorizontal ? true : undefined}
+        tabIndex={isHorizontal ? -1 : undefined}
         className={[
-          'absolute bottom-0 inset-x-0 flex items-center justify-center',
+          'absolute bottom-0 inset-x-0 z-[2] flex items-center justify-center',
           'bg-ink/55 text-white touch-none select-none',
-          isHorizontal ? 'h-7' : 'h-6 opacity-0 group-hover:opacity-100 transition-opacity',
+          isHorizontal ? 'h-7 pointer-events-none' : 'h-6 opacity-0 group-hover:opacity-100 transition-opacity',
         ].join(' ')}
-        style={{ WebkitTouchCallout: 'none' }}
-        {...attributes}
-        {...listeners}
+        style={touchBlockStyle}
+        {...(!isHorizontal ? { ...attributes, ...listeners } : {})}
       >
         <GripVertical className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden />
       </button>
@@ -129,7 +157,7 @@ export default function ListingPhotoSortableList({
 }: ListingPhotoSortableListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 

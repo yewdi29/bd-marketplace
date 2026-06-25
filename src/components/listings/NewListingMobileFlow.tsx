@@ -556,7 +556,7 @@ export default function NewListingMobileFlow({
                 Add Photos &amp; Video.
               </h1>
               <p className="text-[15px] text-ink-2 leading-relaxed mb-5">
-                Add up to 20 photos. Press and hold the grip to reorder — the first photo is your cover image.
+                Add up to 20 photos. Press and hold a photo to reorder — the first photo is your cover image.
               </p>
 
               <button

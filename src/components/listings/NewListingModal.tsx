@@ -354,8 +354,23 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
 
   async function handleRemovePhoto(imageId: string) {
     if (!listingId) return
-    await fetch(`/api/listings/${listingId}/images?imageId=${imageId}`, { method: 'DELETE' })
+    const index = photos.findIndex(p => p.id === imageId)
+    const removed = photos[index]
+    if (index === -1 || !removed) return
+
     setPhotos(prev => prev.filter(p => p.id !== imageId))
+
+    try {
+      const res = await fetch(`/api/listings/${listingId}/images?imageId=${imageId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+    } catch {
+      setPhotos(prev => {
+        const next = [...prev]
+        next.splice(index, 0, removed)
+        return next
+      })
+      setError('Could not remove photo. Please try again.')
+    }
   }
 
   function isValidYouTubeUrl(url: string): boolean {
