@@ -17,11 +17,17 @@ export const HIW_RIPPLE_FADE_MS = 500
 /** Delay after Step 2 activates before Live pill + map ripple (ms). */
 export const HIW_RIPPLE_START_DELAY_MS = 1500
 
+/** Map ripple animation duration (ms). */
+export const HIW_RIPPLE_DURATION_MS = 900
+
+/** Idle hold after ripple completes, before c2 connector fills (ms). */
+export const STEP2_POST_RIPPLE_HOLD_MS = 1000
+
 /**
  * Fixed post-Live duration before c2 connector fills.
- * Ripple reach (~2.5s) + hold (1.5s) + fade back (0.5s).
+ * Ripple duration + post-ripple hold.
  */
-export const STEP2_POST_LIVE_MS = 2500 + HIW_RIPPLE_HOLD_MS + HIW_RIPPLE_FADE_MS
+export const STEP2_POST_LIVE_MS = HIW_RIPPLE_DURATION_MS + STEP2_POST_RIPPLE_HOLD_MS
 
 export const WORLD_ATLAS_URL =
   'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'

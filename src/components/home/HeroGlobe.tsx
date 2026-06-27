@@ -5,12 +5,12 @@ import { useEffect, useState } from 'react'
 import { GlobePlaceholderStatic } from '@/components/home/GlobePlaceholderStatic'
 import { scheduleAfterInteractive } from '@/lib/scheduleAfterInteractive'
 
-const Globe = dynamic(() => import('@/components/ui/Globe'), {
+const HeroGlobeThree = dynamic(() => import('@/components/home/HeroGlobeThree'), {
   ssr: false,
-  loading: () => <div style={{ width: '100%', height: '100%' }} aria-hidden />,
+  loading: () => <GlobePlaceholderStatic />,
 })
 
-/** Defers COBE WebGL until after the page is interactive; pauses when off-screen. */
+/** Defers Three.js WebGL until after the page is interactive; pauses when off-screen. */
 export default function HeroGlobe() {
   const [shouldMount, setShouldMount] = useState(false)
   const [active, setActive] = useState(true)
@@ -40,5 +40,5 @@ export default function HeroGlobe() {
   }, [])
 
   if (!shouldMount) return <GlobePlaceholderStatic />
-  return <Globe active={active} />
+  return <HeroGlobeThree active={active} />
 }

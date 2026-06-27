@@ -171,7 +171,9 @@ export default function HomePage() {
           <div className="hidden min-[1000px]:block" style={{ minHeight: '500px' }} />
         </div>
 
-        <HeroGlobeLazy />
+        <div className="hidden min-[1000px]:block">
+          <HeroGlobeLazy />
+        </div>
       </section>
 
       {/* ── Featured equipment (async server + small client islands per card) ─ */}

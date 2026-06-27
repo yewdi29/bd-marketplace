@@ -9,7 +9,7 @@ export function GlobePlaceholderStatic() {
       style={{
         position: 'absolute',
         left: `${left}px`,
-        top: '-30px',
+        top: '-70px',
         width: size,
         height: size,
         zIndex: 1,

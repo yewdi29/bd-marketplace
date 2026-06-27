@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #ececef; }
+  * { box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+</style>
+<script src="https://unpkg.com/three@0.137.0/build/three.min.js"></script>
+</helmet>
+<div style="position:absolute; inset:0; overflow:hidden; background:radial-gradient(120% 90% at 50% 30%, #f4f4f6 0%, #ececef 55%, #e4e4e8 100%); font-family:'Inter', system-ui, sans-serif;">
+  <div ref="{{ mountRef }}" style="position:absolute; inset:0;"></div>
+  <div ref="{{ labelRef }}" style="position:absolute; inset:0; pointer-events:none; overflow:hidden;"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    this.mountRef = this.mountRef || React.createRef();
+    this.labelRef = this.labelRef || React.createRef();
+    return { mountRef: this.mountRef, labelRef: this.labelRef };
+  }
+  componentDidMount() { this._stop = false; this.start(); }
+  componentWillUnmount() {
+    this._stop = true;
+    if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._renderer) { try { this._renderer.dispose(); this._renderer.forceContextLoss(); } catch (e) {} }
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  async start() {
+    const THREE = window.THREE;
+    if (!THREE) { setTimeout(() => this.start(), 80); return; }
+    const mount = this.mountRef.current;
+    if (!mount || !mount.clientWidth) { setTimeout(() => this.start(), 80); return; }
+
+    const R = 2.0;
+    let W = mount.clientWidth, H = mount.clientHeight;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, W / H, 0.1, 100);
+    camera.position.set(0, 0.45, 9.2);
+    camera.lookAt(0, 0, 0);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W, H);
+    renderer.setClearColor(0x000000, 0);
+    mount.appendChild(renderer.domElement);
+    this._renderer = renderer;
+
+    const group = new THREE.Group();
+    group.rotation.x = 0.32;
+    scene.add(group);
+    this._group = group;
+
+    // ---- load land + sample dots ----
+    const land = await this.loadLand();
+    const dots = this.samplePoints(land, R, 46000);
+    const positions = new Float32Array(dots.length * 3);
+    const rand = new Float32Array(dots.length);
+    for (let i = 0; i < dots.length; i++) {
+      positions[i * 3] = dots[i].x; positions[i * 3 + 1] = dots[i].y; positions[i * 3 + 2] = dots[i].z;
+      rand[i] = Math.random();
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('aRand', new THREE.BufferAttribute(rand, 1));
+
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uSize: { value: 8.5 * renderer.getPixelRatio() },
+        uHover: { value: new THREE.Vector3(999, 999, 999) },
+        uHoverActive: { value: 0 },
+        uHoverRadius: { value: 0.42 },
+        uHoverPush: { value: 0.06 }
+      },
+      transparent: true, depthWrite: false, depthTest: false,
+      vertexShader: `
+        attribute float aRand; uniform float uSize;
+        uniform vec3 uHover; uniform float uHoverActive; uniform float uHoverRadius; uniform float uHoverPush;
+        varying float vT; varying float vFace; varying float vR; varying float vLift;
+        void main(){
+          float dH = distance(position, uHover);
+          float infl = uHoverActive * smoothstep(uHoverRadius, 0.0, dH);
+          vLift = infl;
+          vec3 n = normalize(position);
+          vec3 dir = position - uHover;
+          dir = dir - n * dot(dir, n);
+          float dl = length(dir);
+          vec3 pos = position + (dl > 0.0001 ? dir / dl : vec3(0.0)) * infl * uHoverPush;
+          vec4 wp = modelMatrix * vec4(pos,1.0);
+          vT = clamp((wp.x/2.0 + 1.0)*0.5, 0.0, 1.0);
+          vec3 wn = normalize(mat3(modelMatrix)*normalize(pos));
+          vec3 vd = normalize(cameraPosition - wp.xyz);
+          vFace = dot(wn, vd);
+          vR = aRand;
+          vec4 mv = modelViewMatrix * vec4(pos,1.0);
+          gl_PointSize = uSize * (1.0 + aRand*0.5) * (3.6 / -mv.z);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        varying float vT; varying float vFace; varying float vR; varying float vLift;
+        vec3 grad(float t){
+          vec3 c0=vec3(0.94,0.24,0.48);
+          vec3 c1=vec3(0.95,0.29,0.30);
+          vec3 c2=vec3(0.96,0.38,0.18);
+          vec3 c3=vec3(0.98,0.50,0.12);
+          vec3 c4=vec3(1.00,0.62,0.20);
+          if(t<0.25) return mix(c0,c1,t/0.25);
+          if(t<0.50) return mix(c1,c2,(t-0.25)/0.25);
+          if(t<0.75) return mix(c2,c3,(t-0.50)/0.25);
+          return mix(c3,c4,(t-0.75)/0.25);
+        }
+        void main(){
+          vec2 uv = gl_PointCoord-0.5;
+          float d = length(uv);
+          float circle = smoothstep(0.5,0.18,d);
+          float face = mix(0.14, 1.0, smoothstep(-0.7,0.5,vFace));
+          float a = circle*face*(0.55+vR*0.45);
+          if(a<0.015) discard;
+          gl_FragColor = vec4(grad(vT), a);
+        }`
+    });
+    const points = new THREE.Points(geo, mat);
+    group.add(points);
+
+    // ---- cursor interaction ----
+    const raycaster = new THREE.Raycaster();
+    const hoverSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), R);
+    const hitPt = new THREE.Vector3();
+    const invM = new THREE.Matrix4();
+    this._hover = { ndc: new THREE.Vector2(), has: false, want: false, active: 0 };
+    const dom = renderer.domElement;
+    dom.style.touchAction = 'none';
+    const onMove = (e) => {
+      const r = dom.getBoundingClientRect();
+      const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+      const cy = (e.touches ? e.touches[0].clientY : e.clientY);
+      this._hover.ndc.x = ((cx - r.left) / r.width) * 2 - 1;
+      this._hover.ndc.y = -((cy - r.top) / r.height) * 2 + 1;
+      this._hover.has = true; this._hover.want = true;
+    };
+    const onLeave = () => { this._hover.want = false; };
+    dom.addEventListener('mousemove', onMove);
+    dom.addEventListener('mouseleave', onLeave);
+    dom.addEventListener('touchmove', onMove, { passive: true });
+    dom.addEventListener('touchend', onLeave);
+    this._cleanupHover = () => {
+      dom.removeEventListener('mousemove', onMove);
+      dom.removeEventListener('mouseleave', onLeave);
+      dom.removeEventListener('touchmove', onMove);
+      dom.removeEventListener('touchend', onLeave);
+    };
+
+    this._landPts = dots.map(d => new THREE.Vector3(d.x, d.y, d.z));
+    this._arcs = [];
+    this._labelEl = this.labelRef.current;
+    this._lastSpawn = 0;
+    this._tmp = new THREE.Vector3();
+
+    this._onResize = () => {
+      W = mount.clientWidth; H = mount.clientHeight;
+      camera.aspect = W / H; camera.updateProjectionMatrix();
+      renderer.setSize(W, H);
+    };
+    window.addEventListener('resize', this._onResize);
+
+    const clock = new THREE.Clock();
+    const loop = () => {
+      if (this._stop) return;
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const t = clock.elapsedTime;
+      group.rotation.y += dt * 0.085;
+      this.updateArcs(THREE, group, R, dt, t, camera, W, H);
+      // hover displacement
+      const hv = this._hover;
+      hv.active += ((hv.want ? 1 : 0) - hv.active) * Math.min(1, dt * 7);
+      mat.uniforms.uHoverActive.value = hv.active;
+      if (hv.has && hv.active > 0.001) {
+        raycaster.setFromCamera(hv.ndc, camera);
+        if (raycaster.ray.intersectSphere(hoverSphere, hitPt)) {
+          invM.copy(group.matrixWorld).invert();
+          hitPt.applyMatrix4(invM);
+          mat.uniforms.uHover.value.copy(hitPt);
+        }
+      }
+      renderer.render(scene, camera);
+      this._raf = requestAnimationFrame(loop);
+    };
+    loop();
+  }
+
+  async loadLand() {
+    const urls = [
+      'https://raw.githubusercontent.com/martynafford/natural-earth-geojson/master/110m/physical/ne_110m_land.json',
+      'https://cdn.jsdelivr.net/gh/martynafford/natural-earth-geojson@master/110m/physical/ne_110m_land.json'
+    ];
+    for (const u of urls) {
+      try {
+        const r = await fetch(u);
+        if (!r.ok) continue;
+        const gj = await r.json();
+        return this.parseLand(gj);
+      } catch (e) {}
+    }
+    return [];
+  }
+
+  parseLand(gj) {
+    const polys = [];
+    const addPoly = (rings) => {
+      let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+      const outer = rings[0];
+      for (const p of outer) {
+        if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+      }
+      polys.push({ rings, bbox: [minX, minY, maxX, maxY] });
+    };
+    for (const f of (gj.features || [])) {
+      const g = f.geometry; if (!g) continue;
+      if (g.type === 'Polygon') addPoly(g.coordinates);
+      else if (g.type === 'MultiPolygon') for (const poly of g.coordinates) addPoly(poly);
+    }
+    return polys;
+  }
+
+  inLand(lng, lat, polys) {
+    for (const poly of polys) {
+      const b = poly.bbox;
+      if (lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3]) continue;
+      if (this.ringContains(poly.rings[0], lng, lat)) {
+        let hole = false;
+        for (let k = 1; k < poly.rings.length; k++) {
+          if (this.ringContains(poly.rings[k], lng, lat)) { hole = true; break; }
+        }
+        if (!hole) return true;
+      }
+    }
+    return false;
+  }
+
+  ringContains(ring, x, y) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+  }
+
+  ll2xyz(lng, lat, R) {
+    const phi = (90 - lat) * Math.PI / 180;
+    const theta = (lng + 180) * Math.PI / 180;
+    return {
+      x: -R * Math.sin(phi) * Math.cos(theta),
+      y: R * Math.cos(phi),
+      z: R * Math.sin(phi) * Math.sin(theta)
+    };
+  }
+
+  samplePoints(polys, R, N) {
+    const out = [];
+    const GA = Math.PI * (3 - Math.sqrt(5));
+    if (!polys.length) return out;
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (i / (N - 1)) * 2;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = i * GA;
+      const x = Math.cos(th) * r, z = Math.sin(th) * r;
+      const lat = Math.asin(y) * 180 / Math.PI;
+      const lng = Math.atan2(z, x) * 180 / Math.PI;
+      if (this.inLand(lng, lat, polys)) {
+        const p = this.ll2xyz(lng, lat, R);
+        const j = 0.012 * R;
+        out.push({
+          x: p.x + (Math.random() - 0.5) * j * 2.4,
+          y: p.y + (Math.random() - 0.5) * j * 2.4,
+          z: p.z + (Math.random() - 0.5) * j * 2.4
+        });
+      }
+    }
+    return out;
+  }
+
+  makeLabel() {
+    const items = [
+      { name: 'CAT D6T', price: '$185k' },
+      { name: 'CAT 390F', price: '$450k' },
+      { name: 'Komatsu PC210', price: '$220k' },
+      { name: 'Volvo A40G', price: '$520k' },
+      { name: 'CASE 2050M', price: '$165k' },
+      { name: 'Liebherr LTM 1300', price: '$1.8M' },
+      { name: 'Manitowoc 14000', price: '$2.1M' },
+      { name: 'Terex RT780', price: '$340k' }
+    ];
+    const it = items[Math.floor(Math.random() * items.length)];
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute; transform:translate(-50%,-140%); display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:8px 12px; background:#fff; border:1px solid rgba(20,16,50,0.06); border-radius:10px; box-shadow:0 6px 20px rgba(40,20,90,0.12); white-space:nowrap; opacity:0; transition:opacity .35s ease; will-change:transform,opacity;';
+    const name = document.createElement('div');
+    name.style.cssText = "font-family:'Inter',system-ui,sans-serif; font-size:13px; color:#15131a; font-weight:600; letter-spacing:-0.01em; line-height:1.2;";
+    name.textContent = it.name;
+    const price = document.createElement('div');
+    price.style.cssText = "font-family:'Andale Mono','Courier New',monospace; font-size:12px; color:#f0571f; font-weight:400; letter-spacing:0; line-height:1.2;";
+    price.textContent = it.price;
+    el.appendChild(name); el.appendChild(price);
+    this._labelEl.appendChild(el);
+    return el;
+  }
+
+  spawnArc(THREE, group, R) {
+    const pts = this._landPts;
+    if (pts.length < 2) return;
+    const a = pts[Math.floor(Math.random() * pts.length)].clone().normalize();
+    let b = pts[Math.floor(Math.random() * pts.length)].clone().normalize();
+    let tries = 0;
+    while (a.distanceTo(b) < 0.7 && tries++ < 12) b = pts[Math.floor(Math.random() * pts.length)].clone().normalize();
+    const omega = Math.acos(Math.max(-1, Math.min(1, a.dot(b))));
+    const so = Math.sin(omega) || 1e-4;
+    const SEG = 70;
+    const verts = [];
+    const h = 0.16 + Math.random() * 0.12;
+    for (let i = 0; i <= SEG; i++) {
+      const t = i / SEG;
+      const s0 = Math.sin((1 - t) * omega) / so;
+      const s1 = Math.sin(t * omega) / so;
+      const v = new THREE.Vector3(
+        a.x * s0 + b.x * s1, a.y * s0 + b.y * s1, a.z * s0 + b.z * s1
+      ).normalize().multiplyScalar(R * (1 + h * Math.sin(Math.PI * t)));
+      verts.push(v);
+    }
+    const posArr = new Float32Array((SEG + 1) * 3);
+    for (let i = 0; i <= SEG; i++) { posArr[i * 3] = verts[i].x; posArr[i * 3 + 1] = verts[i].y; posArr[i * 3 + 2] = verts[i].z; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+    g.setDrawRange(0, 1);
+    const tMid = (verts[Math.floor(SEG / 2)].x / R + 1) * 0.5;
+    const col = new THREE.Color().setHSL(0.105 + tMid * 0.02, 0.95, 0.55);
+    const lm = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.0 });
+    const line = new THREE.Line(g, lm);
+    group.add(line);
+    const el = this.makeLabel();
+    this._arcs.push({ verts, line, geo: g, mat: lm, SEG, prog: 0, draw: 0, age: 0, phase: 'grow', el, R });
+  }
+
+  updateArcs(THREE, group, R, dt, t, camera, W, H) {
+    if (t - this._lastSpawn > 1.5 && this._arcs.length < 5) { this.spawnArc(THREE, group, R); this._lastSpawn = t; }
+    group.updateMatrixWorld();
+    for (let i = this._arcs.length - 1; i >= 0; i--) {
+      const A = this._arcs[i];
+      A.age += dt;
+      if (A.phase === 'grow') {
+        A.prog = Math.min(1, A.prog + dt / 4.2);
+        const e = A.prog * A.prog * (3.0 - 2.0 * A.prog);
+        A.draw = e;
+        A.geo.setDrawRange(0, Math.max(1, Math.round(e * A.SEG) + 1));
+        A.mat.opacity = Math.min(0.5, A.mat.opacity + dt * 1.0);
+        if (A.prog >= 1) { A.phase = 'hold'; A.draw = 1; }
+      } else if (A.phase === 'hold') {
+        if (A.age > 4.2) A.phase = 'fade';
+      } else {
+        A.mat.opacity = Math.max(0, A.mat.opacity - dt * 0.6);
+        A.el.style.opacity = '0';
+        if (A.mat.opacity <= 0) {
+          group.remove(A.line); A.geo.dispose(); A.mat.dispose();
+          if (A.el.parentNode) A.el.parentNode.removeChild(A.el);
+          this._arcs.splice(i, 1);
+          continue;
+        }
+      }
+      // label rides leading tip (fractional interpolation = smooth)
+      const hf = A.draw * A.SEG;
+      const i0 = Math.min(A.SEG, Math.floor(hf));
+      const i1 = Math.min(A.SEG, i0 + 1);
+      const fr = hf - i0;
+      this._tmp.copy(A.verts[i0]).lerp(A.verts[i1], fr).applyMatrix4(group.matrixWorld);
+      const wn = this._tmp.clone().normalize();
+      const vd = camera.position.clone().sub(this._tmp).normalize();
+      const facing = wn.dot(vd);
+      const proj = this._tmp.clone().project(camera);
+      const sx = (proj.x * 0.5 + 0.5) * W;
+      const sy = (-proj.y * 0.5 + 0.5) * H;
+      A.el.style.left = sx + 'px';
+      A.el.style.top = sy + 'px';
+      if (A.phase !== 'fade') A.el.style.opacity = (facing > 0.1 && proj.z < 1) ? '1' : '0';
+    }
+  }
+}
+</script>
+</body>
+</html>

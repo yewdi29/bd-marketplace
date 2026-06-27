@@ -5,10 +5,10 @@ import dynamic from 'next/dynamic'
 import { Inbox } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useFlagIconsCss } from '@/hooks/useFlagIconsCss'
-import { HIW_RIPPLE_START_DELAY_MS, STEP2_POST_LIVE_MS } from '@/components/home/hiwGeoMapConstants'
+import { HIW_RIPPLE_DURATION_MS, HIW_RIPPLE_START_DELAY_MS, STEP2_POST_LIVE_MS } from '@/components/home/hiwGeoMapConstants'
 
-const GeoDotWorldMapCanvas = dynamic(
-  () => import('@/components/home/hiwGeoDotMap').then(mod => ({ default: mod.GeoDotWorldMapCanvas })),
+const HiwGeoDotMap = dynamic(
+  () => import('@/components/home/hiwGeoDotMap'),
   {
     ssr: false,
     loading: () => <div style={{ width: '100%', height: '100%' }} aria-hidden />,
@@ -341,6 +341,40 @@ function MiniListingCard() {
 // ─── Step 2 mockup ────────────────────────────────────────────────────────────
 
 function Step2Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
+  const [rippleProgress, setRippleProgress] = useState(0)
+  const [isActive, setIsActive] = useState(false)
+  const rippleRafRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (phase === 'idle') {
+      setRippleProgress(0)
+      setIsActive(false)
+      cancelAnimationFrame(rippleRafRef.current)
+    }
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 's2_live') return
+
+    setIsActive(true)
+    setRippleProgress(0)
+
+    const start = performance.now()
+
+    const tick = (now: number) => {
+      const elapsed = now - start
+      const progress = Math.min(1, elapsed / HIW_RIPPLE_DURATION_MS)
+      setRippleProgress(progress)
+      if (progress < 1) {
+        rippleRafRef.current = requestAnimationFrame(tick)
+      }
+    }
+
+    rippleRafRef.current = requestAnimationFrame(tick)
+
+    return () => cancelAnimationFrame(rippleRafRef.current)
+  }, [phase, loopId])
+
   const showPill = phase !== 'idle'
   const isLive = [
     's2_live',
@@ -356,7 +390,7 @@ function Step2Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
   return (
     <div className={HIW_MOCKUP_BOX}>
       <div className="relative w-full h-full min-h-[244px]">
-        <GeoDotWorldMapCanvas phase={phase} loopId={loopId} />
+        <HiwGeoDotMap rippleProgress={rippleProgress} isActive={isActive} />
         {showPill && (
           <span
             className="absolute top-0 right-0 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-pill font-mono font-bold text-[9px] border transition-colors duration-500"
