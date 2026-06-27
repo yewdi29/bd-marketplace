@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import NewsletterForm from '@/components/NewsletterForm'
 import FeaturedEquipmentSection, { FeaturedCarouselSkeleton } from '@/components/home/FeaturedEquipmentSection'
 import CategoryBrowse from '@/components/home/CategoryBrowse'
-import HowItWorksSection from '@/components/home/HowItWorksSection'
+import HowItWorksLazy from '@/components/home/HowItWorksLazy'
 import OperatorJournalSection from '@/components/home/OperatorJournalSection'
 
 const INDUSTRY_TAGS = [
@@ -214,7 +214,7 @@ export default function HomePage() {
         <hr className="border-0 border-t border-[#E8E9EA] m-0" />
       </div>
 
-      <HowItWorksSection />
+      <HowItWorksLazy />
 
       {/* 5 ── Operator Journal */}
       <div className="page-shell">

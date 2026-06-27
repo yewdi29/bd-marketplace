@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect, type ReactNode } from 'react'
 import { formatPrice } from '@/lib/formatPrice'
+import { useFlagIconsCss } from '@/hooks/useFlagIconsCss'
 import { ListingSharePopover, ShareIcon } from '@/components/listings/ListingSharePopover'
 
 // Minimal shape the card actually renders — structurally compatible with both
@@ -86,6 +87,7 @@ export default function ListingCard({
   footer,
   className = '',
 }: ListingCardProps) {
+  useFlagIconsCss()
   const [saved, setSaved] = useState(initialSaved)
   const [saving, setSaving] = useState(false)
   const [listingUrl, setListingUrl] = useState('')

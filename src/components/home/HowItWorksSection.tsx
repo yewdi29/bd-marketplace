@@ -1,10 +1,19 @@
 'use client'
 
 import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import { Inbox } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
-import { GeoDotWorldMapCanvas } from '@/components/home/hiwGeoDotMap'
+import { useFlagIconsCss } from '@/hooks/useFlagIconsCss'
 import { HIW_RIPPLE_START_DELAY_MS, STEP2_POST_LIVE_MS } from '@/components/home/hiwGeoMapConstants'
+
+const GeoDotWorldMapCanvas = dynamic(
+  () => import('@/components/home/hiwGeoDotMap').then(mod => ({ default: mod.GeoDotWorldMapCanvas })),
+  {
+    ssr: false,
+    loading: () => <div style={{ width: '100%', height: '100%' }} aria-hidden />,
+  },
+)
 
 // ─── Timeline phases ──────────────────────────────────────────────────────────
 
@@ -599,6 +608,7 @@ function StepCard({
 // ─── Main section ─────────────────────────────────────────────────────────────
 
 export default function HowItWorksSection() {
+  useFlagIconsCss()
   const sectionRef = useRef<HTMLElement>(null)
   const [inView, setInView] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
