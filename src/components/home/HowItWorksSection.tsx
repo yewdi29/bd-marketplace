@@ -147,10 +147,11 @@ function Step1Mockup({
   const [progressWidth, setProgressWidth] = useState(0)
   const [showListing, setShowListing] = useState(false)
   const [fadeForm, setFadeForm] = useState(false)
+  const textBoxRef = useRef<HTMLDivElement>(null)
 
   const showForm = !showListing
   const isTypingPhase = phase === 's1_border' || phase === 's1_type'
-  const showCursor = isTypingPhase && !showListing
+  const showCursor = isTypingPhase && !showListing && typed.length < TYPEWRITER_TEXT.length
   const buttonMuted = isTypingPhase
   const showProgress = phase === 's1_loading'
 
@@ -169,13 +170,26 @@ function Step1Mockup({
     if (phase !== 's1_type') return
     setTyped('')
     let i = 0
+    const msPerChar = 44
     const interval = setInterval(() => {
       i += 1
       setTyped(TYPEWRITER_TEXT.slice(0, i))
       if (i >= TYPEWRITER_TEXT.length) clearInterval(interval)
-    }, Math.floor(3000 / TYPEWRITER_TEXT.length))
+    }, msPerChar)
     return () => clearInterval(interval)
   }, [phase])
+
+  useEffect(() => {
+    if (phase === 's1_button' || phase === 's1_loading' || phase === 's1_listing') {
+      setTyped(TYPEWRITER_TEXT)
+    }
+  }, [phase])
+
+  useEffect(() => {
+    const el = textBoxRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [typed])
 
   useEffect(() => {
     if (phase !== 's1_button') return
@@ -229,8 +243,9 @@ function Step1Mockup({
         >
           <div className="w-full flex flex-col">
             <div
-              className="w-full rounded-[10px] border border-[#D4D5D7] bg-white px-3 py-2.5 text-left overflow-hidden"
-              style={{ fontSize: 11, lineHeight: 1.5, color: '#4A4D52', height: 72 }}
+              ref={textBoxRef}
+              className="w-full rounded-[10px] border border-[#D4D5D7] bg-white px-3 py-2.5 text-left overflow-x-hidden overflow-y-auto"
+              style={{ fontSize: 11, lineHeight: 1.5, color: '#4A4D52', height: 88 }}
             >
               <span className="whitespace-pre-wrap break-words">
                 {typed}

@@ -1,19 +1,35 @@
 import * as THREE from 'three'
-import { createGlobeLabel } from '@/components/home/heroGlobeLabels'
+import { Line2 } from 'three/addons/lines/Line2.js'
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
+import { createGlobeLabel, HERO_GLOBE_LABEL_ITEMS, pickGlobeLabelIndex } from '@/components/home/heroGlobeLabels'
+
+/** One unique label per concurrent arc (matches HERO_GLOBE_LABEL_ITEMS length). */
+const MAX_CONCURRENT_ARCS = HERO_GLOBE_LABEL_ITEMS.length
+
+/** Arc timing — slowed 40% vs Claude Design defaults (duration × 1.4, rates ÷ 1.4). */
+const ARC_GROW_SEC = 5.88
+const ARC_HOLD_AGE_SEC = 5.88
+const ARC_OPACITY_RAMP = 1 / 1.4
+const ARC_FADE_RATE = 0.6 / 1.4
+const ARC_SPAWN_INTERVAL_SEC = 2.1
+/** Screen-space arc thickness (default WebGL lines are ~1px). */
+const ARC_LINE_WIDTH_PX = 2
 
 export type ArcPhase = 'grow' | 'hold' | 'fade'
 
 export interface ArcState {
   verts: THREE.Vector3[]
-  line: THREE.Line
-  geo: THREE.BufferGeometry
-  mat: THREE.LineBasicMaterial
+  line: Line2
+  geo: LineGeometry
+  mat: LineMaterial
   SEG: number
   prog: number
   draw: number
   age: number
   phase: ArcPhase
   el: HTMLDivElement
+  labelIndex: number
   R: number
 }
 
@@ -22,8 +38,12 @@ export function spawnArc(
   landPts: THREE.Vector3[],
   labelRoot: HTMLElement,
   R: number,
+  activeArcs: ArcState[],
 ): ArcState | null {
   if (landPts.length < 2) return null
+
+  const labelIndex = pickGlobeLabelIndex(activeArcs.map(a => a.labelIndex))
+  if (labelIndex === null) return null
 
   const a = landPts[Math.floor(Math.random() * landPts.length)].clone().normalize()
   let b = landPts[Math.floor(Math.random() * landPts.length)].clone().normalize()
@@ -48,25 +68,31 @@ export function spawnArc(
     verts.push(v)
   }
 
-  const posArr = new Float32Array((SEG + 1) * 3)
+  const positions: number[] = []
   for (let i = 0; i <= SEG; i++) {
-    posArr[i * 3] = verts[i].x
-    posArr[i * 3 + 1] = verts[i].y
-    posArr[i * 3 + 2] = verts[i].z
+    positions.push(verts[i].x, verts[i].y, verts[i].z)
   }
 
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3))
-  geo.setDrawRange(0, 1)
+  const geo = new LineGeometry()
+  geo.setPositions(positions)
+  geo.setDrawRange(0, 2)
 
   const tMid = (verts[Math.floor(SEG / 2)].x / R + 1) * 0.5
   const col = new THREE.Color().setHSL(0.105 + tMid * 0.02, 0.95, 0.55)
-  const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0 })
-  const line = new THREE.Line(geo, mat)
+  const mat = new LineMaterial({
+    color: col.getHex(),
+    linewidth: ARC_LINE_WIDTH_PX,
+    transparent: true,
+    opacity: 0,
+    depthTest: false,
+    depthWrite: false,
+  })
+  const line = new Line2(geo, mat)
+  line.computeLineDistances()
   group.add(line)
 
-  const el = createGlobeLabel(labelRoot)
-  return { verts, line, geo, mat, SEG, prog: 0, draw: 0, age: 0, phase: 'grow', el, R }
+  const el = createGlobeLabel(labelRoot, labelIndex)
+  return { verts, line, geo, mat, SEG, prog: 0, draw: 0, age: 0, phase: 'grow', el, labelIndex, R }
 }
 
 export function updateArcs(
@@ -84,8 +110,8 @@ export function updateArcs(
   tmp: THREE.Vector3,
 ): number {
   let spawnAt = lastSpawn
-  if (t - spawnAt > 1.5 && arcs.length < 5) {
-    const arc = spawnArc(group, landPts, labelRoot, R)
+  if (t - spawnAt > ARC_SPAWN_INTERVAL_SEC && arcs.length < MAX_CONCURRENT_ARCS) {
+    const arc = spawnArc(group, landPts, labelRoot, R, arcs)
     if (arc) {
       arcs.push(arc)
       spawnAt = t
@@ -94,24 +120,28 @@ export function updateArcs(
 
   group.updateMatrixWorld()
 
+  for (let i = 0; i < arcs.length; i++) {
+    arcs[i].mat.resolution.set(W, H)
+  }
+
   for (let i = arcs.length - 1; i >= 0; i--) {
     const A = arcs[i]
     A.age += dt
 
     if (A.phase === 'grow') {
-      A.prog = Math.min(1, A.prog + dt / 4.2)
+      A.prog = Math.min(1, A.prog + dt / ARC_GROW_SEC)
       const e = A.prog * A.prog * (3.0 - 2.0 * A.prog)
       A.draw = e
       A.geo.setDrawRange(0, Math.max(1, Math.round(e * A.SEG) + 1))
-      A.mat.opacity = Math.min(0.5, A.mat.opacity + dt * 1.0)
+      A.mat.opacity = Math.min(0.5, A.mat.opacity + dt * ARC_OPACITY_RAMP)
       if (A.prog >= 1) {
         A.phase = 'hold'
         A.draw = 1
       }
     } else if (A.phase === 'hold') {
-      if (A.age > 4.2) A.phase = 'fade'
+      if (A.age > ARC_HOLD_AGE_SEC) A.phase = 'fade'
     } else {
-      A.mat.opacity = Math.max(0, A.mat.opacity - dt * 0.6)
+      A.mat.opacity = Math.max(0, A.mat.opacity - dt * ARC_FADE_RATE)
       A.el.style.opacity = '0'
       if (A.mat.opacity <= 0) {
         group.remove(A.line)

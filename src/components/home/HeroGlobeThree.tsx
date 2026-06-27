@@ -125,7 +125,7 @@ export default function HeroGlobeThree({ active }: HeroGlobeThreeProps) {
 
       const dom = renderer.domElement
       dom.style.touchAction = 'none'
-      dom.style.cursor = 'grab'
+      dom.style.cursor = 'default'
 
       const onMove = (e: MouseEvent | TouchEvent) => {
         const r = dom.getBoundingClientRect()
