@@ -1,39 +1,11 @@
-import dynamic from 'next/dynamic'
+import HeroGlobe from '@/components/home/HeroGlobe'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { Suspense } from 'react'
 import NewsletterForm from '@/components/NewsletterForm'
-import FeaturedCarousel from '@/components/home/FeaturedCarousel'
+import FeaturedEquipmentSection, { FeaturedCarouselSkeleton } from '@/components/home/FeaturedEquipmentSection'
 import CategoryBrowse from '@/components/home/CategoryBrowse'
+import HowItWorksSection from '@/components/home/HowItWorksSection'
 import OperatorJournalSection from '@/components/home/OperatorJournalSection'
-import type { Listing, MembershipPlan } from '@/lib/types/database'
-
-// Globe uses WebGL — must be client-only
-const Globe = dynamic(() => import('@/components/ui/Globe'), { ssr: false })
-
-// Tier weight for sorting featured listings
-const TIER_WEIGHT: Record<MembershipPlan, number> = {
-  max:     4,
-  pro:     3,
-  starter: 2,
-  premium: 1,
-  free:    0,
-}
-
-// Seeded random — deterministic shuffle keyed to a 5-day window
-function seededRandom(seed: number): number {
-  const x = Math.sin(seed + 1) * 10000
-  return x - Math.floor(x)
-}
-
-function seededShuffle<T>(arr: T[], seed: number): T[] {
-  const result = [...arr]
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(seededRandom(seed + i) * (i + 1))
-    ;[result[i], result[j]] = [result[j], result[i]]
-  }
-  return result
-}
 
 const INDUSTRY_TAGS = [
   { label: 'Energy',       dotColor: '#E8E9EA' },
@@ -42,73 +14,7 @@ const INDUSTRY_TAGS = [
   { label: 'Agriculture',  dotColor: '#E8E9EA' },
 ]
 
-export default async function HomePage() {
-  const supabase = await createClient()
-
-  // ── Auth + saved listings ────────────────────────────────────────────────
-  const { data: { user } } = await supabase.auth.getUser()
-  let savedIds = new Set<string>()
-  if (user) {
-    const { data: saved } = await supabase
-      .from('saved_listings')
-      .select('listing_id')
-      .eq('user_id', user.id)
-    savedIds = new Set((saved ?? []).map((s: { listing_id: string }) => s.listing_id))
-  }
-
-  // ── Featured carousel: non-free sellers, tier-weighted, 5-day shuffle ───
-  let featuredCarousel: Listing[] = []
-  try {
-    const adminClient = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: eligibleListings } = await adminClient
-      .from('listings')
-      .select('*, listing_images(*), countries(name, iso_code)')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(80)
-
-    if (eligibleListings && eligibleListings.length > 0) {
-      const sellerIds = Array.from(new Set(eligibleListings.map((l: Listing) => l.seller_id)))
-      const { data: users } = await adminClient
-        .from('users')
-        .select('id, plan')
-        .in('id', sellerIds)
-
-      const planMap = new Map<string, MembershipPlan>(
-        (users ?? []).map((u: { id: string; plan: MembershipPlan }) => [u.id, u.plan])
-      )
-
-      const eligible = (eligibleListings as Listing[]).filter(l => {
-        const plan = planMap.get(l.seller_id) ?? 'free'
-        return plan !== 'free'
-      })
-
-      // Sort by tier weight descending, then shuffle within each weight group
-      const windowSeed = Math.floor(Date.now() / (5 * 24 * 60 * 60 * 1000))
-
-      const byWeight = eligible.reduce<Record<number, Listing[]>>((acc, l) => {
-        const plan = planMap.get(l.seller_id) ?? 'free'
-        const w = TIER_WEIGHT[plan] ?? 0
-        if (!acc[w]) acc[w] = []
-        acc[w].push(l)
-        return acc
-      }, {})
-
-      const sorted: Listing[] = Object.keys(byWeight)
-        .map(Number)
-        .sort((a, b) => b - a)
-        .flatMap(w => seededShuffle(byWeight[w], windowSeed + w))
-
-      featuredCarousel = sorted.slice(0, 5)
-    }
-  } catch {
-    // Service role unavailable in local dev — skip carousel gracefully
-  }
-
+export default function HomePage() {
   return (
     <>
       {/* ── Hero ──────────────────────────────────────────────────────────────── */}
@@ -123,8 +29,8 @@ export default async function HomePage() {
        * Desktop (≥1000px): globe is position:absolute; section is the offset parent.
        * overflow-hidden clips the globe at the section boundary on all desktop modes.
        *
-       * ≥1500px: Globe.tsx centers the globe in the right half of the 1280px content
-       * container using pure viewport math — no DOM anchoring, no section constraints.
+       * ≥1500px: Globe.tsx centers the globe in the right half of the viewport
+       * using pure viewport math — no DOM anchoring, no section constraints.
        */}
       <section data-hero-section className="relative overflow-hidden min-h-[75vh]">
 
@@ -142,11 +48,10 @@ export default async function HomePage() {
             position: relative + z-[3] keeps content above the absolute globe. */}
         <div
           data-hero-container
-          className="flex flex-col min-[1000px]:grid min-[1000px]:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
-          style={{ maxWidth: '1450px', margin: '0 auto' }}
+          className="page-shell flex flex-col min-[1000px]:grid min-[1000px]:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
         >
           {/* ── Left column ── */}
-          <div className="px-4 py-10 min-[1000px]:pl-16 min-[1000px]:pr-0 min-[1000px]:py-[60px]">
+          <div className="py-10 min-[1000px]:py-[60px]">
 
             {/*
              * Frosted glass card — glassmorphism exception (navbar-only by default).
@@ -155,7 +60,7 @@ export default async function HomePage() {
              */}
             <div
               data-hero-card
-              className="w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px] flex flex-col items-center text-center min-[1000px]:items-start min-[1000px]:text-left"
+              className="w-full min-[1000px]:w-fit min-[1000px]:max-w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px] flex flex-col items-center text-center min-[1000px]:items-start min-[1000px]:text-left"
               style={{
                 background: 'rgba(255,255,255,0.20)',
                 backdropFilter: 'blur(20px)',
@@ -291,176 +196,35 @@ export default async function HomePage() {
         </div>
 
         {/* Globe is self-positioning — breakpoint logic lives in Globe.tsx */}
-        <Globe />
+        <HeroGlobe />
 
       </section>
 
       {/* ── Below-fold content ────────────────────────────────────────────────── */}
-      <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="page-shell">
 
-        {/* 1 ── Featured Equipment Carousel */}
-        {featuredCarousel.length > 0 && (
-          <section className="py-10 border-t border-[#E8E9EA]">
-            <div className="flex items-end justify-between mb-6">
-              <div>
-                <h2
-                  className="font-sans font-bold text-2xl text-ink"
-                  style={{ letterSpacing: '-0.02em' }}
-                >
-                  Featured Equipment
-                </h2>
-                <p className="mt-1 text-sm font-sans text-ink-3">
-                  Hand-picked listings from verified sellers
-                </p>
-              </div>
-              <Link
-                href="/search?featured=true"
-                className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
-              >
-                View all →
-              </Link>
-            </div>
-            <FeaturedCarousel
-              listings={featuredCarousel}
-              isLoggedIn={!!user}
-              savedIds={Array.from(savedIds)}
-            />
-          </section>
-        )}
+        {/* 1 ── Featured Equipment Carousel (streams after hero) */}
+        <Suspense fallback={<FeaturedCarouselSkeleton />}>
+          <FeaturedEquipmentSection />
+        </Suspense>
 
         {/* 2 ── Browse by Category */}
         <CategoryBrowse />
 
+        <hr className="border-0 border-t border-[#E8E9EA] m-0" />
       </div>
 
-      {/* 4 ── How It Works */}
-      <section style={{ background: '#F7F8F9', width: '100%', padding: '80px 32px', borderTop: '1px solid #E8E9EA' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-
-          <p style={{
-            fontFamily: "'DM Mono', monospace",
-            fontSize: '10px',
-            fontWeight: 500,
-            textTransform: 'uppercase' as const,
-            letterSpacing: '0.1em',
-            color: '#FF6B35',
-            marginBottom: '12px',
-          }}>
-            HOW IT WORKS
-          </p>
-
-          <h2 style={{
-            fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
-            fontSize: '36px',
-            fontWeight: 800,
-            color: '#1A1D20',
-            letterSpacing: '-0.02em',
-            margin: '0 0 56px 0',
-          }}>
-            List your equipment in three steps.
-          </h2>
-
-          <div style={{ position: 'relative' }}>
-            {/* Connecting line — only makes sense between side-by-side desktop cards */}
-            <div className="hidden lg:block" style={{
-              position: 'absolute',
-              top: '50%',
-              left: '8%',
-              right: '8%',
-              height: '1px',
-              background: '#E8E9EA',
-              zIndex: 0,
-              transform: 'translateY(-50%)',
-            }} />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{
-              position: 'relative',
-              zIndex: 1,
-            }}>
-              {([
-                {
-                  num: '01',
-                  title: 'Describe Your Equipment',
-                  desc: 'Tell our AI what you have in plain language — condition, specs, price, and location. Just talk to us like you would a buyer.',
-                },
-                {
-                  num: '02',
-                  title: 'Publish Instantly',
-                  desc: 'Review your AI-generated listing, add photos, and publish with one click. Your equipment is live and searchable worldwide immediately.',
-                },
-                {
-                  num: '03',
-                  title: 'Connect and Close',
-                  desc: 'Buyers find your listing and contact you directly through the inquiry form. No middlemen, no fees per transaction. Just direct connections.',
-                },
-              ] as const).map(step => (
-                <div key={step.num} style={{
-                  background: 'white',
-                  border: '1px solid #E8E9EA',
-                  borderRadius: '16px',
-                  padding: '28px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-                }}>
-                  <p style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: '#FF6B35',
-                    letterSpacing: '0.1em',
-                    marginBottom: '16px',
-                  }}>
-                    {step.num}
-                  </p>
-                  <h3 style={{
-                    fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    color: '#1A1D20',
-                    marginBottom: '10px',
-                  }}>
-                    {step.title}
-                  </h3>
-                  <p style={{
-                    fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
-                    fontSize: '14px',
-                    color: '#6A6D72',
-                    lineHeight: 1.7,
-                    margin: 0,
-                  }}>
-                    {step.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginTop: '48px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
-            <Link
-              href="/auth/signup"
-              className="inline-flex items-center font-sans font-bold text-[13px] text-white no-underline whitespace-nowrap rounded-pill transition-all duration-200 hover:bg-orange-lt"
-              style={{ background: '#FF6B35', padding: '10px 24px', boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
-            >
-              Start Listing Equipment
-            </Link>
-            <Link
-              href="/how-it-works"
-              className="inline-flex items-center font-sans font-bold text-[13px] no-underline whitespace-nowrap rounded-pill transition-all duration-200 hover:border-[#D4D5D7] hover:text-ink"
-              style={{ border: '1px solid #E8E9EA', padding: '10px 24px', color: '#4A4D52', background: 'white' }}
-            >
-              See Full Guide
-            </Link>
-          </div>
-
-        </div>
-      </section>
+      <HowItWorksSection />
 
       {/* 5 ── Operator Journal */}
-      <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10">
-        <OperatorJournalSection />
+      <div className="page-shell">
+        <Suspense fallback={null}>
+          <OperatorJournalSection />
+        </Suspense>
       </div>
 
       {/* 7 ── Newsletter */}
-      <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10">
+      <div className="page-shell">
         <section className="py-10 border-t border-[#E8E9EA]">
           <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
             <h2

@@ -76,15 +76,11 @@ export function SearchBarTrigger({ onClick }: { onClick: () => void }) {
 // pass a real user, so the hamburger branch simply never applies there.
 export function MobileNavTrigger({
   user,
-  authReady,
   onClick,
 }: {
   user: ProfileUser | null
-  authReady: boolean
   onClick: () => void
 }) {
-  if (!authReady) return <div style={TAP_SIZE} />
-
   if (user) {
     return (
       <button onClick={onClick} aria-label="Open menu" className={TAP_TARGET} style={TAP_SIZE}>

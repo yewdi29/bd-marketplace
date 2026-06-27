@@ -45,7 +45,7 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
        * 3-column grid: Logo | SearchBar | Profile
        * Dashboard is never the homepage, so SearchBar always shows. */}
       <div
-        className="hidden lg:grid max-w-[1450px] mx-auto px-6 h-full items-center"
+        className="hidden lg:grid page-shell h-full items-center"
         style={{ gridTemplateColumns: 'auto 1fr auto', gap: '16px' }}
       >
         {/* Col 1: Logo */}
@@ -81,7 +81,7 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
       <div className="flex lg:hidden items-center h-full px-3 gap-2">
         <LogoIcon />
         <SearchBarTrigger onClick={openSearchTakeover} />
-        <MobileNavTrigger user={user} authReady onClick={openMobileMenu} />
+        <MobileNavTrigger user={user} onClick={openMobileMenu} />
       </div>
 
       <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={user} />

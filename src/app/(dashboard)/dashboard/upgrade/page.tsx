@@ -379,7 +379,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <div className="max-w-[1450px] mx-auto px-6 py-8">
+    <div className="page-shell py-8">
 
       {/* ── Header ── */}
       <div className="mb-2">

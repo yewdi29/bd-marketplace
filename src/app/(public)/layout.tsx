@@ -1,14 +1,16 @@
-import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
+import PublicShell from '@/components/layout/PublicShell'
+import { getAuthUser } from '@/lib/supabase/auth-server'
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
+  const user = await getAuthUser()
+
+  const initialAuth = user
+    ? { id: user.id, email: user.email ?? '' }
+    : null
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1 pt-[64px]">
-        {children}
-      </main>
-      <Footer />
-    </div>
+    <PublicShell initialAuth={initialAuth}>
+      {children}
+    </PublicShell>
   )
 }

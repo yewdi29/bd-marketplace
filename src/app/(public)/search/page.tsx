@@ -108,7 +108,7 @@ function SearchContent() {
   }, [fetchListings])
 
   return (
-    <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+    <div className="page-shell py-8">
       <p className="font-sans font-bold text-sm text-ink mb-5">
         {loading
           ? <span className="inline-block h-4 w-32 bg-[#F0F0F0] rounded-full animate-pulse" />
@@ -162,7 +162,7 @@ export default function SearchPage() {
       </Suspense>
 
       <Suspense fallback={
-        <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
+        <div className="page-shell py-8">
           <div className="h-4 w-32 bg-[#F0F0F0] rounded-full mb-5 animate-pulse" />
           <SkeletonGrid />
         </div>

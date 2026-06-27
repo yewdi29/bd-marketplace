@@ -2,10 +2,6 @@
 import createGlobe from 'cobe'
 import { useEffect, useRef, useState } from 'react'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const DPR = 2
-
-// ─── Endpoint labels ──────────────────────────────────────────────────────────
 const ENDPOINT_LABELS = [
   { id: 'guatemala', equipment: 'Pipe Casing',  price: '$62K'  },
   { id: 'edmonton',  equipment: 'Drilling Rig', price: '$1.8M' },
@@ -19,42 +15,53 @@ const ENDPOINT_LABELS = [
   { id: 'karachi',   equipment: 'Pump Unit',    price: '$120K' },
 ]
 
-// ─── Layout type ──────────────────────────────────────────────────────────────
 type GlobeMode = 'mobile' | 'tablet' | 'desktop'
 
 interface GlobeLayout {
   mode: GlobeMode
   size: number
-  // Flow modes (mobile / tablet)
   containerHeight: number
-  // Absolute (desktop) modes — section-relative left/top of the globe canvas
   left: number
   top: number
 }
 
+interface GlobeQuality {
+  dpr: number
+  mapSamples: number
+}
+
+function getGlobeQuality(mode: GlobeMode): GlobeQuality {
+  if (mode === 'mobile') return { dpr: 1, mapSamples: 7000 }
+  if (mode === 'tablet') return { dpr: 1.5, mapSamples: 9000 }
+  return { dpr: 2, mapSamples: 12000 }
+}
 
 function computeLayout(w: number, h: number): GlobeLayout {
-  // ── Flow modes — globe stacks below the content card ──────────────────────
   if (w < 730) {
     return { mode: 'mobile', size: Math.max(Math.round(w * 1.35), 460), containerHeight: 440, left: 0, top: -60 }
   }
   if (w < 1000) {
     return { mode: 'tablet', size: Math.max(Math.round(w * 1.05), 760), containerHeight: 500, left: 0, top: -60 }
   }
-
-  // ── Desktop (≥1000px) — centered in right half of 1280px container, top flush with section ──
-  // boundW caps at 1280 so the right-half center (×0.75) is stable once the container
-  // stops growing; at sub-1280 viewports it adapts to the actual container width.
   const size = Math.max(Math.round(h * 1.2), 960)
   const boundW = Math.min(w, 1280)
   const left = Math.round(Math.max(0, (w - 1280) / 2) + boundW * 0.75 - size / 2)
   return { mode: 'desktop', size, containerHeight: 0, left, top: -30 }
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-export default function Globe() {
+interface GlobeProps {
+  embedded?: boolean
+  embeddedSize?: number
+  /** Pause animation when false (e.g. hero scrolled off-screen). */
+  active?: boolean
+}
+
+export default function Globe({ embedded = false, embeddedSize = 220, active = true }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const rafGlobe  = useRef<number | null>(null)
+  const rafGlobe = useRef<number | null>(null)
+  const rafLabels = useRef<number | null>(null)
+  const animatingRef = useRef(false)
+  const loopControlRef = useRef<{ start: () => void; stop: () => void } | null>(null)
 
   const phiRef             = useRef(0.5)
   const thetaRef           = useRef(0.1)
@@ -66,23 +73,59 @@ export default function Globe() {
   const lastX              = useRef(0)
   const lastY              = useRef(0)
 
-  // ── Responsive layout state ───────────────────────────────────────────────
-  const [layout, setLayout] = useState<GlobeLayout>({
-    mode: 'desktop',
-    size: 960,
-    containerHeight: 0,
-    left: 700,
-    top: 0,
-  })
+  const [layout, setLayout] = useState<GlobeLayout>(() =>
+    typeof window !== 'undefined'
+      ? computeLayout(window.innerWidth, window.innerHeight)
+      : computeLayout(1280, 800),
+  )
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [tabVisible, setTabVisible] = useState(true)
+
+  const quality = embedded
+    ? { dpr: 2, mapSamples: 8000 }
+    : getGlobeQuality(layout.mode)
+
+  const shouldAnimate = active && tabVisible && !reducedMotion
+  const shouldAnimateRef = useRef(shouldAnimate)
 
   useEffect(() => {
+    shouldAnimateRef.current = shouldAnimate
+    if (shouldAnimate) loopControlRef.current?.start()
+    else loopControlRef.current?.stop()
+  }, [shouldAnimate])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const syncMotion = () => setReducedMotion(mq.matches)
+    syncMotion()
+    mq.addEventListener('change', syncMotion)
+
+    const onVisibility = () => setTabVisible(!document.hidden)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      mq.removeEventListener('change', syncMotion)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (embedded) {
+      setLayout({
+        mode: 'desktop',
+        size: embeddedSize,
+        containerHeight: embeddedSize,
+        left: 0,
+        top: 0,
+      })
+      return
+    }
     const update = () => setLayout(computeLayout(window.innerWidth, window.innerHeight))
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
-  }, [])
+  }, [embedded, embeddedSize])
 
-  // ── Pointer handlers ─────────────────────────────────────────────────────
   const onPointerDown = (e: React.PointerEvent) => {
     pointerInteracting.current = { x: e.clientX, y: e.clientY }
     lastX.current = e.clientX
@@ -110,21 +153,21 @@ export default function Globe() {
     if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
   }
 
-  // ── Main COBE effect (re-runs when size changes) ──────────────────────────
   const { size } = layout
+  const { dpr, mapSamples } = quality
 
   useEffect(() => {
     if (!canvasRef.current) return
 
     const globe = createGlobe(canvasRef.current, {
-      devicePixelRatio: DPR,
-      width:  size * DPR,
-      height: size * DPR,
+      devicePixelRatio: dpr,
+      width:  size * dpr,
+      height: size * dpr,
       phi:   phiRef.current,
       theta: thetaRef.current,
       dark: 0,
       diffuse: 1,
-      mapSamples:    20000,
+      mapSamples,
       mapBrightness: 3.5,
       baseColor:   [0.97, 0.97, 0.97] as [number, number, number],
       markerColor: [1, 0.42, 0.21]    as [number, number, number],
@@ -168,30 +211,63 @@ export default function Globe() {
     if (!cobeWrapper) { globe.destroy(); return }
 
     const labelEls: Record<string, HTMLDivElement> = {}
-    ENDPOINT_LABELS.forEach(label => {
-      const div = document.createElement('div')
-      div.style.cssText = [
-        'position:absolute',
-        'background:white',
-        'border:1px solid #E8E9EA',
-        'border-radius:8px',
-        'padding:4px 8px',
-        'box-shadow:0 2px 8px rgba(0,0,0,0.08)',
-        'white-space:nowrap',
-        'pointer-events:none',
-        'z-index:3',
-        'transition:opacity 0.15s ease',
-        'font-family:Inter,sans-serif',
-        'opacity:0',
-      ].join(';')
-      div.innerHTML =
-        `<div style="font-size:10px;font-weight:700;color:#1A1D20;margin-bottom:1px">${label.equipment}</div>` +
-        `<div style="font-size:9px;font-family:'DM Mono',monospace;color:#FF6B35">${label.price}</div>`
-      cobeWrapper.appendChild(div)
-      labelEls[label.id] = div
-    })
+    const anchorEls: Record<string, HTMLElement | null> = {}
+    ENDPOINT_LABELS.forEach(label => { anchorEls[label.id] = null })
+
+    if (!embedded) {
+      ENDPOINT_LABELS.forEach(label => {
+        const div = document.createElement('div')
+        div.style.cssText = [
+          'position:absolute',
+          'background:white',
+          'border:1px solid #E8E9EA',
+          'border-radius:8px',
+          'padding:4px 8px',
+          'box-shadow:0 2px 8px rgba(0,0,0,0.08)',
+          'white-space:nowrap',
+          'pointer-events:none',
+          'z-index:3',
+          'transition:opacity 0.15s ease',
+          'font-family:Inter,sans-serif',
+          'opacity:0',
+        ].join(';')
+        div.innerHTML =
+          `<div style="font-size:10px;font-weight:700;color:#1A1D20;margin-bottom:1px">${label.equipment}</div>` +
+          `<div style="font-size:9px;font-family:'DM Mono',monospace;color:#FF6B35">${label.price}</div>`
+        cobeWrapper.appendChild(div)
+        labelEls[label.id] = div
+      })
+    }
+
+    function refreshAnchors() {
+      ENDPOINT_LABELS.forEach(label => {
+        if (anchorEls[label.id]?.isConnected) return
+        anchorEls[label.id] = cobeWrapper!.querySelector(
+          `[style*="--cobe-${label.id}"]`,
+        ) as HTMLElement | null
+      })
+    }
+
+    function stopGlobeLoop() {
+      if (rafGlobe.current !== null) {
+        cancelAnimationFrame(rafGlobe.current)
+        rafGlobe.current = null
+      }
+      animatingRef.current = false
+    }
+
+    function stopLabelLoop() {
+      if (rafLabels.current !== null) {
+        cancelAnimationFrame(rafLabels.current)
+        rafLabels.current = null
+      }
+    }
 
     function tick() {
+      if (!shouldAnimateRef.current || document.hidden) {
+        stopGlobeLoop()
+        return
+      }
       if (pointerInteracting.current === null) {
         const targetSpeed = isHovering.current ? 0 : 0.0007
         spinSpeed.current += (targetSpeed - spinSpeed.current) * 0.05
@@ -205,47 +281,71 @@ export default function Globe() {
       globe.update({ phi: phiRef.current, theta: thetaRef.current })
       rafGlobe.current = requestAnimationFrame(tick)
     }
-    rafGlobe.current = requestAnimationFrame(tick)
 
-    let rafLabels: number
     function updateLabels() {
-      ENDPOINT_LABELS.forEach(label => {
-        const el = labelEls[label.id]
-        if (!el) return
-        const anchor = cobeWrapper!.querySelector(
-          `[style*="--cobe-${label.id}"]`
-        ) as HTMLElement | null
-        if (!anchor) return
-        const leftPct = parseFloat(anchor.style.left)
-        const topPct  = parseFloat(anchor.style.top)
-        if (isNaN(leftPct) || isNaN(topPct)) return
-        const wrapW = cobeWrapper!.offsetWidth
-        const wrapH = cobeWrapper!.offsetHeight
-        const x = (leftPct / 100) * wrapW
-        const y = (topPct  / 100) * wrapH
-        el.style.left = `${x + 14}px`
-        el.style.top  = `${y - 28}px`
-        const visVal = getComputedStyle(document.documentElement)
-          .getPropertyValue(`--cobe-visible-${label.id}`)
-          .trim()
-        el.style.opacity = visVal === 'N' ? '1' : '0'
-      })
-      rafLabels = requestAnimationFrame(updateLabels)
+      if (!shouldAnimateRef.current || document.hidden) {
+        stopLabelLoop()
+        return
+      }
+      const wrapW = cobeWrapper!.offsetWidth
+      const wrapH = cobeWrapper!.offsetHeight
+      if (wrapW > 0 && wrapH > 0) {
+        refreshAnchors()
+        const rootStyle = getComputedStyle(document.documentElement)
+        ENDPOINT_LABELS.forEach(label => {
+          const el = labelEls[label.id]
+          const anchor = anchorEls[label.id]
+          if (!el || !anchor) return
+          const leftPct = parseFloat(anchor.style.left)
+          const topPct  = parseFloat(anchor.style.top)
+          if (isNaN(leftPct) || isNaN(topPct)) return
+          el.style.left = `${(leftPct / 100) * wrapW + 14}px`
+          el.style.top  = `${(topPct / 100) * wrapH - 28}px`
+          const visVal = rootStyle.getPropertyValue(`--cobe-visible-${label.id}`).trim()
+          el.style.opacity = visVal === 'N' ? '1' : '0'
+        })
+      }
+      rafLabels.current = requestAnimationFrame(updateLabels)
     }
-    updateLabels()
+
+    function startLoops() {
+      if (animatingRef.current) return
+      animatingRef.current = true
+      rafGlobe.current = requestAnimationFrame(tick)
+      if (!embedded) updateLabels()
+    }
+
+    function stopLoops() {
+      stopGlobeLoop()
+      stopLabelLoop()
+    }
+
+    loopControlRef.current = { start: startLoops, stop: stopLoops }
+
+    if (shouldAnimateRef.current && !document.hidden) {
+      startLoops()
+    }
 
     return () => {
-      if (rafGlobe.current !== null) cancelAnimationFrame(rafGlobe.current)
-      cancelAnimationFrame(rafLabels)
+      loopControlRef.current = null
+      stopLoops()
       globe.destroy()
       Object.values(labelEls).forEach(el => el.remove())
     }
-  }, [size])
+  }, [size, embedded, dpr, mapSamples])
 
-  // ── Outer container style ─────────────────────────────────────────────────
-  const isFlow = layout.mode === 'mobile' || layout.mode === 'tablet'
+  const isFlow = !embedded && (layout.mode === 'mobile' || layout.mode === 'tablet')
 
-  const outerStyle: React.CSSProperties = isFlow
+  const outerStyle: React.CSSProperties = embedded
+    ? {
+        position: 'relative',
+        width: embeddedSize,
+        height: embeddedSize,
+        margin: '0 auto',
+        zIndex: 1,
+        pointerEvents: 'auto',
+      }
+    : isFlow
     ? {
         position: 'relative',
         marginTop: `${layout.top}px`,
@@ -267,8 +367,6 @@ export default function Globe() {
 
   return (
     <div style={outerStyle}>
-      {/* Inner div — sized to the globe canvas. Flow mode centers it horizontally
-          and anchors its top to the container so the top hemisphere shows. */}
       <div
         style={{
           position: isFlow ? 'absolute' : 'relative',
@@ -279,8 +377,8 @@ export default function Globe() {
       >
         <canvas
           ref={canvasRef}
-          width={size * DPR}
-          height={size * DPR}
+          width={Math.round(size * dpr)}
+          height={Math.round(size * dpr)}
           style={{ width: size, height: size, cursor: 'grab', display: 'block' }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}

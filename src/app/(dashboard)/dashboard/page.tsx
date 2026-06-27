@@ -783,7 +783,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="max-w-[1450px] mx-auto px-6 py-8">
+    <div className="page-shell py-8">
 
       {/* Main tabs */}
       <div className="flex items-center gap-1 mb-8 border-b border-[#E8E9EA]">

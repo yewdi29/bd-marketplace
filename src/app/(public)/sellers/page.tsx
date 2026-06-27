@@ -133,7 +133,7 @@ export default async function SellersDirectoryPage() {
   if (!sellers || sellers.length === 0) {
     return (
       <div className="bg-bg min-h-screen pb-20">
-        <div className="max-w-[1450px] mx-auto px-8 py-12 text-center">
+        <div className="page-shell py-12 text-center">
           <p className="font-sans text-ink-3">No sellers found.</p>
         </div>
       </div>
@@ -184,7 +184,7 @@ export default async function SellersDirectoryPage() {
 
   return (
     <div className="bg-bg min-h-screen pb-20">
-      <div className="max-w-[1450px] mx-auto px-8 py-8">
+      <div className="page-shell py-8">
 
         {/* ── Page header ── */}
         <div className="mb-8">

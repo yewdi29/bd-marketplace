@@ -234,7 +234,7 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
       className="fixed inset-0 z-[1000] bg-white overflow-y-auto overscroll-contain"
       data-gallery-overlay-scroll
     >
-      <div className="max-w-[1450px] mx-auto px-6 sm:px-10 pb-16">
+      <div className="page-shell pb-16">
         <div className="sticky top-0 z-10 pt-5 pb-4 bg-white">
           <button
             onClick={() => setView('inline')}

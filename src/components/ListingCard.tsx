@@ -272,8 +272,8 @@ export default function ListingCard({
               color: '#4A4D52',
               fontSize: '11px',
               borderRadius: '100px',
-              padding: '3px 10px 3px 3px',
-              gap: '7px',
+              padding: '3px 10px',
+              gap: flagClass ? '7px' : undefined,
             }}
           >
             {flagClass && (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition, useState, useEffect, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { createClient } from '@/lib/supabase/client'
 
@@ -33,7 +33,6 @@ const PILL =
 const PILL_DEFAULT = `${PILL} bg-white text-ink-2 border-[#E8E9EA] hover:border-[#D4D5D7] hover:text-ink`
 const PILL_ACTIVE  = `${PILL} bg-[#FFF2ED] text-orange border-[#FF6B35]`
 
-// shadcn PopoverContent class override — replaces slate defaults with our design system
 const POPOVER_CLASSES = [
   'z-50 border border-[#E8E9EA] bg-white outline-none',
   'rounded-[16px] p-2',
@@ -45,6 +44,33 @@ const POPOVER_CLASSES = [
   'data-[side=top]:slide-in-from-bottom-2',
 ].join(' ')
 
+const OPTION_ROW =
+  'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors flex items-center justify-between gap-2'
+const OPTION_LIST = 'flex flex-col gap-0.5 max-h-[320px] overflow-y-auto'
+const OPTION_LIST_TALL = 'flex flex-col gap-0.5 max-h-[360px] overflow-y-auto'
+const OPTION_SELECTED = 'bg-[#FFF2ED] text-orange font-semibold'
+const OPTION_DEFAULT = 'text-ink-2 hover:bg-bg hover:text-ink'
+
+// ─── URL helpers ──────────────────────────────────────────────────────────────
+
+function parseMultiParam(params: URLSearchParams, key: string): string[] {
+  const raw = params.get(key)
+  if (!raw) return []
+  return raw.split(',').map(s => s.trim()).filter(Boolean)
+}
+
+function joinMultiParam(values: string[]): string {
+  return values.join(',')
+}
+
+function pillLabel(label: string, values: string[], options: { label: string; value: string }[]): string {
+  if (values.length === 0) return label
+  if (values.length === 1) {
+    return options.find(o => o.value === values[0])?.label ?? label
+  }
+  return `${label} (${values.length})`
+}
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 function ChevronDown() {
@@ -55,15 +81,69 @@ function ChevronDown() {
   )
 }
 
-function XSmall() {
+function CheckMark() {
   return (
-    <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   )
 }
 
-// ─── Single-select popover pill ───────────────────────────────────────────────
+// ─── Multi-select popover pill ────────────────────────────────────────────────
+
+function MultiPill({
+  label,
+  values,
+  options,
+  onChange,
+}: {
+  label: string
+  values: string[]
+  options: { label: string; value: string }[]
+  onChange: (v: string[]) => void
+}) {
+  const active = values.length > 0
+  const display = pillLabel(label, values, options)
+
+  function toggle(value: string) {
+    if (values.includes(value)) {
+      onChange(values.filter(v => v !== value))
+    } else {
+      onChange([...values, value])
+    }
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className={active ? PILL_ACTIVE : PILL_DEFAULT}>
+          {display}
+          <ChevronDown />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className={POPOVER_CLASSES} align="start" sideOffset={8}>
+        <div className={OPTION_LIST}>
+          {options.map(opt => {
+            const selected = values.includes(opt.value)
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => toggle(opt.value)}
+                className={[OPTION_ROW, selected ? OPTION_SELECTED : OPTION_DEFAULT].join(' ')}
+              >
+                <span>{opt.label}</span>
+                {selected && <CheckMark />}
+              </button>
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ─── Single-select popover pill (sort — click again to deselect) ──────────────
 
 function SinglePill({
   label,
@@ -88,20 +168,19 @@ function SinglePill({
         </button>
       </PopoverTrigger>
       <PopoverContent className={POPOVER_CLASSES} align="start" sideOffset={8}>
-        <div className="flex flex-col max-h-[320px] overflow-y-auto">
+        <div className={OPTION_LIST}>
           {options.map(opt => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => onChange(opt.value)}
+              onClick={() => onChange(opt.value === value ? '' : opt.value)}
               className={[
-                'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors',
-                opt.value === value
-                  ? 'bg-[#FFF2ED] text-orange font-semibold'
-                  : 'text-ink-2 hover:bg-bg hover:text-ink',
+                OPTION_ROW,
+                opt.value === value ? OPTION_SELECTED : OPTION_DEFAULT,
               ].join(' ')}
             >
-              {opt.label}
+              <span>{opt.label}</span>
+              {opt.value === value && <CheckMark />}
             </button>
           ))}
         </div>
@@ -110,37 +189,70 @@ function SinglePill({
   )
 }
 
-// ─── Category pill — flat when an Industry is selected, grouped when not ──────
+// ─── Category pill — union of categories when multiple industries selected ─────
 
 function CategoryPill({
-  value,
+  values,
   options,
-  industrySlug,
+  industries,
+  industrySlugs,
   onChange,
 }: {
-  value: string
+  values: string[]
   options: CategoryOption[]
-  industrySlug: string
-  onChange: (v: string) => void
+  industries: IndustryOption[]
+  industrySlugs: string[]
+  onChange: (v: string[]) => void
 }) {
-  const active = !!value
-  const display = active ? (options.find(o => o.slug === value)?.name ?? 'Category') : 'Category'
+  const active = values.length > 0
+  const flatOptions = useMemo(
+    () => options.map(o => ({ label: o.name, value: o.slug })),
+    [options],
+  )
+  const display = pillLabel('Category', values, flatOptions)
 
-  const visible = industrySlug
-    ? options.filter(o => o.industrySlugs.includes(industrySlug))
-    : options
-
-  // Grouped by industry when no Industry filter is active
   const groups = useMemo(() => {
-    if (industrySlug) return null
     const map = new Map<string, CategoryOption[]>()
-    for (const opt of visible) {
+
+    if (industrySlugs.length > 0) {
+      for (const slug of industrySlugs) {
+        const label = industries.find(i => i.slug === slug)?.name ?? slug
+        const opts = options.filter(o => o.industrySlugs.includes(slug))
+        if (opts.length > 0) map.set(label, opts)
+      }
+      return map
+    }
+
+    for (const opt of options) {
       const groupLabel = opt.industryNames[0] ?? 'Other'
       if (!map.has(groupLabel)) map.set(groupLabel, [])
       map.get(groupLabel)!.push(opt)
     }
     return map
-  }, [visible, industrySlug])
+  }, [options, industries, industrySlugs])
+
+  function toggle(slug: string) {
+    if (values.includes(slug)) {
+      onChange(values.filter(v => v !== slug))
+    } else {
+      onChange([...values, slug])
+    }
+  }
+
+  function renderOption(opt: CategoryOption) {
+    const selected = values.includes(opt.slug)
+    return (
+      <button
+        key={opt.id}
+        type="button"
+        onClick={() => toggle(opt.slug)}
+        className={[OPTION_ROW, selected ? OPTION_SELECTED : OPTION_DEFAULT].join(' ')}
+      >
+        <span>{opt.name}</span>
+        {selected && <CheckMark />}
+      </button>
+    )
+  }
 
   return (
     <Popover>
@@ -151,61 +263,18 @@ function CategoryPill({
         </button>
       </PopoverTrigger>
       <PopoverContent className={POPOVER_CLASSES} align="start" sideOffset={8}>
-        <div className="flex flex-col max-h-[360px] overflow-y-auto" style={{ width: '240px' }}>
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            className={[
-              'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors',
-              !value ? 'bg-[#FFF2ED] text-orange font-semibold' : 'text-ink-2 hover:bg-bg hover:text-ink',
-            ].join(' ')}
-          >
-            All Categories
-          </button>
-
-          {groups ? (
-            Array.from(groups.entries()).map(([groupLabel, opts]) => (
-              <div key={groupLabel}>
-                <p
-                  className="font-mono uppercase text-ink-3 px-3 pt-3 pb-1"
-                  style={{ fontSize: '10px', letterSpacing: '0.08em' }}
-                >
-                  {groupLabel}
-                </p>
-                {opts.map(opt => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => onChange(opt.slug)}
-                    className={[
-                      'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors',
-                      opt.slug === value
-                        ? 'bg-[#FFF2ED] text-orange font-semibold'
-                        : 'text-ink-2 hover:bg-bg hover:text-ink',
-                    ].join(' ')}
-                  >
-                    {opt.name}
-                  </button>
-                ))}
-              </div>
-            ))
-          ) : (
-            visible.map(opt => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => onChange(opt.slug)}
-                className={[
-                  'w-full text-left px-3 py-2 rounded-[10px] text-sm font-sans transition-colors',
-                  opt.slug === value
-                    ? 'bg-[#FFF2ED] text-orange font-semibold'
-                    : 'text-ink-2 hover:bg-bg hover:text-ink',
-                ].join(' ')}
+        <div className={`${OPTION_LIST_TALL}`} style={{ width: '240px' }}>
+          {Array.from(groups.entries()).map(([groupLabel, opts]) => (
+            <div key={groupLabel} className="flex flex-col gap-0.5">
+              <p
+                className="font-mono uppercase text-ink-3 px-3 pt-3 pb-1"
+                style={{ fontSize: '10px', letterSpacing: '0.08em' }}
               >
-                {opt.name}
-              </button>
-            ))
-          )}
+                {groupLabel}
+              </p>
+              {opts.map(renderOption)}
+            </div>
+          ))}
         </div>
       </PopoverContent>
     </Popover>
@@ -215,12 +284,12 @@ function CategoryPill({
 // ─── FilterBar ────────────────────────────────────────────────────────────────
 
 interface FilterBarProps {
-  /** Inner content max-width — search page uses 1450px; default 1600px elsewhere. */
   maxContentWidth?: 1450 | 1600
 }
 
 export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [, startTransition] = useTransition()
 
@@ -228,7 +297,6 @@ export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [countries, setCountries]   = useState<CountryOption[]>([])
 
-  // ── Load taxonomy reference data — public read-only tables, anon client ────
   useEffect(() => {
     const supabase = createClient()
 
@@ -251,82 +319,66 @@ export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
         }
         const rows = (data ?? []) as unknown as Row[]
         setCategories(rows.map(row => {
-          const industries = (row.category_industries ?? []).flatMap(ci => ci.industries ?? [])
+          const linked = (row.category_industries ?? []).flatMap(ci => ci.industries ?? [])
           return {
             id: row.id,
             name: row.name,
             slug: row.slug,
-            industrySlugs: industries.map(i => i.slug),
-            industryNames: industries.map(i => i.name),
+            industrySlugs: linked.map(i => i.slug),
+            industryNames: linked.map(i => i.name),
           }
         }))
       })
   }, [])
 
-  // Current filter state from URL
-  const industry = searchParams.get('industry') ?? ''
-  const cat       = searchParams.get('cat')       ?? ''
-  const country    = searchParams.get('country')    ?? ''
-  const sort      = searchParams.get('sort')      ?? ''
-  const q         = searchParams.get('q')         ?? ''
+  const industrySlugs = parseMultiParam(searchParams, 'industry')
+  const catSlugs      = parseMultiParam(searchParams, 'cat')
+  const countrySlugs  = parseMultiParam(searchParams, 'country')
+  const sort          = searchParams.get('sort') ?? ''
+  const q             = searchParams.get('q') ?? ''
 
-  // ── URL builder ─────────────────────────────────────────────────────────────
+  function pruneCategories(nextIndustrySlugs: string[], nextCatSlugs: string[]): string[] {
+    if (nextIndustrySlugs.length === 0) return nextCatSlugs
+    return nextCatSlugs.filter(slug => {
+      const cat = categories.find(c => c.slug === slug)
+      return cat && cat.industrySlugs.some(is => nextIndustrySlugs.includes(is))
+    })
+  }
 
   function navigate(overrides: Partial<{
-    industry: string
-    cat: string
-    country: string
+    industry: string[]
+    cat: string[]
+    country: string[]
     sort: string
     q: string
   }>) {
-    const next = {
-      industry,
-      cat,
-      country,
-      sort,
-      q,
-      ...overrides,
-    }
+    const nextIndustry = overrides.industry ?? industrySlugs
+    let nextCat = overrides.cat ?? catSlugs
+    const nextCountry = overrides.country ?? countrySlugs
+    const nextSort = overrides.sort ?? sort
+    const nextQ = overrides.q ?? q
 
-    // Changing Industry clears the Category selection if it no longer applies
-    if ('industry' in overrides && next.cat) {
-      const selected = categories.find(c => c.slug === next.cat)
-      if (next.industry && selected && !selected.industrySlugs.includes(next.industry)) {
-        next.cat = ''
-      }
+    if ('industry' in overrides && !('cat' in overrides)) {
+      nextCat = pruneCategories(nextIndustry, nextCat)
     }
 
     const params = new URLSearchParams()
-    if (next.q)        params.set('q',        next.q)
-    if (next.industry) params.set('industry', next.industry)
-    if (next.cat)       params.set('cat',       next.cat)
-    if (next.country)   params.set('country',   next.country)
-    if (next.sort)      params.set('sort',      next.sort)
+    if (nextQ) params.set('q', nextQ)
+    const industryParam = joinMultiParam(nextIndustry)
+    if (industryParam) params.set('industry', industryParam)
+    const catParam = joinMultiParam(nextCat)
+    if (catParam) params.set('cat', catParam)
+    const countryParam = joinMultiParam(nextCountry)
+    if (countryParam) params.set('country', countryParam)
+    if (nextSort) params.set('sort', nextSort)
+
     startTransition(() => {
-      router.replace(`/search${params.toString() ? `?${params.toString()}` : ''}`)
+      const base = pathname.startsWith('/search') || pathname.startsWith('/listings')
+        ? pathname
+        : '/search'
+      router.replace(`${base}${params.toString() ? `?${params.toString()}` : ''}`)
     })
   }
-
-  function clearAll() {
-    startTransition(() => {
-      const params = new URLSearchParams()
-      if (q)    params.set('q',    q)
-      if (sort) params.set('sort', sort)
-      router.replace(`/search${params.toString() ? `?${params.toString()}` : ''}`)
-    })
-  }
-
-  // ── Active filter tag list ───────────────────────────────────────────────────
-
-  const tags: { key: string; label: string; remove: () => void }[] = []
-  if (industry)
-    tags.push({ key: 'industry', label: industries.find(i => i.slug === industry)?.name ?? industry, remove: () => navigate({ industry: '' }) })
-  if (cat)
-    tags.push({ key: 'cat', label: categories.find(c => c.slug === cat)?.name ?? cat, remove: () => navigate({ cat: '' }) })
-  if (country)
-    tags.push({ key: 'country', label: countries.find(c => c.slug === country)?.name ?? country, remove: () => navigate({ country: '' }) })
-
-  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -339,39 +391,31 @@ export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
         borderColor: 'rgba(232,233,234,0.25)',
       }}
     >
-      <div className={`${maxContentWidth === 1450 ? 'max-w-[1450px]' : 'max-w-[1600px]'} mx-auto px-4 sm:px-6 lg:px-10`}>
-
-        {/* ── Pills row ─────────────────────────────────────────────────────── */}
+      <div className={`${maxContentWidth === 1450 ? 'page-shell' : 'max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10'}`}>
         <div className="flex items-center gap-0 py-3">
-
-          {/* Scrollable section: All Filters + divider + filter pills */}
           <div className="flex items-center gap-2 overflow-x-auto flex-1 no-scrollbar pr-3">
-
-            {/* Industry */}
-            <SinglePill
+            <MultiPill
               label="Industry"
-              value={industry}
-              options={[{ label: 'All Industries', value: '' }, ...industries.map(i => ({ label: i.name, value: i.slug }))]}
+              values={industrySlugs}
+              options={industries.map(i => ({ label: i.name, value: i.slug }))}
               onChange={v => navigate({ industry: v })}
             />
 
-            {/* Category */}
             <CategoryPill
-              value={cat}
+              values={catSlugs}
               options={categories}
-              industrySlug={industry}
+              industries={industries}
+              industrySlugs={industrySlugs}
               onChange={v => navigate({ cat: v })}
             />
 
-            {/* Country */}
-            <SinglePill
+            <MultiPill
               label="Country"
-              value={country}
-              options={[{ label: 'All Countries', value: '' }, ...countries.map(c => ({ label: c.name, value: c.slug }))]}
+              values={countrySlugs}
+              options={countries.map(c => ({ label: c.name, value: c.slug }))}
               onChange={v => navigate({ country: v })}
             />
 
-            {/* Sort */}
             <SinglePill
               label="Sort"
               value={sort}
@@ -379,33 +423,7 @@ export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
               onChange={v => navigate({ sort: v })}
             />
           </div>
-
         </div>
-
-        {/* ── Active filter tags ─────────────────────────────────────────────── */}
-        {tags.length > 0 && (
-          <div className="flex items-center flex-wrap gap-2 pb-3">
-            {tags.map(tag => (
-              <button
-                key={tag.key}
-                type="button"
-                onClick={tag.remove}
-                className="inline-flex items-center gap-1.5 px-3 h-7 bg-[#FFF2ED] text-orange border border-[#FF6B35] rounded-pill text-xs font-semibold hover:bg-orange hover:text-white hover:border-orange transition-colors"
-              >
-                {tag.label}
-                <XSmall />
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={clearAll}
-              className="text-xs font-semibold text-orange hover:text-orange-lt transition-colors ml-1"
-            >
-              Clear All
-            </button>
-          </div>
-        )}
-
       </div>
     </div>
   )

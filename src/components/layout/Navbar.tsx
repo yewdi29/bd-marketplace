@@ -2,18 +2,15 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useRef, Suspense } from 'react'
 import { flushSync } from 'react-dom'
 import { usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
+import { useAuth } from '@/components/providers/AuthProvider'
+import ProfileDropdown from '@/components/ui/ProfileDropdown'
 import SearchBar from '@/components/marketplace/SearchBar'
 import MobileMenu from '@/components/layout/MobileMenu'
 import MobileSearchTakeover, { type MobileSearchTakeoverHandle } from '@/components/layout/MobileSearchTakeover'
 import { LogoIcon, SearchIcon, SearchBarTrigger, MobileNavTrigger, TAP_TARGET, TAP_SIZE } from '@/components/layout/MobileNavParts'
-
-// ─── Logo ─────────────────────────────────────────────────────────────────────
-// Homepage (mobile/tablet): full wordmark. Every other page: icon only (LogoIcon, shared).
 
 function Logo() {
   return (
@@ -37,54 +34,38 @@ const SEARCH_BAR_FALLBACK = (
   />
 )
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
+function LoggedOutActions() {
+  return (
+    <div className="flex items-center gap-4">
+      <Link
+        href="/how-it-works"
+        className="hidden sm:block text-sm font-medium transition-colors"
+        style={{ color: '#4A4D52' }}
+        onMouseEnter={e => (e.currentTarget.style.color = '#1A1D20')}
+        onMouseLeave={e => (e.currentTarget.style.color = '#4A4D52')}
+      >
+        Sell With Us
+      </Link>
+      <Link
+        href="/auth/login"
+        className="px-4 py-1.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
+        style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
+      >
+        Sign In
+      </Link>
+    </div>
+  )
+}
 
 export default function Navbar() {
   const pathname = usePathname()
   const isHomepage = pathname === '/'
+  const { authUser } = useAuth()
 
-  const [authUser, setAuthUser] = useState<ProfileUser | null>(null)
-  const [authReady, setAuthReady] = useState(false)
   const [searchTakeoverOpen, setSearchTakeoverOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const searchTakeoverRef = useRef<MobileSearchTakeoverHandle>(null)
 
-  useEffect(() => {
-    const supabase = createClient()
-
-    async function loadProfile(userId: string, email: string) {
-      const [profileRes, countRes] = await Promise.all([
-        supabase.from('users').select('full_name, company_name, plan').eq('id', userId).single(),
-        supabase
-          .from('listings')
-          .select('id', { count: 'exact', head: true })
-          .eq('seller_id', userId)
-          .neq('status', 'removed'),
-      ])
-      setAuthUser({
-        email,
-        full_name: profileRes.data?.full_name ?? null,
-        company_name: profileRes.data?.company_name ?? null,
-        plan: profileRes.data?.plan ?? 'free',
-        listing_count: countRes.count ?? 0,
-      })
-      setAuthReady(true)
-    }
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        loadProfile(session.user.id, session.user.email ?? '')
-      } else {
-        setAuthUser(null)
-        setAuthReady(true)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // Search takeover and the slide-in menu are mutually exclusive — opening
-  // one always closes the other, so they can never visually conflict.
   function openSearchTakeover() {
     setMobileMenuOpen(false)
     flushSync(() => setSearchTakeoverOpen(true))
@@ -93,37 +74,6 @@ export default function Navbar() {
   function openMobileMenu() {
     setSearchTakeoverOpen(false)
     setMobileMenuOpen(true)
-  }
-
-  // ── Right-side content — desktop only, unchanged ────────────────────────────
-
-  function RightContent() {
-    if (!authReady) return null
-
-    if (authUser) {
-      return <ProfileDropdown user={authUser} />
-    }
-
-    return (
-      <div className="flex items-center gap-4">
-        <Link
-          href="/how-it-works"
-          className="hidden sm:block text-sm font-medium transition-colors"
-          style={{ color: '#4A4D52' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#1A1D20')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#4A4D52')}
-        >
-          Sell With Us
-        </Link>
-        <Link
-          href="/auth/login"
-          className="px-4 py-1.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
-          style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
-        >
-          Sign In
-        </Link>
-      </div>
-    )
   }
 
   return (
@@ -138,10 +88,8 @@ export default function Navbar() {
       }}
     >
       <div className="max-w-[1450px] mx-auto h-full">
-
-        {/* ── Desktop (≥1024px) — unchanged ───────────────────────────────────── */}
         <div
-          className="hidden lg:grid items-center h-full px-8"
+          className="hidden lg:grid items-center h-full page-shell-x"
           style={{ gridTemplateColumns: 'auto 1fr auto', gap: '24px' }}
         >
           <Logo />
@@ -152,10 +100,9 @@ export default function Navbar() {
               </Suspense>
             </div>
           </div>
-          <RightContent />
+          {authUser ? <ProfileDropdown user={authUser} /> : <LoggedOutActions />}
         </div>
 
-        {/* ── Below 1024px — homepage vs every other page ─────────────────────── */}
         <div className="flex lg:hidden items-center h-full px-3 gap-2">
           {isHomepage ? (
             <>
@@ -176,9 +123,8 @@ export default function Navbar() {
               <SearchBarTrigger onClick={openSearchTakeover} />
             </>
           )}
-          <MobileNavTrigger user={authUser} authReady={authReady} onClick={openMobileMenu} />
+          <MobileNavTrigger user={authUser} onClick={openMobileMenu} />
         </div>
-
       </div>
 
       <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={authUser} />

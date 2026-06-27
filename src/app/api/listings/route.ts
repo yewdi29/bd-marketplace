@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
 
   const category = searchParams.get('category')
-  const industry  = searchParams.get('industry')  // industry slug
-  const cat        = searchParams.get('cat')        // category slug
-  const country     = searchParams.get('country')    // country slug
+  const industry  = searchParams.get('industry')  // comma-separated industry slugs
+  const cat        = searchParams.get('cat')        // comma-separated category slugs
+  const country     = searchParams.get('country')    // comma-separated country slugs
   const tier     = searchParams.get('tier')
   const q        = searchParams.get('q')
   const sort     = searchParams.get('sort') ?? 'created_at:desc'
@@ -44,21 +44,30 @@ export async function GET(request: NextRequest) {
   )
 
   // ── Resolve slug filters to ids ──────────────────────────────────────────────
-  let industryId: string | null = null
-  let categoryId: string | null = null
-  let countryId: string | null = null
+  function parseSlugList(raw: string | null): string[] {
+    if (!raw) return []
+    return raw.split(',').map(s => s.trim()).filter(Boolean)
+  }
 
-  if (industry) {
-    const { data } = await supabase.from('industries').select('id').eq('slug', industry).maybeSingle()
-    industryId = data?.id ?? null
+  const industrySlugs = parseSlugList(industry)
+  const catSlugs      = parseSlugList(cat)
+  const countrySlugs  = parseSlugList(country)
+
+  let industryIds: string[] = []
+  let categoryIds: string[] = []
+  let countryIds: string[]  = []
+
+  if (industrySlugs.length > 0) {
+    const { data } = await supabase.from('industries').select('id').in('slug', industrySlugs)
+    industryIds = (data ?? []).map(row => row.id)
   }
-  if (cat) {
-    const { data } = await supabase.from('categories').select('id').eq('slug', cat).maybeSingle()
-    categoryId = data?.id ?? null
+  if (catSlugs.length > 0) {
+    const { data } = await supabase.from('categories').select('id').in('slug', catSlugs)
+    categoryIds = (data ?? []).map(row => row.id)
   }
-  if (country) {
-    const { data } = await supabase.from('countries').select('id').eq('slug', country).maybeSingle()
-    countryId = data?.id ?? null
+  if (countrySlugs.length > 0) {
+    const { data } = await supabase.from('countries').select('id').in('slug', countrySlugs)
+    countryIds = (data ?? []).map(row => row.id)
   }
 
   // ── Sort params (shared by both search paths) ───────────────────────────────
@@ -87,10 +96,10 @@ export async function GET(request: NextRequest) {
       .select(SELECT_COLUMNS)
       .eq('status', 'active')
 
-    if (category)   q = q.eq('category', category)
-    if (industryId) q = q.eq('industry_id', industryId)
-    if (categoryId) q = q.eq('category_id', categoryId)
-    if (countryId)  q = q.eq('country_id', countryId)
+    if (category)      q = q.eq('category', category)
+    if (industryIds.length) q = q.in('industry_id', industryIds)
+    if (categoryIds.length) q = q.in('category_id', categoryIds)
+    if (countryIds.length)  q = q.in('country_id', countryIds)
     if (tier)       q = q.eq('tier', tier)
 
     return q
@@ -220,10 +229,10 @@ export async function GET(request: NextRequest) {
     .select(SELECT_COLUMNS, { count: 'exact' })
     .eq('status', 'active')
 
-  if (category)   query = query.eq('category', category)
-  if (industryId) query = query.eq('industry_id', industryId)
-  if (categoryId) query = query.eq('category_id', categoryId)
-  if (countryId)  query = query.eq('country_id', countryId)
+  if (category)      query = query.eq('category', category)
+  if (industryIds.length) query = query.in('industry_id', industryIds)
+  if (categoryIds.length) query = query.in('category_id', categoryIds)
+  if (countryIds.length)  query = query.in('country_id', countryIds)
   if (tier)       query = query.eq('tier', tier)
 
   // "Closest to Me" needs the full matching set in memory to sort by distance —

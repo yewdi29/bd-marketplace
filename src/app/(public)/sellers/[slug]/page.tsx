@@ -129,7 +129,7 @@ export default async function SellerProfilePage({ params }: Props) {
 
   return (
     <div className="bg-bg min-h-screen pb-20">
-      <div className="max-w-[1450px] mx-auto px-8 py-6">
+      <div className="page-shell py-6">
 
         {/* ── Breadcrumb ── */}
         <div className="flex items-center gap-2 mb-6" style={{ fontSize: '12px' }}>

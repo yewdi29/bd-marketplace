@@ -104,7 +104,7 @@ export default function Footer() {
 
   return (
     <footer style={{ background: '#1A1D20' }}>
-      <div className="max-w-[1450px] mx-auto px-6 lg:px-10 pt-14 pb-0">
+      <div className="page-shell pt-14 pb-0">
 
         {/* Main grid: 3/4 sitemap + 1/4 settings */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 pb-10">
