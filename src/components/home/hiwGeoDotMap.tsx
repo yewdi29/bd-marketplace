@@ -92,7 +92,7 @@ export function GeoDotWorldMapCanvas({
   useEffect(() => {
     let cancelled = false
 
-    fetch(WORLD_ATLAS_URL)
+    fetch(WORLD_ATLAS_URL, { cache: 'force-cache' })
       .then(res => {
         if (!res.ok) throw new Error('Failed to load world atlas')
         return res.json() as Promise<Topology>

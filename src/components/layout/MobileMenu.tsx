@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials, PROFILE_MENU_LINKS, type ProfileUser } from '@/components/ui/ProfileDropdown'
+import { navLinkPrefetch } from '@/lib/navLink'
 import PlanBadge from '@/components/ui/PlanBadge'
 
 // Primary navigation links — always shown, regardless of auth state
@@ -133,6 +134,7 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={navLinkPrefetch(item.href)}
                     onClick={onClose}
                     className={`${ROW} border-b border-[#F0F0F0]`}
                     style={{ minHeight: 44 }}
@@ -170,6 +172,7 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
               </Link>
               <Link
                 href="/auth/login"
+                prefetch={false}
                 onClick={onClose}
                 className="flex items-center justify-center text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
                 style={{ minHeight: 44, boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}

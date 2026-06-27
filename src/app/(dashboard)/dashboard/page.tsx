@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import ListingCard, { toListingCardListing } from '@/components/ListingCard'
+import ListingCardClickable from '@/components/listings/ListingCardClickable'
+import ListingCardLink from '@/components/listings/ListingCardLink'
+import { toListingCardListing } from '@/components/listings/listingCardTypes'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingCardSkeleton from '@/components/listings/ListingCardSkeleton'
 import NewListingModal from '@/components/listings/NewListingModal'
@@ -529,9 +531,8 @@ function MyListingCard({
         />
       )}
 
-      <ListingCard
+      <ListingCardClickable
         listing={toListingCardListing(listing)}
-        mode="clickable"
         onClick={handleCardClick}
         showSave={false}
         showShare={false}
@@ -961,7 +962,7 @@ export default function DashboardPage() {
           ) : (
             <ListingCardGrid gap="dashboard">
               {savedListings.map(listing => (
-                <ListingCard
+                <ListingCardLink
                   key={listing.id}
                   listing={listing}
                   isLoggedIn

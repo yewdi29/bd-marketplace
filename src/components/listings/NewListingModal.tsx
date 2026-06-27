@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useGlowBorder } from '@/hooks/useGlowBorder'
-import ListingCard, { type ListingCardListing } from '@/components/ListingCard'
+import ListingCardPreview from '@/components/listings/ListingCardPreview'
+import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 import ListingPhotoSortableList from '@/components/listings/ListingPhotoSortableList'
 import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper, labelCls } from '@/components/listings/ListingTaxonomyFields'
 import NewListingMobileFlow from '@/components/listings/NewListingMobileFlow'
@@ -945,7 +946,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
 
               {/* Preview card — constrained width, centered */}
               <div style={{ maxWidth: '282px', margin: '0 auto' }}>
-                <ListingCard preview listing={previewListing} />
+                <ListingCardPreview listing={previewListing} />
               </div>
             </div>
           )}

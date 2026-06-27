@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
 import PlanBadge from '@/components/ui/PlanBadge'
+import { navLinkPrefetch } from '@/lib/navLink'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +159,7 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={navLinkPrefetch(item.href)}
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
                 >

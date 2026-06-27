@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 import FeaturedCarousel from '@/components/home/FeaturedCarousel'
 import { getAuthUser } from '@/lib/supabase/auth-server'
 import { createClient } from '@/lib/supabase/server'
-import type { Listing, MembershipPlan } from '@/lib/types/database'
+import type { MembershipPlan } from '@/lib/types/database'
 
 const TIER_WEIGHT: Record<MembershipPlan, number> = {
   max:     4,
@@ -52,6 +53,38 @@ export function FeaturedCarouselSkeleton() {
   )
 }
 
+function toFeaturedListing(row: {
+  id: string
+  slug: string | null
+  title: string
+  category: string
+  price: number
+  price_unit: string
+  price_visible: boolean
+  location_city: string | null
+  location_state: string | null
+  created_at: string
+  seller_id: string
+  listing_images?: ListingCardListing['listing_images']
+  countries?: { name: string; iso_code: string | null } | { name: string; iso_code: string | null }[] | null
+}): ListingCardListing {
+  const countries = Array.isArray(row.countries) ? row.countries[0] ?? null : row.countries ?? null
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    category: row.category,
+    price: row.price,
+    price_unit: row.price_unit,
+    price_visible: row.price_visible,
+    location_city: row.location_city,
+    location_state: row.location_state,
+    created_at: row.created_at,
+    listing_images: row.listing_images,
+    countries,
+  }
+}
+
 export default async function FeaturedEquipmentSection() {
   const user = await getAuthUser()
 
@@ -65,7 +98,7 @@ export default async function FeaturedEquipmentSection() {
     savedIds = new Set((saved ?? []).map((s: { listing_id: string }) => s.listing_id))
   }
 
-  let featuredCarousel: Listing[] = []
+  let featuredCarousel: ListingCardListing[] = []
   try {
     const adminClient = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,13 +107,15 @@ export default async function FeaturedEquipmentSection() {
 
     const { data: eligibleListings } = await adminClient
       .from('listings')
-      .select('*, listing_images(*), countries(name, iso_code)')
+      .select(
+        'id, title, category, price, price_unit, price_visible, status, slug, seller_id, created_at, location_city, location_state, listing_images(url, is_primary, alt_text, sort_order), countries(name, iso_code)',
+      )
       .eq('status', 'active')
       .order('created_at', { ascending: false })
-      .limit(80)
+      .limit(30)
 
     if (eligibleListings && eligibleListings.length > 0) {
-      const sellerIds = Array.from(new Set(eligibleListings.map((l: Listing) => l.seller_id)))
+      const sellerIds = Array.from(new Set(eligibleListings.map(l => l.seller_id)))
       const { data: users } = await adminClient
         .from('users')
         .select('id, plan')
@@ -90,14 +125,14 @@ export default async function FeaturedEquipmentSection() {
         (users ?? []).map((u: { id: string; plan: MembershipPlan }) => [u.id, u.plan]),
       )
 
-      const eligible = (eligibleListings as Listing[]).filter(l => {
+      const eligibleRows = eligibleListings.filter(l => {
         const plan = planMap.get(l.seller_id) ?? 'free'
         return plan !== 'free'
       })
 
       const windowSeed = Math.floor(Date.now() / (5 * 24 * 60 * 60 * 1000))
 
-      const byWeight = eligible.reduce<Record<number, Listing[]>>((acc, l) => {
+      const byWeight = eligibleRows.reduce<Record<number, typeof eligibleRows>>((acc, l) => {
         const plan = planMap.get(l.seller_id) ?? 'free'
         const w = TIER_WEIGHT[plan] ?? 0
         if (!acc[w]) acc[w] = []
@@ -110,6 +145,7 @@ export default async function FeaturedEquipmentSection() {
         .sort((a, b) => b - a)
         .flatMap(w => seededShuffle(byWeight[w], windowSeed + w))
         .slice(0, 5)
+        .map(toFeaturedListing)
     }
   } catch {
     // Service role unavailable in local dev — skip carousel gracefully

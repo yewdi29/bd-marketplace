@@ -1,9 +1,9 @@
 import ListingCard from '@/components/ListingCard'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
-import type { Listing } from '@/lib/types/database'
+import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 
 interface FeaturedCarouselProps {
-  listings: Listing[]
+  listings: ListingCardListing[]
   isLoggedIn: boolean
   savedIds: string[]
 }

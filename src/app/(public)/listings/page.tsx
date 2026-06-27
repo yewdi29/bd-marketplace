@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import ListingCard from '@/components/ListingCard'
+import ListingCardLink from '@/components/listings/ListingCardLink'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingCardSkeleton from '@/components/listings/ListingCardSkeleton'
 import FilterBar from '@/components/marketplace/FilterBar'
@@ -106,7 +106,7 @@ function ListingsContent() {
       ) : listings.length > 0 ? (
         <ListingCardGrid>
           {listings.map(listing => (
-            <ListingCard
+            <ListingCardLink
               key={listing.id}
               listing={listing}
               isLoggedIn={isLoggedIn}

@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
-import { GlobePlaceholder } from '@/components/home/GlobePlaceholder'
+import { GlobePlaceholderStatic } from '@/components/home/GlobePlaceholderStatic'
 import { scheduleAfterInteractive } from '@/lib/scheduleAfterInteractive'
 
 const Globe = dynamic(() => import('@/components/ui/Globe'), {
@@ -39,6 +39,6 @@ export default function HeroGlobe() {
     }
   }, [])
 
-  if (!shouldMount) return <GlobePlaceholder />
+  if (!shouldMount) return <GlobePlaceholderStatic />
   return <Globe active={active} />
 }

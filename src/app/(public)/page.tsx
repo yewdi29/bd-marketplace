@@ -1,11 +1,18 @@
-import HeroGlobe from '@/components/home/HeroGlobe'
+import HeroGlobeLazy from '@/components/home/HeroGlobeLazy'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import NewsletterForm from '@/components/NewsletterForm'
 import FeaturedEquipmentSection, { FeaturedCarouselSkeleton } from '@/components/home/FeaturedEquipmentSection'
 import CategoryBrowse from '@/components/home/CategoryBrowse'
+import HowItWorksHeader from '@/components/home/HowItWorksHeader'
 import HowItWorksLazy from '@/components/home/HowItWorksLazy'
+import NewsletterSection from '@/components/home/NewsletterSection'
 import OperatorJournalSection from '@/components/home/OperatorJournalSection'
+import {
+  CategoryBrowseSkeleton,
+  HowItWorksSkeleton,
+  NewsletterSkeleton,
+  OperatorJournalSkeleton,
+} from '@/components/home/HomeSectionSkeletons'
 
 const INDUSTRY_TAGS = [
   { label: 'Energy',       dotColor: '#E8E9EA' },
@@ -17,24 +24,8 @@ const INDUSTRY_TAGS = [
 export default function HomePage() {
   return (
     <>
-      {/* ── Hero ──────────────────────────────────────────────────────────────── */}
-      {/*
-       * Z-index stack (all relative to this section):
-       *   Globe container  → z-1  (painted first — backdrop-filter blurs it)
-       *   Bottom fade      → z-2  (hides globe bleed at the bottom)
-       *   Grid + glass card → z-3 (content always on top)
-       *
-       * Mobile (<730px): flex-col — card first, then globe as a 360px flow element.
-       * Tablet (730–1000px): same flow layout, taller container.
-       * Desktop (≥1000px): globe is position:absolute; section is the offset parent.
-       * overflow-hidden clips the globe at the section boundary on all desktop modes.
-       *
-       * ≥1500px: Globe.tsx centers the globe in the right half of the viewport
-       * using pure viewport math — no DOM anchoring, no section constraints.
-       */}
+      {/* ── Hero (server-rendered; globe is a deferred client island) ──────── */}
       <section data-hero-section className="relative overflow-hidden min-h-[75vh]">
-
-        {/* Bottom fade — full width, above globe (z-2), below content (z-3) */}
         <div
           className="absolute bottom-0 left-0 right-0 w-full pointer-events-none"
           style={{
@@ -44,20 +35,11 @@ export default function HomePage() {
           }}
         />
 
-        {/* Two-column grid — single column stack on mobile, side-by-side on md+.
-            position: relative + z-[3] keeps content above the absolute globe. */}
         <div
           data-hero-container
           className="page-shell flex flex-col min-[1000px]:grid min-[1000px]:grid-cols-[1.1fr_0.9fr] items-center relative z-[3] pointer-events-none"
         >
-          {/* ── Left column ── */}
           <div className="py-10 min-[1000px]:py-[60px]">
-
-            {/*
-             * Frosted glass card — glassmorphism exception (navbar-only by default).
-             * Approved by product owner. backdrop-filter blurs the globe behind it.
-             * Padding scales down on mobile/tablet via Tailwind responsive classes.
-             */}
             <div
               data-hero-card
               className="w-full min-[1000px]:w-fit min-[1000px]:max-w-full pointer-events-auto p-5 md:p-8 lg:px-[44px] lg:py-[40px] flex flex-col items-center text-center min-[1000px]:items-start min-[1000px]:text-left"
@@ -70,7 +52,6 @@ export default function HomePage() {
                 boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
               }}
             >
-              {/* Eyebrow pill */}
               <div
                 style={{
                   display: 'inline-flex',
@@ -108,7 +89,6 @@ export default function HomePage() {
                 </span>
               </div>
 
-              {/* Headline */}
               <h1
                 style={{
                   fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
@@ -125,7 +105,6 @@ export default function HomePage() {
                 <span style={{ color: '#FF6B35' }}>for Heavy Equipment</span>
               </h1>
 
-              {/* Industry tags */}
               <div
                 className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 min-[1000px]:justify-start"
                 style={{ marginBottom: '22px' }}
@@ -156,7 +135,6 @@ export default function HomePage() {
                 ))}
               </div>
 
-              {/* Subtitle */}
               <p
                 className="mx-auto min-[1000px]:mx-0"
                 style={{
@@ -172,7 +150,6 @@ export default function HomePage() {
                 From oil fields to construction sites — find what your operation needs, fast.
               </p>
 
-              {/* CTA buttons */}
               <div className="flex justify-center gap-3 min-[1000px]:justify-start" style={{ alignItems: 'center' }}>
                 <Link
                   href="/search"
@@ -191,57 +168,45 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right column spacer — hidden when stacked, reserves space for the globe ≥1000px */}
           <div className="hidden min-[1000px]:block" style={{ minHeight: '500px' }} />
         </div>
 
-        {/* Globe is self-positioning — breakpoint logic lives in Globe.tsx */}
-        <HeroGlobe />
-
+        <HeroGlobeLazy />
       </section>
 
-      {/* ── Below-fold content ────────────────────────────────────────────────── */}
+      {/* ── Featured equipment (async server + small client islands per card) ─ */}
       <div className="page-shell">
-
-        {/* 1 ── Featured Equipment Carousel (streams after hero) */}
         <Suspense fallback={<FeaturedCarouselSkeleton />}>
           <FeaturedEquipmentSection />
         </Suspense>
 
-        {/* 2 ── Browse by Category */}
-        <CategoryBrowse />
+        <Suspense fallback={<CategoryBrowseSkeleton />}>
+          <CategoryBrowse />
+        </Suspense>
 
         <hr className="border-0 border-t border-[#E8E9EA] m-0" />
       </div>
 
-      <HowItWorksLazy />
+      {/* ── How It Works (static header server; animation deferred client) ─── */}
+      <Suspense fallback={<HowItWorksSkeleton />}>
+        <section className="w-full py-16 lg:py-20">
+          <HowItWorksHeader />
+          <HowItWorksLazy />
+        </section>
+      </Suspense>
 
-      {/* 5 ── Operator Journal */}
+      {/* ── Operator Journal (async server, streams independently) ───────── */}
       <div className="page-shell">
-        <Suspense fallback={null}>
+        <Suspense fallback={<OperatorJournalSkeleton />}>
           <OperatorJournalSection />
         </Suspense>
       </div>
 
-      {/* 7 ── Newsletter */}
+      {/* ── Newsletter (server shell + deferred form island) ───────────────── */}
       <div className="page-shell">
-        <section className="py-10 border-t border-[#E8E9EA]">
-          <div className="bg-white rounded-[20px] px-8 py-12 text-center shadow-card">
-            <h2
-              className="font-sans font-bold text-2xl text-ink"
-              style={{ letterSpacing: '-0.02em' }}
-            >
-              Stay Ahead of the Market.
-            </h2>
-            <p className="mt-3 text-[15px] font-sans text-ink-3 max-w-md mx-auto leading-relaxed">
-              Get new listings, market insights, and equipment trends delivered to your inbox.
-            </p>
-            <div className="mt-6 max-w-sm mx-auto">
-              <NewsletterForm source="homepage" />
-            </div>
-          </div>
-        </section>
-
+        <Suspense fallback={<NewsletterSkeleton />}>
+          <NewsletterSection />
+        </Suspense>
         <div className="pb-16" />
       </div>
     </>

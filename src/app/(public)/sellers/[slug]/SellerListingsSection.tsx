@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import type { Listing } from '@/lib/types/database'
-import ListingCard from '@/components/ListingCard'
+import ListingCardLink from '@/components/listings/ListingCardLink'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -208,9 +208,9 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
         <ListingCardGrid>
           {paginated.map(listing =>
             tab === 'active' ? (
-              <ListingCard key={listing.id} listing={listing} showSave={false} openInNewTab />
+              <ListingCardLink key={listing.id} listing={listing} showSave={false} openInNewTab />
             ) : (
-              <ListingCard
+              <ListingCardLink
                 key={listing.id}
                 listing={listing}
                 mode="static"

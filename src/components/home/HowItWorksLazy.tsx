@@ -1,32 +1,35 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
-import { scheduleAfterInteractive } from '@/lib/scheduleAfterInteractive'
+import { useEffect, useRef, useState } from 'react'
 
-const HowItWorksSection = dynamic(() => import('@/components/home/HowItWorksSection'), {
-  ssr: false,
-  loading: () => <div style={{ minHeight: '400px' }} aria-hidden />,
-})
+const HowItWorksSection = dynamic(
+  () => import('@/components/home/HowItWorksSection'),
+  { ssr: false, loading: () => <div style={{ minHeight: '400px' }} aria-hidden /> }
+)
 
-/** Defers D3, topojson, and canvas work until after the page is interactive. */
 export default function HowItWorksLazy() {
   const [shouldMount, setShouldMount] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    let cancelled = false
-    const cancelSchedule = scheduleAfterInteractive(() => {
-      if (!cancelled) setShouldMount(true)
-    })
-    return () => {
-      cancelled = true
-      cancelSchedule()
-    }
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldMount(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '400px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [])
 
   if (!shouldMount) {
-    return <div style={{ minHeight: '400px' }} aria-hidden />
+    return <div ref={ref} style={{ minHeight: '400px' }} aria-hidden />
   }
-
   return <HowItWorksSection />
 }

@@ -4,6 +4,14 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PROTECTED_ROUTES = ['/dashboard', '/listings/new', '/account']
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  const isProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route))
+  const isAuthRoute = pathname.startsWith('/auth/')
+
+  if (!isProtected && !isAuthRoute) {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -29,10 +37,6 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isProtected = PROTECTED_ROUTES.some(route =>
-    request.nextUrl.pathname.startsWith(route)
-  )
-
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/auth/login'
@@ -42,8 +46,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     user &&
-    (request.nextUrl.pathname === '/auth/login' ||
-      request.nextUrl.pathname === '/auth/signup')
+    (pathname === '/auth/login' || pathname === '/auth/signup')
   ) {
     const homeUrl = request.nextUrl.clone()
     homeUrl.pathname = '/'
@@ -55,6 +58,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/dashboard/:path*',
+    '/listings/new',
+    '/account/:path*',
+    '/auth/:path*',
   ],
 }

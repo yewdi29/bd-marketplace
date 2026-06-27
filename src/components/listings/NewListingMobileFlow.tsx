@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
-import ListingCard from '@/components/ListingCard'
+import ListingCardPreview from '@/components/listings/ListingCardPreview'
 import ListingTaxonomyFields, {
   FormField,
   inputCls,
@@ -624,8 +624,7 @@ export default function NewListingMobileFlow({
                 Ready to publish?
               </h1>
 
-              <ListingCard
-                preview
+              <ListingCardPreview
                 listing={{
                   id: 'preview',
                   slug: null,

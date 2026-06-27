@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import ListingCardContent, { getListingCardMeta } from '@/components/listings/ListingCardContent'
@@ -6,81 +8,30 @@ import ListingCardSaveButton from '@/components/listings/ListingCardSaveButton'
 import ListingCardShareButton from '@/components/listings/ListingCardShareButton'
 import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 
-export type { ListingCardListing } from '@/components/listings/listingCardTypes'
-export { toListingCardListing } from '@/components/listings/listingCardTypes'
-
-interface ListingCardProps {
+interface ListingCardLinkProps {
   listing: ListingCardListing
   initialSaved?: boolean
   isLoggedIn?: boolean
-  /** Static preview — no link, save button, or hover motion. */
+  onUnsave?: (listingId: string) => void
   preview?: boolean
-  /** link = public browse (default); static = sold / non-interactive */
   mode?: 'link' | 'static'
   showSave?: boolean
-  /** Show share button on thumbnail (default: true when not preview). */
   showShare?: boolean
-  /** Open listing detail in a new browser tab (default: false). */
   openInNewTab?: boolean
   disableHoverLift?: boolean
-  /** Extra nodes over the thumbnail (status badge, sold overlay). */
   thumbnailOverlay?: ReactNode
-  /** Applied to the thumbnail image (e.g. sold grayscale). */
   imageClassName?: string
-  /** Muted price styling for sold cards. */
   priceMuted?: boolean
-  /** Slot below card body (e.g. dashboard Manage button). */
   footer?: ReactNode
   className?: string
 }
 
-function buildCardActions({
-  listing,
-  href,
-  priceDisplay,
-  locationText,
-  isLoggedIn,
-  initialSaved,
-  showSave,
-  showShare,
-}: {
-  listing: ListingCardListing
-  href: string
-  priceDisplay: string
-  locationText: string | null
-  isLoggedIn: boolean
-  initialSaved: boolean
-  showSave: boolean
-  showShare: boolean
-}) {
-  if (!showSave && !showShare) return null
-
-  return (
-    <>
-      {showSave && (
-        <ListingCardSaveButton
-          listingId={listing.id}
-          isLoggedIn={isLoggedIn}
-          initialSaved={initialSaved}
-        />
-      )}
-      {showShare && (
-        <ListingCardShareButton
-          listingHref={href}
-          title={listing.title}
-          priceDisplay={priceDisplay}
-          locationText={locationText}
-        />
-      )}
-    </>
-  )
-}
-
-/** Server-rendered listing card — save/share hydrate as small client islands. */
-export default function ListingCard({
+/** Client listing card for browse pages — same markup as server ListingCard. */
+export default function ListingCardLink({
   listing,
   initialSaved = false,
   isLoggedIn = false,
+  onUnsave,
   preview = false,
   mode = 'link',
   showSave,
@@ -92,7 +43,7 @@ export default function ListingCard({
   priceMuted = false,
   footer,
   className = '',
-}: ListingCardProps) {
+}: ListingCardLinkProps) {
   const { href, priceDisplay, locationText, flagClass } = getListingCardMeta(listing)
   const showSaveButton = showSave ?? (mode === 'link' && !preview)
   const showShareButton = showShare ?? !preview
@@ -108,16 +59,26 @@ export default function ListingCard({
     className,
   ].filter(Boolean).join(' ')
 
-  const actions = buildCardActions({
-    listing,
-    href,
-    priceDisplay,
-    locationText,
-    isLoggedIn,
-    initialSaved,
-    showSave: showSaveButton,
-    showShare: showShareButton,
-  })
+  const actions = (showSaveButton || showShareButton) ? (
+    <>
+      {showSaveButton && (
+        <ListingCardSaveButton
+          listingId={listing.id}
+          isLoggedIn={isLoggedIn}
+          initialSaved={initialSaved}
+          onUnsave={onUnsave}
+        />
+      )}
+      {showShareButton && (
+        <ListingCardShareButton
+          listingHref={href}
+          title={listing.title}
+          priceDisplay={priceDisplay}
+          locationText={locationText}
+        />
+      )}
+    </>
+  ) : null
 
   const content = (
     <>
