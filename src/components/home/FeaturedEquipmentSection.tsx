@@ -30,15 +30,15 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 
 export function FeaturedCarouselSkeleton() {
   return (
-    <section className="py-10 border-t border-[#E8E9EA]">
+    <section className="py-16 lg:py-20 border-t border-[#E8E9EA]">
       <div className="flex items-end justify-between mb-6">
         <div>
-          <div className="h-7 w-48 bg-[#F0F0F0] rounded-lg animate-pulse" />
-          <div className="mt-2 h-4 w-64 bg-[#F0F0F0] rounded-lg animate-pulse" />
+          <div className="h-9 w-56 max-w-full bg-[#F0F0F0] rounded-lg animate-pulse" />
+          <div className="mt-4 h-5 w-72 max-w-full bg-[#F0F0F0] rounded-lg animate-pulse" />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 9 }).map((_, i) => (
           <div key={i} className="rounded-[16px] border border-[#E8E9EA] overflow-hidden">
             <div className="aspect-[4/3] bg-[#F0F0F0] animate-pulse" />
             <div className="p-3 space-y-2">
@@ -144,7 +144,7 @@ export default async function FeaturedEquipmentSection() {
         .map(Number)
         .sort((a, b) => b - a)
         .flatMap(w => seededShuffle(byWeight[w], windowSeed + w))
-        .slice(0, 5)
+        .slice(0, 9)
         .map(toFeaturedListing)
     }
   } catch {
@@ -154,16 +154,16 @@ export default async function FeaturedEquipmentSection() {
   if (featuredCarousel.length === 0) return null
 
   return (
-    <section className="py-10 border-t border-[#E8E9EA]">
+    <section className="py-16 lg:py-20 border-t border-[#E8E9EA]">
       <div className="flex items-end justify-between mb-6">
         <div>
           <h2
-            className="font-sans font-bold text-2xl text-ink"
-            style={{ letterSpacing: '-0.02em' }}
+            className="font-sans font-bold text-ink"
+            style={{ fontSize: 'clamp(28px, 4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
           >
             Featured Equipment
           </h2>
-          <p className="mt-1 text-sm font-sans text-ink-3">
+          <p className="mt-4 font-sans text-ink-3 text-base leading-relaxed">
             Hand-picked listings from verified sellers
           </p>
         </div>

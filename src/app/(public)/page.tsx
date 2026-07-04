@@ -205,11 +205,10 @@ export default function HomePage() {
       </div>
 
       {/* ── Newsletter (server shell + deferred form island) ───────────────── */}
-      <div className="page-shell">
+      <div className="page-shell pb-16">
         <Suspense fallback={<NewsletterSkeleton />}>
           <NewsletterSection />
         </Suspense>
-        <div className="pb-16" />
       </div>
     </>
   )

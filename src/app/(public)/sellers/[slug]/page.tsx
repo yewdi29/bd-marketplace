@@ -106,13 +106,13 @@ export default async function SellerProfilePage({ params }: Props) {
   const [{ data: activeListings }, { data: soldListings }] = await Promise.all([
     admin
       .from('listings')
-      .select('*, listing_images(*)')
+      .select('*, listing_images(*), countries(name, iso_code)')
       .eq('seller_id', profile.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false }),
     admin
       .from('listings')
-      .select('*, listing_images(*)')
+      .select('*, listing_images(*), countries(name, iso_code)')
       .eq('seller_id', profile.id)
       .eq('status', 'sold')
       .order('updated_at', { ascending: false }),

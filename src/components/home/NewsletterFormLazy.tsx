@@ -7,9 +7,9 @@ import { scheduleAfterInteractive } from '@/lib/scheduleAfterInteractive'
 const NewsletterForm = dynamic(() => import('@/components/NewsletterForm'), {
   ssr: false,
   loading: () => (
-    <div className="flex gap-2" aria-hidden>
+    <div className="flex w-full gap-2" aria-hidden>
       <div className="flex-1 h-10 bg-[#F0F0F0] rounded-pill animate-pulse" />
-      <div className="w-24 h-10 bg-[#F0F0F0] rounded-pill animate-pulse" />
+      <div className="w-28 h-10 bg-[#F0F0F0] rounded-pill animate-pulse" />
     </div>
   ),
 })
@@ -30,9 +30,9 @@ export default function NewsletterFormLazy({ source }: { source?: string }) {
 
   if (!shouldMount) {
     return (
-      <div className="flex gap-2" aria-hidden>
+      <div className="flex w-full gap-2" aria-hidden>
         <div className="flex-1 h-10 bg-[#F0F0F0] rounded-pill animate-pulse" />
-        <div className="w-24 h-10 bg-[#F0F0F0] rounded-pill animate-pulse" />
+        <div className="w-28 h-10 bg-[#F0F0F0] rounded-pill animate-pulse" />
       </div>
     )
   }

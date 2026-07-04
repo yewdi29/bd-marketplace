@@ -37,24 +37,32 @@ export default function NewsletterForm({ source }: { source?: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        type="email"
-        placeholder="your@email.com"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        required
-        className="flex-1 bg-white border border-[#D4D5D7] text-ink placeholder:text-ink-3 px-4 py-2 text-sm font-sans rounded-pill focus:outline-none focus:border-orange transition-colors"
-      />
-      <button
-        type="submit"
-        disabled={status === 'loading'}
-        className="px-5 py-2 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow disabled:opacity-50 shrink-0"
-      >
-        {status === 'loading' ? '...' : 'Subscribe'}
-      </button>
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="flex w-full gap-2">
+        <input
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
+          className="flex-1 min-w-0 bg-white text-sm font-sans text-ink placeholder:text-ink-3 px-4 focus:outline-none focus:border-orange transition-colors"
+          style={{
+            height: '40px',
+            borderRadius: '100px',
+            border: '1.5px solid #E8E9EA',
+          }}
+        />
+        <button
+          type="submit"
+          disabled={status === 'loading'}
+          className="px-5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow disabled:opacity-50 shrink-0"
+          style={{ height: '40px' }}
+        >
+          {status === 'loading' ? '...' : 'Subscribe'}
+        </button>
+      </div>
       {status === 'error' && (
-        <p className="text-xs text-red-500 font-sans mt-1 w-full">{message}</p>
+        <p className="text-xs text-red-500 font-sans mt-2">{message}</p>
       )}
     </form>
   )

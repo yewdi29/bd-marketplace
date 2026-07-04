@@ -1,21 +1,48 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { Listing } from '@/lib/types/database'
 import ListingCardLink from '@/components/listings/ListingCardLink'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
+import { toListingCardListing, type ListingCardListing } from '@/components/listings/listingCardTypes'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  activeListings: Listing[]
-  soldListings: Listing[]
+  activeListings: SellerListing[]
+  soldListings: SellerListing[]
 }
 
 type Tab = 'active' | 'sold'
 type SortKey = 'newest' | 'price_asc' | 'price_desc'
 
 const PAGE_SIZE = 9
+
+type SellerListing = Listing & {
+  countries?: ListingCardListing['countries'] | ListingCardListing['countries'][] | null
+}
+
+function toSellerListingCard(listing: SellerListing): ListingCardListing {
+  const countries = Array.isArray(listing.countries)
+    ? listing.countries[0] ?? null
+    : listing.countries ?? null
+
+  return toListingCardListing({
+    id: listing.id,
+    slug: listing.slug,
+    title: listing.title,
+    category: listing.category,
+    price: listing.price,
+    price_unit: listing.price_unit,
+    price_visible: listing.price_visible,
+    location_city: listing.location_city,
+    location_state: listing.location_state,
+    created_at: listing.created_at,
+    listing_images: listing.listing_images,
+    countries,
+  })
+}
 
 // ─── Pagination ─────────────────────────────────────────────────────────────
 
@@ -104,6 +131,25 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
   const [tab, setTab] = useState<Tab>('active')
   const [sort, setSort] = useState<SortKey>('newest')
   const [page, setPage] = useState(1)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      const user = data.user
+      setIsLoggedIn(!!user)
+      if (!user) {
+        setSavedIds(new Set())
+        return
+      }
+      const { data: saved } = await supabase
+        .from('saved_listings')
+        .select('listing_id')
+        .eq('user_id', user.id)
+      setSavedIds(new Set((saved ?? []).map(row => row.listing_id)))
+    })
+  }, [])
 
   const activeCount = activeListings.length
   const soldCount = soldListings.length
@@ -205,22 +251,28 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
           <p className="font-sans text-ink-3 text-sm">No listings to show.</p>
         </div>
       ) : (
-        <ListingCardGrid>
-          {paginated.map(listing =>
-            tab === 'active' ? (
-              <ListingCardLink key={listing.id} listing={listing} showSave={false} openInNewTab />
+        <ListingCardGrid className="listing-card-grid--seller">
+          {paginated.map(listing => {
+            const cardListing = toSellerListingCard(listing)
+            return tab === 'active' ? (
+              <ListingCardLink
+                key={listing.id}
+                listing={cardListing}
+                isLoggedIn={isLoggedIn}
+                initialSaved={savedIds.has(listing.id)}
+                openInNewTab
+              />
             ) : (
               <ListingCardLink
                 key={listing.id}
-                listing={listing}
+                listing={cardListing}
                 mode="static"
-                showSave={false}
                 priceMuted
                 imageClassName="opacity-60 grayscale"
                 thumbnailOverlay={soldOverlay}
               />
             )
-          )}
+          })}
         </ListingCardGrid>
       )}
 

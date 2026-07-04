@@ -118,6 +118,46 @@ select {
   }
 }
 
+/* 1 / 2 / 3 column grids (mobile / tablet / desktop) */
+.listing-card-grid--featured,
+.listing-card-grid--search,
+.listing-card-grid--seller,
+.listing-card-grid--saved {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .listing-card-grid--featured,
+  .listing-card-grid--search,
+  .listing-card-grid--seller,
+  .listing-card-grid--saved {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 768px) {
+  .listing-card-grid--featured,
+  .listing-card-grid--search,
+  .listing-card-grid--seller,
+  .listing-card-grid--saved {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .listing-card-grid--featured,
+  .listing-card-grid--search,
+  .listing-card-grid--seller,
+  .listing-card-grid--saved {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .listing-card-grid--featured,
+  .listing-card-grid--search,
+  .listing-card-grid--seller,
+  .listing-card-grid--saved {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* ─── Article body typography (knowledge base detail page) ───────────────── */
 /* Scoped to .article-body so it only affects rendered HTML article content.   */
 .article-body {

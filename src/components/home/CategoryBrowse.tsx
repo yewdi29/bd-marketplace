@@ -1,78 +1,96 @@
 import Link from 'next/link'
-import { Flame, HardHat, Mountain, Wheat, Truck } from 'lucide-react'
+import { Flame, HardHat, Mountain, Trees, Truck, Wheat } from 'lucide-react'
 
-const CATEGORIES = [
+const INDUSTRIES = [
   {
     label: 'Oil & Gas',
     icon: Flame,
     href: '/search?industry=oil_gas',
-    description: 'Rigs, pipe, BOP, wellheads',
+    description: 'Drilling rigs, pumps & wellhead equipment',
   },
   {
     label: 'Construction',
     icon: HardHat,
     href: '/search?industry=construction',
-    description: 'Excavators, cranes, loaders',
+    description: 'Excavators, dozers, cranes & loaders',
   },
   {
     label: 'Mining',
     icon: Mountain,
     href: '/search?industry=mining',
-    description: 'Haul trucks, drilling, processing',
+    description: 'Haul trucks, drills, crushers & conveyors',
   },
   {
     label: 'Agriculture',
     icon: Wheat,
     href: '/search?industry=agriculture',
-    description: 'Tractors, combines, irrigation',
+    description: 'Tractors, combines & irrigation systems',
   },
   {
     label: 'Trucks & Trailers',
     icon: Truck,
     href: '/search?industry=trucks_trailers',
-    description: 'Flatbeds, tankers, vocational',
+    description: 'Heavy haul, flatbeds & specialty units',
+  },
+  {
+    label: 'Forestry',
+    icon: Trees,
+    href: '/search?industry=forestry',
+    description: 'Harvesters, skidders, loaders & mill equipment',
   },
 ]
 
 export default function CategoryBrowse() {
   return (
-    <section className="py-10 border-t border-[#E8E9EA]">
+    <section className="py-16 lg:py-20 border-t border-[#E8E9EA]">
       <div className="flex items-end justify-between mb-6">
         <div>
           <h2
-            className="font-sans font-bold text-2xl text-ink"
-            style={{ letterSpacing: '-0.02em' }}
+            className="font-sans font-bold text-ink"
+            style={{ fontSize: 'clamp(28px, 4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
           >
             Browse by Industry
           </h2>
-          <p className="mt-1 text-sm font-sans text-ink-3">Find equipment by industry</p>
+          <p className="mt-4 font-sans text-ink-3 text-base leading-relaxed">
+            Find equipment by industry
+          </p>
         </div>
+        <Link
+          href="/search"
+          className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
+        >
+          Browse all →
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {CATEGORIES.map(cat => {
-          const Icon = cat.icon
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {INDUSTRIES.map(industry => {
+          const Icon = industry.icon
           return (
             <Link
-              key={cat.label}
-              href={cat.href}
-              className="group bg-white border border-[#E8E9EA] hover:border-orange rounded-[16px] p-5 flex flex-col items-start gap-3 transition-all duration-200 hover:-translate-y-0.5 shadow-card hover:shadow-card-hover no-underline"
+              key={industry.label}
+              href={industry.href}
+              className="group flex items-center bg-white border border-[#E8E9EA] hover:border-orange rounded-[16px] transition-all duration-200 hover:-translate-y-0.5 shadow-card hover:shadow-card-hover no-underline"
+              style={{ minHeight: '94px', paddingLeft: '22px', paddingRight: '22px', gap: '17px' }}
             >
               <div
-                className="w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors duration-200"
-                style={{ background: '#FFF2ED' }}
+                className="shrink-0 rounded-lg flex items-center justify-center transition-colors duration-200"
+                style={{ width: '55px', height: '55px', background: '#FFF2ED' }}
               >
-                <Icon className="w-5 h-5 text-orange" strokeWidth={1.5} />
+                <Icon className="text-orange" style={{ width: '28px', height: '28px' }} strokeWidth={1.5} />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p
-                  className="font-sans font-semibold text-ink group-hover:text-orange transition-colors duration-200"
-                  style={{ fontSize: '14px' }}
+                  className="font-sans font-bold text-ink group-hover:text-orange transition-colors duration-200 truncate"
+                  style={{ fontSize: '14px', lineHeight: 1.3 }}
                 >
-                  {cat.label}
+                  {industry.label}
                 </p>
-                <p className="font-sans text-ink-3 mt-0.5" style={{ fontSize: '12px' }}>
-                  {cat.description}
+                <p
+                  className="font-sans text-ink-3 truncate"
+                  style={{ fontSize: '12px', lineHeight: 1.35 }}
+                >
+                  {industry.description}
                 </p>
               </div>
             </Link>

@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: June 2026 — v2.9
+> Last updated: June 2026 — v2.30
 
 ---
 
@@ -114,7 +114,8 @@ Inter is loaded with weights 400, 500, 600, 700, 800.
 |------|------|--------|----------|-------|
 | Hero | 42px | 800 | -0.03em | Homepage hero headline |
 | H1 | 32px | 800 | -0.03em | Page titles (login, auth pages) |
-| H2 | 24px | 700 | -0.02em | Section headings (dashboard, homepage sections) |
+| H2 | 24px | 700 | -0.02em | Dashboard section headings, legacy section titles |
+| Homepage section H2 | `clamp(28px, 4vw, 40px)` | 700 | -0.03em | Featured Equipment, Browse by Industry, How It Works, Newsletter — fluid headline |
 | H3 | 18–22px | 700 | -0.02em | Modal headings, card titles |
 | H4 | 15px | 600 | 0 | Labels, group headers |
 | Body | 15px | 400 | 0 | Paragraphs, descriptions |
@@ -157,7 +158,7 @@ Use multiples of 4px:
 - Page padding: `px-4` mobile, `px-6` tablet, `px-10` desktop
 - Card gap: `12–16px` (`gap-3` to `gap-4`)
 - **Listing card grid:** `.listing-card-grid` — fixed columns: 1 / 2 / 3 / 4 / 5 at 480 / 768 / 1024 / 1280px breakpoints; gap `16px` (dashboard variant: `14px`)
-- Section padding: `py-10` between homepage sections
+- Section padding: `py-16 lg:py-20` (64px mobile / 80px desktop) between homepage sections; newsletter section uses `py-10` on its outer wrapper
 
 ### Shadows
 
@@ -439,14 +440,28 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 ## 7. Page-Specific Notes
 
 ### Homepage
-- Hero on white card surface: `bg-white rounded-[20px] px-8 py-16 text-center shadow-card`
+
+#### Homepage section header (shared pattern)
+Used by Featured Equipment, Browse by Industry, How It Works, and Newsletter.
+
+| Element | Style |
+|---------|-------|
+| **Optional label** | `font-mono text-[11px] font-bold text-orange uppercase tracking-[0.12em] mb-3` — e.g. `HOW IT WORKS`, `STAY INFORMED` |
+| **Headline (H2)** | `font-sans font-bold text-ink`, `font-size: clamp(28px, 4vw, 40px)`, `letter-spacing: -0.03em`, `line-height: 1.1` |
+| **Subtext** | `mt-4 font-sans text-ink-3 text-base leading-relaxed` |
+| **"View all →" link** | `text-sm font-semibold text-orange hover:text-orange-lt` — right-aligned in header row on `sm+` |
+
+Header row layout: `flex items-end justify-between mb-6` when a side link is present; label + headline + subtext stack in the left column.
+
+#### Section-specific notes
+- Hero on frosted glass card surface inside hero grid (see §8 glassmorphism exception)
 - Orange word in hero headline for emphasis — one word only (currently "Equipment")
-- Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot — "Heavy Equipment Marketplace"
-- Stats row: 3-col grid below search bar — `font-bold text-2xl text-ink` value, `text-xs text-ink-3` label
-- Search bar: pill shaped `rounded-pill`, white fill, orange search button, `shadow-search`; includes category `<select>` + text input separated by `bg-[#E8E9EA]` divider
-- Category grid: `grid-cols-2 sm:grid-cols-4`, white cards `rounded-[16px]`, emoji icon + label, `hover:text-orange`
-- Section "View all →" links: `text-sm font-semibold text-orange hover:text-orange-lt`
-- Newsletter block: white card `rounded-[20px] px-8 py-12 text-center shadow-card`
+- Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot
+- **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
+- **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
+- **How It Works:** centered header with `HOW IT WORKS` orange label; step cards in 3-column desktop row
+- **Newsletter:** two-column split on `md+` (text left, form right); white card `rounded-[20px] px-8 py-12 shadow-card border border-[#E8E9EA]` full width of `.page-shell`; `STAY INFORMED` orange label; outer section `py-10`
+- **Operator Journal:** retains legacy `text-2xl` header until migrated
 
 ### Listings Browse Page
 - Layout: sidebar `w-[220px]` + flex-1 grid right (`gap-6`)
@@ -572,6 +587,8 @@ The `TierBadge` component exists at `src/components/ui/TierBadge.tsx` but Tailwi
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.30 | June 2026 | **Homepage section header unification.** Featured Equipment and Browse by Industry headlines upgraded to shared fluid H2 (`clamp(28px, 4vw, 40px)`, `-0.03em` tracking) with `text-base` subtext — matching How It Works and Newsletter. Documented shared homepage section header pattern in §7; section padding updated to `py-16 lg:py-20`; newsletter card spec updated (`rounded-[20px]`, `shadow-card`, full `.page-shell` width, two-column layout). |
+| v2.29 | June 2026 | **Browse by Industry redesign + Forestry.** Homepage `CategoryBrowse`: 6 industries (added Forestry with Lucide `Trees`), 3×2 grid (1 col mobile / 2 tablet / 3 desktop). Cards are thin horizontal rows (~68px): 40×40px orange-tint icon box (`rounded-lg`) + bold 14px title + muted 12px subtitle. Links use `/search?industry=` slug. Skeleton updated to match. |
 | v2.28 | June 2026 | **Dashboard publish actions + photo drag + featured cap.** Draft/unpublished manage overlay: "Publish" uses light orange accent (`bg-orange-bg`, `border-orange-bdr`, `text-orange`); unpublished action order is Publish → Edit → Archive. Photo sortable tiles: full-tile drag on desktop (grip visual only); `cursor-grab` on hover, `cursor-grabbing` while pressed/dragging. Homepage Featured Equipment capped at 5 listings (one row at ≥1280px). |
 | v2.27 | June 2026 | **Edit listing mobile flow + photo UX.** Below 1024px, `EditListingModal` renders full-screen `EditListingMobileFlow` (2 steps: Photos → Details) matching new-listing mobile shell. Edit desktop + both flows use `ListingPhotoSortableList`; mobile reorder via full-tile overlay (blocks iOS image callout). Photo remove uses optimistic UI — tile disappears immediately, rolls back on API failure. |
 | v2.26 | June 2026 | **Dashboard nav parity + browse card behavior.** `DashboardNav` shell matches public navbar (64px height, frosted `rgba(255,255,255,0.20)` background, translucent border). Upgrade page body capped at `1450px`; duplicate Pro-tier "Current Plan" pill removed (corner badge only). Listing cards on homepage, search, seller profile, and related listings open in a new tab via `openInNewTab` prop. |

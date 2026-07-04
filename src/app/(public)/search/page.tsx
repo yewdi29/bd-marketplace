@@ -17,7 +17,7 @@ function SkeletonCard() {
 
 function SkeletonGrid() {
   return (
-    <ListingCardGrid>
+    <ListingCardGrid className="listing-card-grid--search">
       {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
     </ListingCardGrid>
   )
@@ -127,7 +127,7 @@ function SearchContent() {
       {loading ? (
         <SkeletonGrid />
       ) : listings.length > 0 ? (
-        <ListingCardGrid>
+        <ListingCardGrid className="listing-card-grid--search">
           {listings.map(listing => (
             <ListingCardLink
               key={listing.id}

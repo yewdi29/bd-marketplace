@@ -11,6 +11,8 @@ export interface ListingCardContentProps {
   showNewBadge?: boolean
   priceMuted?: boolean
   imageClassName?: string
+  /** LCP / above-the-fold — skip lazy loading for thumbnail. */
+  imagePriority?: boolean
   thumbnailOverlay?: ReactNode
   footer?: ReactNode
   actions?: ReactNode
@@ -23,6 +25,7 @@ export default function ListingCardContent({
   showNewBadge = true,
   priceMuted = false,
   imageClassName = '',
+  imagePriority = false,
   thumbnailOverlay,
   footer,
   actions,
@@ -68,7 +71,8 @@ export default function ListingCardContent({
               alt={primaryImage.alt_text ?? listing.title}
               fill
               className={imageCoverClass}
-              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 225px"
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              priority={imagePriority}
             />
           )
         ) : (
@@ -104,7 +108,7 @@ export default function ListingCardContent({
         )}
       </div>
 
-      <div style={{ padding: '10px' }}>
+      <div style={{ padding: '17px' }}>
         <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1.5">
           {listing.category.replace(/_/g, ' ')}
         </p>

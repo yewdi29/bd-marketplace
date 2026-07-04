@@ -937,7 +937,7 @@ export default function DashboardPage() {
           </div>
 
           {savedLoading ? (
-            <ListingCardGrid gap="dashboard">
+            <ListingCardGrid gap="dashboard" className="listing-card-grid--saved">
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
             </ListingCardGrid>
           ) : savedListings.length === 0 ? (
@@ -960,7 +960,7 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <ListingCardGrid gap="dashboard">
+            <ListingCardGrid gap="dashboard" className="listing-card-grid--saved">
               {savedListings.map(listing => (
                 <ListingCardLink
                   key={listing.id}

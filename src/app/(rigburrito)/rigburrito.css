@@ -1,0 +1,540 @@
+/* Black Diamond Command Center — Design System CSS */
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes rigburrito-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.rigburrito-shell {
+  min-height: 100vh;
+  background: #F8F9FA;
+}
+
+.rigburrito-main {
+  margin-left: 264px;
+  min-height: 100vh;
+  background: #F8F9FA;
+}
+
+.rigburrito-page {
+  padding: 32px;
+  background: #F8F9FA;
+  min-height: 100vh;
+}
+
+.rigburrito-mono {
+  font-family: var(--font-dm-mono), 'Andale Mono', monospace;
+}
+
+.rigburrito-page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #0F1117;
+  margin: 0 0 24px;
+}
+
+.rigburrito-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0F1117;
+  margin: 0 0 16px;
+}
+
+.rigburrito-card-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6B7280;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.rigburrito-body {
+  font-size: 14px;
+  font-weight: 400;
+  color: #0F1117;
+}
+
+.rigburrito-caption {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9CA3AF;
+}
+
+.rigburrito-text-link {
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.rigburrito-text-link:hover {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.rigburrito-card {
+  background: #FFFFFF;
+  border: 1px solid #F0F1F3;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.rigburrito-stat-card {
+  background: #FFFFFF;
+  border: 1px solid #F0F1F3;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.rigburrito-stat-value {
+  font-family: var(--font-dm-mono), 'Andale Mono', monospace;
+  font-size: 32px;
+  font-weight: 700;
+  color: #0F1117;
+  line-height: 1.1;
+}
+
+.rigburrito-stat-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.rigburrito-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-dm-mono), 'Andale Mono', monospace;
+}
+
+.rigburrito-trend--positive { color: #16A34A; }
+.rigburrito-trend--negative { color: #DC2626; }
+
+.rigburrito-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background 120ms ease, border-color 120ms ease;
+  line-height: 1.2;
+}
+
+.rigburrito-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rigburrito-btn-primary {
+  background: #0F1117;
+  color: #FFFFFF;
+}
+.rigburrito-btn-primary:hover:not(:disabled) { background: #1A1D23; }
+.rigburrito-btn-primary:active:not(:disabled) { background: #000000; }
+
+.rigburrito-btn-secondary {
+  background: transparent;
+  border: 1px solid #E5E7EB;
+  color: #0F1117;
+}
+.rigburrito-btn-secondary:hover:not(:disabled) { background: #F8F9FA; }
+.rigburrito-btn-secondary:active:not(:disabled) { background: #F0F1F3; }
+
+.rigburrito-btn-danger {
+  background: transparent;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+}
+.rigburrito-btn-danger:hover:not(:disabled) { background: #FEF2F2; }
+
+.rigburrito-btn-accent {
+  background: #FF6B35;
+  color: #FFFFFF;
+}
+.rigburrito-btn-accent:hover:not(:disabled) { background: #E55A25; }
+
+.rigburrito-btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #6B7280;
+  cursor: pointer;
+  transition: background 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.rigburrito-btn-icon:hover { background: #F0F1F3; }
+
+.rigburrito-input,
+.rigburrito-select {
+  height: 36px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+  background: #FFFFFF;
+  color: #0F1117;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.rigburrito-input::placeholder { color: #9CA3AF; }
+
+.rigburrito-input:focus,
+.rigburrito-select:focus,
+.rigburrito-textarea:focus {
+  border-color: #0F1117;
+  box-shadow: 0 0 0 3px rgba(15, 17, 23, 0.06);
+}
+
+.rigburrito-textarea {
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 80px;
+  resize: vertical;
+  font-size: 14px;
+  background: #FFFFFF;
+  color: #0F1117;
+  outline: none;
+  width: 100%;
+}
+
+.rigburrito-table-wrap {
+  background: #FFFFFF;
+  border: 1px solid #F0F1F3;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rigburrito-table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+
+.rigburrito-table thead tr {
+  background: #F8F9FA;
+  border-bottom: 1px solid #F0F1F3;
+  height: 40px;
+}
+
+.rigburrito-table th {
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6B7280;
+}
+
+.rigburrito-table tbody tr {
+  height: 52px;
+  border-bottom: 1px solid #F8F9FA;
+  transition: background 80ms ease;
+}
+
+.rigburrito-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.rigburrito-table tbody tr:hover {
+  background: #FAFAFA;
+}
+
+.rigburrito-table tbody tr.rigburrito-table-row--clickable {
+  cursor: pointer;
+}
+
+.rigburrito-table td {
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #0F1117;
+}
+
+.rigburrito-tab {
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  background: transparent;
+  border: 1px solid #E5E7EB;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.rigburrito-tab[data-state='active'] {
+  background: #FFFFFF;
+  color: #0F1117;
+  font-weight: 600;
+}
+
+.rigburrito-sidebar {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  height: calc(100vh - 24px);
+  background: #1C1C1C;
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.16), 0 8px 32px rgba(0, 0, 0, 0.20);
+  overflow: hidden;
+}
+
+.rigburrito-sidebar-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 20px 20px 12px;
+  min-height: 64px;
+}
+
+.rigburrito-sidebar-logo svg {
+  display: block;
+  /* SVG artwork inset — align visual diamond with wordmark / nav text */
+  margin-left: -10px;
+}
+
+.rigburrito-sidebar-wordmark {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.rigburrito-sidebar-subtitle {
+  font-size: 11px;
+  color: #6B7280;
+  margin: 0;
+}
+
+.rigburrito-sidebar-nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 16px 16px 6px;
+  margin: 0;
+}
+
+.rigburrito-sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  margin: 1px 8px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.rigburrito-sidebar-nav-item:hover {
+  background: #252525;
+  color: #9CA3AF;
+}
+
+.rigburrito-sidebar-nav-item--active {
+  background: #2A2A2A;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.rigburrito-sidebar-nav-item--active:hover {
+  background: #2A2A2A;
+  color: #FFFFFF;
+}
+
+.rigburrito-sidebar-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 8px;
+}
+
+.rigburrito-sidebar-bottom-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #6B7280;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  transition: color 120ms ease;
+}
+
+.rigburrito-sidebar-bottom-link:hover {
+  color: #9CA3AF;
+}
+
+.rigburrito-skeleton {
+  background: linear-gradient(90deg, #F0F1F3 25%, #F8F9FA 50%, #F0F1F3 75%);
+  background-size: 200% 100%;
+  animation: rigburrito-shimmer 1.2s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+.rigburrito-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  text-align: center;
+  padding: 32px;
+}
+
+.rigburrito-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0F1117;
+  margin: 12px 0 4px;
+}
+
+.rigburrito-empty-desc {
+  font-size: 14px;
+  color: #6B7280;
+  margin: 0 0 16px;
+}
+
+.rigburrito-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 8px;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 80ms ease;
+}
+
+.rigburrito-list-row:hover {
+  background: #FAFAFA;
+}
+
+.rigburrito-list-row:hover p.font-medium {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.rigburrito-slideover {
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #FFFFFF;
+  border-left: 1px solid #F0F1F3;
+  outline: none;
+  max-width: 100vw;
+}
+
+.rigburrito-slideover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  border-bottom: 1px solid #F0F1F3;
+  flex-shrink: 0;
+}
+
+.rigburrito-slideover-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0F1117;
+  margin: 0;
+}
+
+.rigburrito-slideover-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.rigburrito-slideover-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 64px;
+  padding: 0 24px;
+  border-top: 1px solid #F0F1F3;
+  flex-shrink: 0;
+}
+
+.rigburrito-error {
+  border: 1px solid #FECACA;
+  background: #FEF2F2;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.rigburrito-error p {
+  font-size: 14px;
+  color: #DC2626;
+  margin: 0;
+}
+
+.rigburrito-hold-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rigburrito-kanban-col {
+  min-width: 220px;
+  flex: 1;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #F0F1F3;
+  background: #F8F9FA;
+}
+
+.rigburrito-kanban-col--over {
+  background: rgba(255, 107, 53, 0.08);
+}
+
+.rigburrito-deal-card {
+  margin-bottom: 8px;
+  cursor: grab;
+  border-radius: 8px;
+  background: #FFFFFF;
+  padding: 12px;
+  border: 1px solid #F0F1F3;
+}

@@ -55,7 +55,7 @@ export default async function OperatorJournalSection() {
       : [...(published as Partial<Article>[]), ...STUB_ARTICLES].slice(0, 3)
 
   return (
-    <section className="py-10 border-t border-[#E8E9EA]">
+    <section className="py-16 lg:py-20 border-t border-[#E8E9EA]">
       <div className="flex items-end justify-between mb-6">
         <div>
           <h2

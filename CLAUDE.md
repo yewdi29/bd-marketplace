@@ -30,9 +30,10 @@ Black Diamond Marketplace is a Next.js 14 / TypeScript / Supabase heavy equipmen
 ## Before Touching Any UI
 
 1. **Read `DESIGN_SYSTEM.md` first** — every color, font, spacing, and component decision is documented there. Do not deviate from it.
-2. **Never invent design decisions** — if something isn't in `DESIGN_SYSTEM.md`, ask before proceeding.
-3. **Never use dark mode** on any public-facing page.
-4. **Never apply frosted glass** outside of the navbar or AI input components.
+2. **Command center (`/rigburrito`):** Read `COMMAND_CENTER_DESIGN.md` first — it overrides `DESIGN_SYSTEM.md` for admin command center components and pages.
+3. **Never invent design decisions** — if something isn't in the relevant design system file, ask before proceeding.
+4. **Never use dark mode** on any public-facing page.
+5. **Never apply frosted glass** outside of the navbar or AI input components.
 
 ---
 

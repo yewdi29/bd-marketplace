@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
-import { Inbox } from 'lucide-react'
+import { Inbox, Mail } from 'lucide-react'
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
 import { useFlagIconsCss } from '@/hooks/useFlagIconsCss'
 import { HIW_RIPPLE_DURATION_MS, HIW_RIPPLE_START_DELAY_MS, STEP2_POST_LIVE_MS } from '@/components/home/hiwGeoMapConstants'
@@ -29,6 +29,9 @@ type Phase =
 const TYPEWRITER_TEXT =
   'Selling a 2013 cat d8t, good condition, Houston TX, asking $185,000.'
 
+/** Generated listing title in Step 1 — referenced by Step 3 inquiry subjects. */
+const HIW_LISTING_TITLE = '2013 Caterpillar D6T Dozer'
+
 /** Matches Connector CSS transition duration (ms). */
 const CONNECTOR_FILL_MS = 1000
 
@@ -47,8 +50,9 @@ const S1_TIMELINE: { at: number; phase: Phase }[] = [
 ]
 
 /** Shared gray mockup zone — equal padding on all sides (p-2 = 8px). */
+const HIW_MOCKUP_INNER_H = 300
 const HIW_MOCKUP_BOX =
-  'relative w-full h-full min-h-[260px] overflow-hidden rounded-[12px] bg-[#FAFAFA] p-2'
+  'relative w-full overflow-hidden rounded-[12px] bg-[#FAFAFA] p-2'
 
 // ─── Connector line ───────────────────────────────────────────────────────────
 
@@ -235,7 +239,7 @@ function Step1Mockup({
 
   return (
     <div className={HIW_MOCKUP_BOX}>
-      <div className="relative w-full h-full min-h-[244px]">
+      <div className="relative w-full" style={{ height: HIW_MOCKUP_INNER_H }}>
         {/* Form layer — fixed footprint so the mockup area never resizes */}
         <div
           className="absolute inset-0 flex flex-col justify-center transition-opacity duration-500"
@@ -325,7 +329,7 @@ function MiniListingCard() {
           Crawler Dozers
         </p>
         <h4 className="font-sans text-ink line-clamp-2 mb-0.5" style={{ fontSize: 11, fontWeight: 500, lineHeight: 1.35 }}>
-          2013 Caterpillar D6T Dozer
+          {HIW_LISTING_TITLE}
         </h4>
         <p className="font-mono mb-1.5" style={{ fontSize: 12, fontWeight: 500, color: '#FF6B35' }}>
           $185,000
@@ -404,7 +408,7 @@ function Step2Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
 
   return (
     <div className={HIW_MOCKUP_BOX}>
-      <div className="relative w-full h-full min-h-[244px]">
+      <div className="relative w-full" style={{ height: HIW_MOCKUP_INNER_H }}>
         <HiwGeoDotMap rippleProgress={rippleProgress} isActive={isActive} />
         {showPill && (
           <span
@@ -433,30 +437,26 @@ function Step2Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
 
 const INQUIRY_NOTIFICATIONS = [
   {
-    initials: 'MR',
     name: 'Marcus R.',
-    subject: 'New inquiry — 2013 Caterpillar Crawler Dozer',
+    subject: `New inquiry — ${HIW_LISTING_TITLE}`,
     preview: "I'm interested in this unit. Is it still available?",
     time: 'Just now',
   },
   {
-    initials: 'JT',
     name: 'James T.',
-    subject: 'New inquiry — 2013 Caterpillar Crawler Dozer',
+    subject: `New inquiry — ${HIW_LISTING_TITLE}`,
     preview: 'Can you share more details on hours and condition?',
     time: '2 min ago',
   },
   {
-    initials: 'SW',
     name: 'Scott W.',
-    subject: 'New inquiry — 2013 Caterpillar Crawler Dozer',
+    subject: `New inquiry — ${HIW_LISTING_TITLE}`,
     preview: 'Would you consider a partial trade?',
     time: '5 min ago',
   },
   {
-    initials: 'DP',
     name: 'David P.',
-    subject: 'New inquiry — 2013 Caterpillar Crawler Dozer',
+    subject: `New inquiry — ${HIW_LISTING_TITLE}`,
     preview: "Ready to move forward — what's your best price?",
     time: '8 min ago',
   },
@@ -500,8 +500,8 @@ function InquiryCard({
       }}
     >
       <div className="flex items-start gap-2">
-        <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center font-sans font-bold text-[10px] text-white bg-orange">
-          {data.initials}
+        <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-badge-blue">
+          <Mail className="w-3.5 h-3.5 text-white" strokeWidth={2.5} aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
@@ -575,7 +575,7 @@ function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
 
   return (
     <div className={`${HIW_MOCKUP_BOX} transition-opacity duration-500`}>
-      <div className="relative w-full h-full min-h-[244px]">
+      <div className="relative w-full" style={{ height: HIW_MOCKUP_INNER_H }}>
         {/* Idle empty inbox — visible until Step 3 activates */}
         <div
           className="absolute inset-0 z-[1] flex flex-col items-center justify-center transition-opacity duration-300"
@@ -592,13 +592,13 @@ function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
 
         {/* Notification stack */}
         <div
-          className="relative w-full h-full min-h-[244px] flex flex-col justify-center transition-opacity duration-500"
-          style={{ opacity: stackOpacity }}
+          className="relative w-full flex flex-col justify-center transition-opacity duration-500"
+          style={{ height: HIW_MOCKUP_INNER_H, opacity: stackOpacity }}
         >
           <div className="relative w-full shrink-0" style={{ height: INQUIRY_STACK_HEIGHT }}>
             {INQUIRY_NOTIFICATIONS.map((data, i) => (
               <InquiryCard
-                key={data.initials}
+                key={data.name}
                 data={data}
                 stackIndex={i}
                 visible={cardsShown[i]}
@@ -627,10 +627,9 @@ function StepCard({
   return (
     <div className="relative flex-1 min-w-0">
       <div
-        className="relative flex flex-col bg-white rounded-[16px] border border-[#E5E7EB] overflow-hidden shadow-card h-full"
-        style={{ minHeight: 440 }}
+        className="relative flex flex-col bg-white rounded-[16px] border border-[#E5E7EB] overflow-hidden shadow-card"
       >
-        <div className="relative flex flex-col h-full" style={{ padding: '20px 20px 0' }}>
+        <div className="relative flex flex-col" style={{ padding: '20px 20px 0' }}>
           <div className="shrink-0 mb-2">
             <p
               className="font-mono text-orange mb-2"
@@ -647,7 +646,7 @@ function StepCard({
             <p className="font-sans text-ink-3 text-sm leading-relaxed">{subtext}</p>
           </div>
 
-          <div className="flex-1 relative min-h-[280px] mb-3 overflow-hidden">{children}</div>
+          <div className="relative mb-3 overflow-hidden">{children}</div>
         </div>
       </div>
     </div>
@@ -749,7 +748,7 @@ export default function HowItWorksSection() {
       <section ref={sectionRef} className="w-full">
         <div className="page-shell">
           {/* Desktop: horizontal row */}
-          <div className="hidden lg:flex items-stretch gap-0">
+          <div className="hidden lg:flex items-start gap-0">
             <StepCard
               num="01"
               title="Describe Your Equipment"

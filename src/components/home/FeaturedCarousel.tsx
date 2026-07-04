@@ -12,14 +12,15 @@ export default function FeaturedCarousel({ listings, isLoggedIn, savedIds }: Fea
   if (!listings.length) return null
 
   return (
-    <ListingCardGrid>
-      {listings.map(listing => (
+    <ListingCardGrid className="listing-card-grid--featured">
+      {listings.map((listing, index) => (
         <ListingCard
           key={listing.id}
           listing={listing}
           isLoggedIn={isLoggedIn}
           initialSaved={savedIds.includes(listing.id)}
           openInNewTab
+          imagePriority={index < 3}
         />
       ))}
     </ListingCardGrid>

@@ -27,6 +27,8 @@ interface ListingCardProps {
   thumbnailOverlay?: ReactNode
   /** Applied to the thumbnail image (e.g. sold grayscale). */
   imageClassName?: string
+  /** LCP / above-the-fold — eager-load thumbnail at full resolution. */
+  imagePriority?: boolean
   /** Muted price styling for sold cards. */
   priceMuted?: boolean
   /** Slot below card body (e.g. dashboard Manage button). */
@@ -89,6 +91,7 @@ export default function ListingCard({
   disableHoverLift = false,
   thumbnailOverlay,
   imageClassName = '',
+  imagePriority = false,
   priceMuted = false,
   footer,
   className = '',
@@ -128,6 +131,7 @@ export default function ListingCard({
         mode={mode}
         priceMuted={priceMuted}
         imageClassName={imageClassName}
+        imagePriority={imagePriority}
         thumbnailOverlay={thumbnailOverlay}
         footer={footer}
         actions={actions}
