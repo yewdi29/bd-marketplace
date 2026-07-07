@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
     if (apiKey) {
       const resend = new Resend(apiKey)
       await resend.emails.send({
-        from: 'noreply@contact.blackdiamonddrilling.com',
-        to: 'contact@blackdiamondmarketplace.com',
+        from: 'noreply@blackdiamondmkt.com',
+        to: process.env.CONTACT_FORM_EMAIL!,
         subject: emailSubject,
         html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px;">

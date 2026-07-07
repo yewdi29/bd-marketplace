@@ -24,6 +24,11 @@ const STATUS_COLORS: Record<string, BadgeColors> = {
   archived: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
   identified: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
   contacted: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+  new: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  forwarded: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  denied: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  commission_opportunity: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  green: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
 }
 
 const NEUTRAL: BadgeColors = { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' }

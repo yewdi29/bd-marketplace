@@ -86,8 +86,8 @@ The command center uses a **floating container layout**. The true background is 
 | Card value (large stat) | 32px | 700 | `#0F1117` | DM Mono |
 | Card value (medium) | 20px | 600 | `#0F1117` | DM Mono |
 | Body text | 14px | 400 | `#0F1117` | |
-| Table header | 12px | 500 | `#6B7280` | |
-| Table cell | 14px | 400 | `#0F1117` | |
+| Table header | 11px | 500 | `#6B7280` | Users & Listings data tables |
+| Table cell | 12px | 400 | `#0F1117` | Users & Listings — Inter, `nowrap` |
 | Caption / meta | 12px | 400 | `#9CA3AF` | |
 | Trend indicator | 12px | 500 | — | DM Mono, colored per status |
 
@@ -98,6 +98,7 @@ Use class `rigburrito-text-link` on inline text links (not buttons, nav items, o
 - Default: no underline
 - Hover: dotted underline, `3px` offset
 - Dashboard list-row links: primary text (`p.font-medium`) gets dotted underline on row hover
+- Users table clickable rows: name cell (`td.font-medium`) gets dotted underline on row hover
 
 ---
 
@@ -215,6 +216,26 @@ Use recharts `<LineChart>` with no axes, no grid, no tooltip — just the line.
 - Color: `#FFFFFF`
 - Hover: background `#E55A25`
 
+### Success (listing approve)
+
+- Background: `#16A34A`
+- Color: `#FFFFFF`
+- Hover: background `#15803D`
+
+### Muted (listing unpublish / view public)
+
+- Background: transparent
+- Border: `1px solid #E5E7EB`
+- Color: `#6B7280`
+- Hover: background `rgba(107, 114, 128, 0.08)`
+
+### Warning (listing flag)
+
+- Background: transparent
+- Border: `1px solid rgba(217, 119, 6, 0.35)`
+- Color: `#D97706`
+- Hover: background `#FFFBEB`
+
 ### Icon button
 
 - Size: `32px` × `32px`
@@ -275,13 +296,13 @@ Same border, radius, and focus treatment. Padding `10px 12px`, min-height `80px`
 
 | Property | Value |
 |----------|-------|
-| Width | `480px` |
+| Width | `480px` default; listing moderation uses `580px` |
 | Animation | slides in from right |
 | Background | `#FFFFFF` |
 | Left border | `1px solid #F0F1F3` |
 | Header | `64px` height, title `16px` font-weight `600`, close icon button |
 | Content | scrollable, `24px` padding |
-| Footer | `64px` height, action buttons, border-top `1px solid #F0F1F3` |
+| Footer | `min-height 64px`, action buttons in equal-width single row (`.rigburrito-slideover-actions`), border-top `1px solid #F0F1F3` |
 
 ---
 
@@ -341,6 +362,13 @@ Centered in the content area.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.7 | 2026-07-04 | Listing slide-over: cursor-following image hover preview (320×240) |
+| 2.6 | 2026-07-04 | Admin listings: always show price in table (bracketed when hidden); slide-over price visibility badge |
+| 2.5 | 2026-07-04 | Listings price shows unit suffix; users table row-only navigation with hover underline |
+| 2.4 | 2026-07-04 | Listing slide-over widened to 580px; color-coded action buttons in equal-width row |
+| 2.3 | 2026-07-04 | Listing slide-over actions: full icon + text buttons |
+| 2.2 | 2026-07-04 | Data tables: Inter font at 12px; listing actions moved to slide-over footer |
+| 2.1 | 2026-07-04 | User support actions, locations block, table typography, icon listing actions |
 | 2.0 | 2026-07-03 | Sidebar diamond left-aligned with wordmark and nav content |
 | 1.9 | 2026-07-03 | Sidebar logo size set to 50px |
 | 1.8 | 2026-07-03 | Logo sizes increased to 40px sidebar / 64px auth |

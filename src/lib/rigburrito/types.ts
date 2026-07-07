@@ -24,6 +24,29 @@ export interface Deal {
   assigned_name?: string | null
 }
 
+export interface AdminLeadRow {
+  id: string
+  listing_id: string | null
+  seller_id: string
+  buyer_name: string
+  buyer_email: string
+  buyer_phone: string | null
+  buyer_company: string | null
+  message: string
+  status: string
+  tier: string | null
+  listing_title: string | null
+  listing_slug: string | null
+  listing_price: number | null
+  listing_price_unit: string | null
+  listing_tier: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  reviewer_name: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface AdminUserRow {
   id: string
   email: string
@@ -53,6 +76,8 @@ export interface AdminListingRow {
   category: string
   industry_name: string | null
   price: number
+  price_unit: string
+  price_visible: boolean
   location_city: string | null
   location_state: string | null
   status: ListingStatus

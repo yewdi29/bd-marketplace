@@ -66,41 +66,39 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('listings')
-    .select('title, meta_description, description, price, price_unit, price_visible, location_city, location_state, listing_images(url, is_primary, sort_order)')
+    .select('title, price, price_unit, price_visible, location_city, location_state, listing_images(url, sort_order)')
     .eq('slug', slug)
     .eq('status', 'active')
     .single()
 
-  if (!data) return { title: 'Listing Not Found | Black Diamond Marketplace' }
+  if (!data) return { title: 'Listing Not Found' }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const canonicalUrl = `${appUrl}/listings/${slug}`
+  const canonicalUrl = `https://blackdiamondmkt.com/listings/${slug}`
 
-  const imgs = (data.listing_images ?? []) as { url: string; is_primary: boolean; sort_order: number }[]
-  const primaryImg = imgs.find(i => i.is_primary) ?? [...imgs].sort((a, b) => a.sort_order - b.sort_order)[0]
-  const ogImage = primaryImg?.url ?? `${appUrl}/bd_logo-black.svg`
+  const imgs = (data.listing_images ?? []) as { url: string; sort_order: number }[]
+  const firstImg = [...imgs].sort((a, b) => a.sort_order - b.sort_order)[0]
+  const ogImage = firstImg?.url
 
   const location = [data.location_city, data.location_state].filter(Boolean).join(', ')
   const priceDisplay = formatPrice(data.price, data.price_unit ?? 'total', data.price_visible !== false)
-  const ogDescription = `Available on Black Diamond Marketplace${location ? ` · ${location}` : ''} · ${priceDisplay}`
-
-  const description = data.meta_description ?? data.description?.slice(0, 160) ?? ogDescription
+  const description = `${data.title} available on Black Diamond Marketplace.${location ? ` Located in ${location}.` : ''} ${priceDisplay}.`
 
   return {
     title: `${data.title} | Black Diamond Marketplace`,
     description,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: data.title,
-      description: ogDescription,
-      images: [{ url: ogImage }],
+      description,
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
       url: canonicalUrl,
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title: data.title,
-      description: ogDescription,
-      images: [ogImage],
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
     },
   }
 }

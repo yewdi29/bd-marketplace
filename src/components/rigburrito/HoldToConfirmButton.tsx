@@ -1,11 +1,14 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
 
 interface HoldToConfirmButtonProps {
   label: string
   onConfirm: () => void
   disabled?: boolean
+  variant?: 'danger' | 'warning'
+  holdLabel?: string
+  icon?: ReactNode
 }
 
 const HOLD_MS = 2000
@@ -18,6 +21,9 @@ export default function HoldToConfirmButton({
   label,
   onConfirm,
   disabled = false,
+  variant = 'danger',
+  holdLabel,
+  icon,
 }: HoldToConfirmButtonProps) {
   const [progress, setProgress] = useState(0)
   const [holding, setHolding] = useState(false)
@@ -54,6 +60,10 @@ export default function HoldToConfirmButton({
 
   const dashOffset = RING_CIRCUMFERENCE * (1 - progress)
 
+  const btnClass = variant === 'warning'
+    ? 'rigburrito-btn rigburrito-btn-warning rigburrito-hold-btn'
+    : 'rigburrito-btn rigburrito-btn-danger rigburrito-hold-btn'
+
   return (
     <button
       type="button"
@@ -63,7 +73,7 @@ export default function HoldToConfirmButton({
       onMouseLeave={stop}
       onTouchStart={startHold}
       onTouchEnd={stop}
-      className="rigburrito-btn rigburrito-btn-danger rigburrito-hold-btn"
+      className={btnClass}
       style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
       <svg
@@ -95,7 +105,9 @@ export default function HoldToConfirmButton({
           style={{ transition: holding ? 'none' : 'stroke-dashoffset 0ms' }}
         />
       </svg>
-      {holding ? 'Hold to delete...' : label}
+      {holding ? (holdLabel ?? 'Hold to confirm...') : (
+        <span className="inline-flex items-center gap-1.5">{icon}{label}</span>
+      )}
     </button>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
 import ErrorState from '@/components/rigburrito/ErrorState'
 import Pagination from '@/components/rigburrito/Pagination'
@@ -12,6 +12,7 @@ import { formatActiveListingDisplay } from '@/lib/planLimits'
 import type { AdminUserRow } from '@/lib/rigburrito/types'
 
 export default function UsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -68,46 +69,40 @@ export default function UsersPage() {
       </div>
 
       {loading ? <TableSkeleton /> : error ? <ErrorState message={error} onRetry={fetchUsers} /> : (
-        <div className="rigburrito-table-wrap">
-          <table className="rigburrito-table">
+        <div className="rigburrito-table-wrap rigburrito-table-wrap--scroll">
+          <table className="rigburrito-table rigburrito-table--data">
             <thead>
               <tr>
-                {['', 'Name', 'Email', 'Phone', 'Location', 'Company', 'Plan', 'Listings', 'Joined', ''].map(h => (
+                {['', 'Name', 'Email', 'Phone', 'Location', 'Company', 'Plan', 'Listings', 'Joined', 'Status'].map(h => (
                   <th key={h}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {users.map(u => (
-                <tr key={u.id}>
+                <tr
+                  key={u.id}
+                  className="rigburrito-table-row--clickable"
+                  onClick={() => router.push(`/rigburrito/users/${u.id}`)}
+                >
                   <td>
-                    <Link href={`/rigburrito/users/${u.id}`} className="no-underline">
-                      {u.avatar_url ? (
-                        <Image src={u.avatar_url} alt="" width={32} height={32} className="rounded-full" />
-                      ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white" style={{ background: '#6B7280' }}>
-                          {getInitials(u.full_name ?? u.email)}
-                        </div>
-                      )}
-                    </Link>
+                    {u.avatar_url ? (
+                      <Image src={u.avatar_url} alt="" width={32} height={32} className="rounded-full" />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white" style={{ background: '#6B7280' }}>
+                        {getInitials(u.full_name ?? u.email)}
+                      </div>
+                    )}
                   </td>
-                  <td className="font-medium">
-                    <Link href={`/rigburrito/users/${u.id}`} className="rigburrito-text-link hover:text-[#FF6B35]" style={{ color: '#0F1117' }}>
-                      {u.full_name ?? '—'}
-                    </Link>
-                  </td>
-                  <td className="rigburrito-caption" style={{ color: '#6B7280' }}>{u.email}</td>
-                  <td className="rigburrito-mono">{u.phone ?? ''}</td>
-                  <td className="rigburrito-caption" style={{ color: '#6B7280' }}>{formatUserLocation(u)}</td>
+                  <td className="font-medium">{u.full_name ?? '—'}</td>
+                  <td style={{ color: '#6B7280' }}>{u.email}</td>
+                  <td>{u.phone ?? ''}</td>
+                  <td style={{ color: '#6B7280' }}>{formatUserLocation(u)}</td>
                   <td>{u.company_name ?? '—'}</td>
                   <td><PlanBadge plan={u.plan} /></td>
-                  <td className="rigburrito-mono">
-                    {formatActiveListingDisplay(u.plan, u.listing_count)}
-                  </td>
-                  <td className="rigburrito-caption" style={{ color: '#6B7280' }}>{formatDate(u.created_at)}</td>
-                  <td>
-                    {u.suspended && <span className="text-xs text-red-500">Suspended</span>}
-                  </td>
+                  <td>{formatActiveListingDisplay(u.plan, u.listing_count)}</td>
+                  <td style={{ color: '#6B7280' }}>{formatDate(u.created_at)}</td>
+                  <td>{u.suspended ? <span className="text-xs text-red-500">Suspended</span> : ''}</td>
                 </tr>
               ))}
             </tbody>

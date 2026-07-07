@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /rigburrito/
+Disallow: /api/
+Disallow: /auth/
+
+Sitemap: https://blackdiamondmkt.com/sitemap.xml

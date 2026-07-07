@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as Dialog from '@radix-ui/react-dialog'
 import {
@@ -24,14 +25,18 @@ import HoldToConfirmButton from '@/components/rigburrito/HoldToConfirmButton'
 import { formatCurrency, formatDate, getInitials } from '@/lib/rigburrito/utils'
 import { DEAL_STATUSES, type Deal, type DealStatus } from '@/lib/rigburrito/types'
 
-function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
+function DealCard({ deal, onClick, highlighted }: { deal: Deal; onClick: () => void; highlighted?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: deal.id })
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined
 
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, opacity: isDragging ? 0.5 : 1 }}
+      style={{
+        ...style,
+        opacity: isDragging ? 0.5 : 1,
+        ...(highlighted ? { boxShadow: '0 0 0 2px #FF6B35', borderRadius: 12 } : {}),
+      }}
       className="rigburrito-deal-card"
       {...listeners}
       {...attributes}
@@ -50,7 +55,7 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
   )
 }
 
-function KanbanColumn({ status, label, deals, onCardClick }: { status: DealStatus; label: string; deals: Deal[]; onCardClick: (d: Deal) => void }) {
+function KanbanColumn({ status, label, deals, onCardClick, highlightId }: { status: DealStatus; label: string; deals: Deal[]; onCardClick: (d: Deal) => void; highlightId?: string | null }) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const columnDeals = deals.filter(d => d.status === status)
 
@@ -60,12 +65,16 @@ function KanbanColumn({ status, label, deals, onCardClick }: { status: DealStatu
       className={`rigburrito-kanban-col${isOver ? ' rigburrito-kanban-col--over' : ''}`}
     >
       <h3 className="rigburrito-card-label mb-3">{label} ({columnDeals.length})</h3>
-      {columnDeals.map(d => <DealCard key={d.id} deal={d} onClick={() => onCardClick(d)} />)}
+      {columnDeals.map(d => (
+        <DealCard key={d.id} deal={d} onClick={() => onCardClick(d)} highlighted={d.id === highlightId} />
+      ))}
     </div>
   )
 }
 
 export default function DealsPage() {
+  const searchParams = useSearchParams()
+  const highlightId = searchParams.get('highlight')
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -99,6 +108,13 @@ export default function DealsPage() {
   }, [])
 
   useEffect(() => { fetchDeals() }, [fetchDeals])
+
+  useEffect(() => {
+    if (!highlightId || deals.length === 0) return
+    const deal = deals.find(d => d.id === highlightId)
+    if (deal) openDeal(deal)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, deals])
 
   async function searchListings(q: string) {
     setListingSearch(q)
@@ -196,7 +212,7 @@ export default function DealsPage() {
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="flex gap-3 overflow-x-auto pb-4">
               {DEAL_STATUSES.map(col => (
-                <KanbanColumn key={col.id} status={col.id} label={col.label} deals={deals} onCardClick={openDeal} />
+                <KanbanColumn key={col.id} status={col.id} label={col.label} deals={deals} onCardClick={openDeal} highlightId={highlightId} />
               ))}
             </div>
             <DragOverlay>

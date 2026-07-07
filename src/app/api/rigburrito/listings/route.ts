@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   let query = service
     .from('listings')
     .select(
-      `id, title, slug, seller_id, category, price, location_city, location_state,
+      `id, title, slug, seller_id, category, price, price_unit, price_visible, location_city, location_state,
        status, tier, admin_flagged, created_at, industry_id, category_id,
        users!listings_seller_id_fkey(full_name, email),
        industries(name),
@@ -59,6 +59,8 @@ export async function GET(req: NextRequest) {
       category: l.category,
       industry_name: industryRow?.name ?? null,
       price: l.price,
+      price_unit: l.price_unit ?? 'total',
+      price_visible: l.price_visible !== false,
       location_city: l.location_city,
       location_state: l.location_state,
       status: l.status,

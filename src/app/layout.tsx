@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
@@ -9,6 +10,31 @@ const inter = Inter({
   display: 'swap',
 })
 
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Black Diamond Marketplace',
+  url: 'https://blackdiamondmkt.com',
+  logo: 'https://blackdiamondmkt.com/bd_logo-icon.svg',
+  description: "The World's Heavy Equipment Marketplace",
+  sameAs: [],
+}
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Black Diamond Marketplace',
+  url: 'https://blackdiamondmkt.com',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: 'https://blackdiamondmkt.com/search?q={search_term_string}',
+    },
+    'query-input': 'required name=search_term_string',
+  },
+}
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -16,17 +42,72 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://blackdiamondmkt.com'),
   title: {
-    default: 'Black Diamond Marketplace | Oil & Gas Heavy Equipment',
+    default: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
     template: '%s | Black Diamond Marketplace',
   },
-  description: 'Buy and sell heavy oil & gas equipment. Drill pipe, rigs, blowout preventers, and more. Verified listings with expert broker support.',
-  keywords: ['oil and gas equipment', 'drill pipe', 'oilfield equipment', 'heavy equipment marketplace', 'rig sales'],
+  description:
+    'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry. Source equipment locally or globally.',
+  keywords: [
+    'heavy equipment marketplace',
+    'used heavy equipment for sale',
+    'oil and gas equipment',
+    'construction equipment marketplace',
+    'mining equipment for sale',
+    'agriculture equipment',
+    'forestry equipment',
+    'industrial equipment marketplace',
+    'heavy equipment buyers sellers',
+    'Black Diamond Marketplace',
+  ],
+  authors: [{ name: 'Black Diamond Marketplace', url: 'https://blackdiamondmkt.com' }],
+  creator: 'Black Diamond Marketplace',
+  publisher: 'Black Diamond Marketplace',
+  icons: {
+    icon: [
+      { url: '/bd_logo-icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: '/bd_logo-icon.svg',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     type: 'website',
+    locale: 'en_US',
+    url: 'https://blackdiamondmkt.com',
     siteName: 'Black Diamond Marketplace',
-    title: 'Black Diamond Marketplace | Oil & Gas Heavy Equipment',
-    description: 'Buy and sell heavy oil & gas equipment. Verified listings with expert broker support.',
+    title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+    description:
+      'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+    description:
+      'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry.',
+    images: ['/og-image.png'],
+  },
+  alternates: {
+    canonical: 'https://blackdiamondmkt.com',
   },
 }
 
@@ -34,6 +115,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-bg text-ink font-sans">
+        <Script
+          id="schema-organization"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <Script
+          id="schema-website"
+          type="application/ld+json"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
         {children}
       </body>
     </html>

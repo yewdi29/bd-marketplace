@@ -8,7 +8,7 @@ import {
 import AdminCard from '@/components/rigburrito/AdminCard'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
 import ErrorState from '@/components/rigburrito/ErrorState'
-import { PLAN_BAR_COLORS, PLAN_LABELS, PLAN_ORDER, listingStatusBarColor } from '@/lib/rigburrito/chartColors'
+import { PLAN_BAR_COLORS, PLAN_LABELS, ANALYTICS_PLAN_ORDER, listingStatusBarColor } from '@/lib/rigburrito/chartColors'
 import { truncateText } from '@/lib/rigburrito/utils'
 import type { MembershipPlan } from '@/lib/types/database'
 
@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
   const search = data.search as { top_queries: { query: string; count: number }[] }
   const saved = data.saved as { top_listings: { listing_id: string; title: string; slug: string | null; seller: string; count: number }[] }
 
-  const planData = PLAN_ORDER.map(plan => ({
+  const planData = ANALYTICS_PLAN_ORDER.map(plan => ({
     name: PLAN_LABELS[plan],
     plan,
     count: users.by_plan[plan] ?? 0,

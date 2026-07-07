@@ -3,8 +3,10 @@ import type { Metadata } from 'next'
 import { Cpu, ShieldCheck, Wrench, Clock } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'About',
-  description: 'Black Diamond Marketplace was built for the people who keep the oil and gas industry running — not for the platforms that stay behind.',
+  title: 'About Us',
+  description:
+    'Black Diamond Marketplace was built by industry insiders to replace friction and opacity in heavy equipment transactions with data-driven integrity and verified connections.',
+  alternates: { canonical: 'https://blackdiamondmkt.com/about' },
 }
 
 const DIFFERENTIATORS = [

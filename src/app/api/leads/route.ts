@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createServiceClient } from '@/lib/rigburrito/service'
+import {
+  sendAdminInquiryAlert,
+  sendBuyerInquiryAutoReplyGreen,
+  sendBuyerInquiryAutoReplyIntercepted,
+  sendSellerInquiryNotification,
+  type InquiryEmailContext,
+} from '@/lib/email/inquiryEmails'
+
+type DealTier = 'green' | 'yellow' | 'red'
+
+async function processInquiryNotifications(
+  dealTier: DealTier,
+  sellerEmail: string,
+  ctx: InquiryEmailContext,
+): Promise<void> {
+  try {
+    if (dealTier === 'green') {
+      await sendSellerInquiryNotification(sellerEmail, ctx)
+      await sendBuyerInquiryAutoReplyGreen(ctx.buyerEmail)
+    } else {
+      await sendAdminInquiryAlert(dealTier, ctx)
+      await sendBuyerInquiryAutoReplyIntercepted(ctx.buyerEmail)
+    }
+  } catch (err) {
+    console.error('[leads] notification error:', err)
+  }
+}
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
@@ -29,7 +57,6 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Must supply at least one of listing_id or seller_id
   if (!listing_id && !body_seller_id) {
     return NextResponse.json(
       { error: 'Either listing_id or seller_id is required' },
@@ -43,12 +70,16 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: { user } } = await supabase.auth.getUser()
+  const service = createServiceClient()
 
-  // ── Path A: listing-specific inquiry (original flow) ──────────────────────
+  // ── Path A: listing-specific inquiry ──────────────────────────────────────
   if (listing_id) {
-    const { data: listing, error: listingError } = await supabase
+    const { data: listing, error: listingError } = await service
       .from('listings')
-      .select('id, seller_id, tier, status')
+      .select(`
+        id, seller_id, tier, status, title, price, price_unit, slug,
+        users!listings_seller_id_fkey(email)
+      `)
       .eq('id', listing_id)
       .single()
 
@@ -60,7 +91,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Listing is not active' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const dealTier = (listing.tier ?? 'green') as DealTier
+    const leadStatus = dealTier === 'green' ? 'new' : 'pending_review'
+
+    const { data, error } = await service
       .from('leads')
       .insert({
         listing_id,
@@ -72,7 +106,7 @@ export async function POST(request: NextRequest) {
         buyer_company: buyer_company ?? null,
         message,
         tier: listing.tier,
-        status: 'new',
+        status: leadStatus,
       })
       .select()
       .single()
@@ -81,11 +115,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    const seller = listing.users as unknown as { email: string } | null
+    const sellerEmail = seller?.email
+    if (sellerEmail) {
+      const emailCtx: InquiryEmailContext = {
+        listingTitle: listing.title,
+        listingPrice: Number(listing.price),
+        priceUnit: listing.price_unit ?? 'total',
+        listingSlug: listing.slug,
+        buyerName: buyer_name,
+        buyerEmail: buyer_email,
+        buyerPhone: buyer_phone,
+        buyerCompany: buyer_company,
+        message,
+      }
+      await processInquiryNotifications(dealTier, sellerEmail, emailCtx)
+    }
+
     return NextResponse.json({ lead: data }, { status: 201 })
   }
 
   // ── Path B: seller-profile direct inquiry (no listing) ────────────────────
-  const { data, error } = await supabase
+  const { data, error } = await service
     .from('leads')
     .insert({
       listing_id: null,

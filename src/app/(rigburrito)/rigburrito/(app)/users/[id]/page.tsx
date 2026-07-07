@@ -5,18 +5,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Package } from 'lucide-react'
-import AdminButton from '@/components/rigburrito/AdminButton'
+import UserAdminActions from '@/components/rigburrito/UserAdminActions'
 import AdminCard from '@/components/rigburrito/AdminCard'
 import EmptyState from '@/components/rigburrito/EmptyState'
 import ErrorState from '@/components/rigburrito/ErrorState'
-import HoldToConfirmButton from '@/components/rigburrito/HoldToConfirmButton'
 import PlanBadge from '@/components/rigburrito/PlanBadge'
 import StatusBadge from '@/components/rigburrito/StatusBadge'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
 import { formatActiveListingDisplay } from '@/lib/planLimits'
 import { formatCurrency, formatDate, formatUserLocation, getInitials } from '@/lib/rigburrito/utils'
 import type { AdminUserRow } from '@/lib/rigburrito/types'
-import type { ListingStatus, MembershipPlan } from '@/lib/types/database'
+import type { ListingStatus } from '@/lib/types/database'
 
 interface UserListing {
   id: string
@@ -58,21 +57,6 @@ export default function UserDetailPage() {
   }, [id])
 
   useEffect(() => { fetchUser() }, [fetchUser])
-
-  async function updateUser(field: string, value: unknown) {
-    await fetch(`/api/rigburrito/users/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-    fetchUser()
-  }
-
-  async function deleteUser() {
-    await fetch(`/api/rigburrito/users/${id}`, { method: 'DELETE' })
-    router.push('/rigburrito/users')
-    router.refresh()
-  }
 
   if (loading) {
     return (
@@ -187,28 +171,16 @@ export default function UserDetailPage() {
 
       <AdminCard>
         <h2 className="rigburrito-section-title">Admin Actions</h2>
-        <div className="mb-4">
-          <p className="rigburrito-card-label mb-2">Override Plan</p>
-          <select
-            value={user.plan}
-            onChange={e => updateUser('plan', e.target.value as MembershipPlan)}
-            className="rigburrito-select"
-            style={{ width: '100%', maxWidth: 280 }}
-          >
-            <option value="free">Free</option>
-            <option value="starter">Starter</option>
-            <option value="pro">Pro</option>
-            <option value="max">Max</option>
-          </select>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {user.suspended ? (
-            <AdminButton variant="secondary" onClick={() => updateUser('suspended', false)}>Unsuspend</AdminButton>
-          ) : (
-            <AdminButton variant="danger" onClick={() => updateUser('suspended', true)}>Suspend Account</AdminButton>
-          )}
-          <HoldToConfirmButton label="Delete User" onConfirm={deleteUser} />
-        </div>
+        {user && (
+          <UserAdminActions
+            user={user}
+            onUpdated={fetchUser}
+            onDeleted={() => {
+              router.push('/rigburrito/users')
+              router.refresh()
+            }}
+          />
+        )}
       </AdminCard>
     </div>
   )

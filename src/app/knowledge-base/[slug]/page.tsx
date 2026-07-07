@@ -90,20 +90,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const { data } = await supabase
     .from('articles')
-    .select('title, meta_description, featured_image')
+    .select('title, excerpt, meta_description, featured_image')
     .eq('slug', slug)
     .eq('status', 'published')
     .single()
 
   if (!data) return { title: 'Article Not Found' }
 
+  const canonicalUrl = `https://blackdiamondmkt.com/knowledge-base/${slug}`
+  const description = data.meta_description ?? data.excerpt ?? undefined
+  const ogImage = data.featured_image ?? 'https://blackdiamondmkt.com/og-image.png'
+
   return {
-    title: data.title,
-    description: data.meta_description ?? undefined,
+    title: `${data.title} | The Operator Journal`,
+    description,
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: data.title,
-      description: data.meta_description ?? undefined,
-      images: data.featured_image ? [data.featured_image] : undefined,
+      description,
+      images: [{ url: ogImage }],
+      url: canonicalUrl,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: data.title,
+      description,
+      images: [ogImage],
     },
   }
 }

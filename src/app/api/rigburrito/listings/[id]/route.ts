@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
+import { sendListingRemovedNotification } from '@/lib/email/inquiryEmails'
 
 export async function GET(
   _req: NextRequest,
@@ -53,6 +54,14 @@ export async function PATCH(
   const { error } = await service.from('listings').update(updates).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  if (updates.status === 'active') {
+    await service
+      .from('listing_flags')
+      .update({ resolved_at: new Date().toISOString() })
+      .eq('listing_id', id)
+      .is('resolved_at', null)
+  }
+
   return NextResponse.json({ success: true })
 }
 
@@ -65,8 +74,24 @@ export async function DELETE(
 
   const { id } = await params
   const service = createServiceClient()
+
+  const { data: listing } = await service
+    .from('listings')
+    .select('title, users!listings_seller_id_fkey(email)')
+    .eq('id', id)
+    .single()
+
   const { error } = await service.from('listings').update({ status: 'removed' }).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const seller = listing?.users as unknown as { email: string } | null
+  if (seller?.email && listing?.title) {
+    try {
+      await sendListingRemovedNotification(seller.email, listing.title)
+    } catch (err) {
+      console.error('[listings] remove notification error:', err)
+    }
+  }
 
   return NextResponse.json({ success: true })
 }

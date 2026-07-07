@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Inbox } from 'lucide-react'
 import StatCard from '@/components/rigburrito/StatCard'
+import UserLocationsCard from '@/components/rigburrito/UserLocationsCard'
+import type { UserLocationRow } from '@/components/rigburrito/UserLocationsCard'
 import AdminCard from '@/components/rigburrito/AdminCard'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
 import ErrorState from '@/components/rigburrito/ErrorState'
@@ -35,6 +37,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([])
   const [pendingListings, setPendingListings] = useState<PendingListing[]>([])
+  const [userLocations, setUserLocations] = useState<UserLocationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -48,6 +51,7 @@ export default function DashboardPage() {
       setStats(data.stats)
       setRecentUsers(data.recent_users)
       setPendingListings(data.pending_listings)
+      setUserLocations(data.user_locations ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard')
     } finally {
@@ -82,7 +86,7 @@ export default function DashboardPage() {
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Total Users" value={String(stats?.total_users ?? 0)} trendPct={stats?.users_trend_pct} />
         <StatCard label="Active Listings" value={String(stats?.active_listings ?? 0)} trendPct={stats?.active_listings_trend_pct} />
-        <StatCard label="Total Listings" value={String(stats?.total_listings ?? 0)} trendPct={stats?.total_listings_trend_pct} />
+        <UserLocationsCard locations={userLocations} />
         <StatCard label="MRR" value={formatCurrency(stats?.mrr ?? 0)} trendPct={stats?.mrr_trend_pct} showSparkline={stats?.mrr_trend_pct != null} />
         <StatCard label="New Signups This Month" value={String(stats?.new_signups_month ?? 0)} trendPct={stats?.signups_trend_pct} />
         <StatCard label="New Listings This Month" value={String(stats?.new_listings_month ?? 0)} trendPct={stats?.listings_trend_pct} />

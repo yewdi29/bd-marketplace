@@ -1,6 +1,12 @@
 import DashboardNav from '@/components/layout/DashboardNav'
 import { createClient } from '@/lib/supabase/server'
 import type { MembershipPlan } from '@/lib/types/database'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Dashboard',
+  robots: { index: false, follow: false },
+}
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()

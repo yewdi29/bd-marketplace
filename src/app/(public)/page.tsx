@@ -1,5 +1,6 @@
 import HeroGlobeLazy from '@/components/home/HeroGlobeLazy'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import FeaturedEquipmentSection, { FeaturedCarouselSkeleton } from '@/components/home/FeaturedEquipmentSection'
 import CategoryBrowse from '@/components/home/CategoryBrowse'
@@ -13,6 +14,17 @@ import {
   NewsletterSkeleton,
   OperatorJournalSkeleton,
 } from '@/components/home/HomeSectionSkeletons'
+
+export const metadata: Metadata = {
+  title: "The World's Heavy Equipment Marketplace",
+  description:
+    'Source heavy equipment from verified sellers across oil and gas, construction, mining, agriculture, and forestry. Buy and sell globally on Black Diamond Marketplace.',
+  alternates: { canonical: 'https://blackdiamondmkt.com' },
+  openGraph: {
+    url: 'https://blackdiamondmkt.com',
+    title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+  },
+}
 
 const INDUSTRY_TAGS = [
   { label: 'Energy',       dotColor: '#E8E9EA' },

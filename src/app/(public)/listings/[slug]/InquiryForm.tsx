@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   listingId: string
@@ -21,6 +22,27 @@ export default function InquiryForm({ listingId, sellerId }: Props) {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase
+        .from('users')
+        .select('full_name, email, phone')
+        .eq('id', user.id)
+        .single()
+        .then(({ data: profile }) => {
+          if (!profile) return
+          setForm(f => ({
+            ...f,
+            buyer_name: profile.full_name ?? f.buyer_name,
+            buyer_email: profile.email ?? f.buyer_email,
+            buyer_phone: profile.phone ?? f.buyer_phone,
+          }))
+        })
+    })
+  }, [])
 
   function set(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>

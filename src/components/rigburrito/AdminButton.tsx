@@ -1,6 +1,6 @@
 import { ReactNode, ButtonHTMLAttributes } from 'react'
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'accent' | 'icon'
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'accent' | 'icon' | 'success' | 'muted' | 'warning'
 
 interface AdminButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -13,6 +13,9 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
   danger: 'rigburrito-btn rigburrito-btn-danger',
   accent: 'rigburrito-btn rigburrito-btn-accent',
   icon: 'rigburrito-btn-icon',
+  success: 'rigburrito-btn rigburrito-btn-success',
+  muted: 'rigburrito-btn rigburrito-btn-muted',
+  warning: 'rigburrito-btn rigburrito-btn-warning',
 }
 
 export default function AdminButton({

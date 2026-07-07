@@ -1,10 +1,13 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import type { Article, ArticleCategory } from '@/lib/types/database'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'The Operator Journal',
-  description: 'Expert guides on oil & gas equipment: drill pipe specs, rig types, BOP maintenance, and industry insights.',
+  description:
+    'Field guides, maintenance checklists, market insights, and industry knowledge for heavy equipment operators and procurement professionals.',
+  alternates: { canonical: 'https://blackdiamondmkt.com/knowledge-base' },
 }
 
 const CATEGORY_LABELS: Record<ArticleCategory, string> = {
