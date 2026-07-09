@@ -26,6 +26,7 @@ export async function sendEmail(opts: {
   subject: string
   html: string
   replyTo?: string
+  from?: string
 }): Promise<void> {
   const resend = getResend()
   if (!resend) {
@@ -33,7 +34,7 @@ export async function sendEmail(opts: {
     return
   }
   await resend.emails.send({
-    from: EMAIL_FROM,
+    from: opts.from ?? EMAIL_FROM,
     to: opts.to,
     subject: opts.subject,
     html: opts.html,

@@ -66,10 +66,10 @@ export const metadata: Metadata = {
   publisher: 'Black Diamond Marketplace',
   icons: {
     icon: [
-      { url: '/bd_logo-icon.svg', type: 'image/svg+xml' },
+      { url: '/bd-favicon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: 'any' },
     ],
-    apple: '/bd_logo-icon.svg',
+    apple: '/bd-favicon.svg',
   },
   robots: {
     index: true,

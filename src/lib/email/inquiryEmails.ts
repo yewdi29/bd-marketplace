@@ -193,3 +193,67 @@ export async function sendListingFlaggedNotification(
     ),
   })
 }
+
+export async function sendListingApprovedNotification(
+  sellerEmail: string,
+  listingTitle: string,
+  listingSlug: string | null,
+): Promise<void> {
+  const listingUrl = listingSlug
+    ? `${getAppUrl()}/listings/${listingSlug}`
+    : getAppUrl()
+
+  await sendEmail({
+    from: 'noreply@blackdiamondmkt.com',
+    to: sellerEmail,
+    subject: `Your listing is now live — ${listingTitle}`,
+    html: emailLayout(
+      'Your listing is now live on Black Diamond Marketplace',
+      `
+        <p style="font-size:14px;line-height:1.7;">Your listing has been reviewed and approved by our team.</p>
+        <p style="font-size:14px;line-height:1.7;">Your listing <strong>${escapeHtml(listingTitle)}</strong> is now live and visible to buyers.</p>
+        <p style="margin-top:16px;">
+          <a href="${listingUrl}" style="display:inline-block;background:#FF6B35;color:#fff;text-decoration:none;padding:12px 24px;border-radius:999px;font-size:14px;font-weight:600;">View Listing →</a>
+        </p>
+      `,
+    ),
+  })
+}
+
+export async function sendRedTierListingAlert(opts: {
+  listingTitle: string
+  listingPrice: number
+  sellerName: string
+  sellerEmail: string
+}): Promise<void> {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL
+  if (!adminEmail) {
+    console.warn('[email] ADMIN_ALERT_EMAIL not set — skipping red tier alert')
+    return
+  }
+
+  const commandCenterUrl = `${getAppUrl()}/rigburrito/listings`
+  const formattedPrice = formatPriceAmount(opts.listingPrice, 'total')
+
+  await sendEmail({
+    to: adminEmail,
+    subject: `[RED TIER] New high-value listing — ${opts.listingTitle}`,
+    html: emailLayout(
+      'Red tier listing published',
+      `
+        <div style="background:#FEF2F2;border:2px solid #FECACA;border-radius:12px;padding:20px;margin-bottom:20px;">
+          <p style="margin:0;font-size:14px;font-weight:600;color:#DC2626;">This listing exceeds $500,000 and requires your immediate review.</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+          ${infoRow('Listing', escapeHtml(opts.listingTitle))}
+          ${infoRow('Price', formattedPrice)}
+          ${infoRow('Seller', escapeHtml(opts.sellerName))}
+          ${infoRow('Seller email', `<a href="mailto:${escapeHtml(opts.sellerEmail)}" style="color:#FF6B35;">${escapeHtml(opts.sellerEmail)}</a>`)}
+        </table>
+        <p style="margin-top:24px;">
+          <a href="${commandCenterUrl}" style="display:inline-block;background:#FF6B35;color:#fff;text-decoration:none;padding:12px 24px;border-radius:999px;font-size:14px;font-weight:600;">Review in Command Center →</a>
+        </p>
+      `,
+    ),
+  })
+}

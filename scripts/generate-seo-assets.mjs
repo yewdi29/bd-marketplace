@@ -1,17 +1,19 @@
 /**
- * Generates /public/og-image.png (1200×630) and /public/favicon.ico (32×32)
- * from /public/bd_logo-icon.svg. Run: node scripts/generate-seo-assets.mjs
+ * Generates /public/og-image.png (1200×630) and /public/favicon.ico (32×32).
+ * OG image uses /public/bd_logo-icon.svg; favicon uses /public/bd-favicon.svg.
+ * Run: node scripts/generate-seo-assets.mjs
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const publicDir = join(__dirname, '..', 'public')
-const iconSvgPath = join(publicDir, 'bd_logo-icon.svg')
+const logoIconSvgPath = join(publicDir, 'bd_logo-icon.svg')
+const faviconSvgPath = join(publicDir, 'bd-favicon.svg')
 
-const iconSvg = await readFile(iconSvgPath, 'utf8')
+const iconSvg = await readFile(logoIconSvgPath, 'utf8')
 const whiteIcon = iconSvg.replace(/fill="black"[^/]*/g, 'fill="white"')
 
 const ogSvg = `<?xml version="1.0" encoding="UTF-8"?>
@@ -28,7 +30,7 @@ await sharp(Buffer.from(ogSvg))
   .png()
   .toFile(join(publicDir, 'og-image.png'))
 
-await sharp(iconSvgPath)
+await sharp(faviconSvgPath)
   .resize(32, 32)
   .png()
   .toFile(join(publicDir, 'favicon.ico'))
