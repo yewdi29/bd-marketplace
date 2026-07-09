@@ -61,11 +61,11 @@ function isStepOneDraft(listing: MyListing): boolean {
 function statusBadge(status: ListingStatus): { bg: string; text: string; border: string; label: string } {
   switch (status) {
     case 'active':
-      return { bg: '#F0FFF0', text: '#1A5C18', border: '#C8F5C4', label: 'Active' }
+      return { bg: '#F0FDF4', text: '#16A34A', border: '#BBF7D0', label: 'Live' }
     case 'draft':
       return { bg: '#F4F4F5', text: '#71717A', border: '#E4E4E7', label: 'Draft' }
     case 'pending_review':
-      return { bg: '#FDF6E3', text: '#7A5C00', border: '#F0D98A', label: 'Unpublished' }
+      return { bg: '#FFFBEB', text: '#D97706', border: '#FDE68A', label: 'Pending Approval' }
     case 'sold':
       return { bg: '#FFF0F0', text: '#CC0000', border: '#FFCCCC', label: 'Sold' }
   }
@@ -510,63 +510,70 @@ function MyListingCard({
   }
 
   return (
-    <div
-      className={`relative rounded-[12px] overflow-hidden${isManaging ? ' z-20' : ''}`}
-      style={{
-        opacity: isDeleting ? 0 : 1,
-        transform: isDeleting ? 'scale(0.94)' : 'scale(1)',
-        transition: 'opacity 300ms ease, transform 300ms ease',
-        pointerEvents: isDeleting ? 'none' : undefined,
-      }}
-    >
-      {isManaging && (
-        <CardOverlay
-          listing={listing}
-          onClose={onCloseManage}
-          onAction={onAction}
-          onDelete={onDelete}
-          onEdit={onEdit}
-          atLimit={atLimit}
-          onLimitReached={onLimitReached}
-        />
-      )}
+    <div>
+      <div
+        className={`relative rounded-[12px] overflow-hidden${isManaging ? ' z-20' : ''}`}
+        style={{
+          opacity: isDeleting ? 0 : 1,
+          transform: isDeleting ? 'scale(0.94)' : 'scale(1)',
+          transition: 'opacity 300ms ease, transform 300ms ease',
+          pointerEvents: isDeleting ? 'none' : undefined,
+        }}
+      >
+        {isManaging && (
+          <CardOverlay
+            listing={listing}
+            onClose={onCloseManage}
+            onAction={onAction}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            atLimit={atLimit}
+            onLimitReached={onLimitReached}
+          />
+        )}
 
-      <ListingCardClickable
-        listing={toListingCardListing(listing)}
-        onClick={handleCardClick}
-        showSave={false}
-        showShare={false}
-        disableHoverLift={isManaging || isDeleting}
-        thumbnailOverlay={
-          <>
-            <div className="absolute top-2 left-2">
-              <span
-                className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-bold rounded-pill border"
-                style={{ background: badge.bg, color: badge.text, borderColor: badge.border }}
-              >
-                {badge.label}
-              </span>
-            </div>
-            {isNavigable && !isManaging && (
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="w-6 h-6 bg-white border border-[#E8E9EA] rounded-full flex items-center justify-center text-[#1A1D20] hover:border-[#9A9DA2] transition-colors">
-                  <ExternalLinkIcon />
-                </div>
+        <ListingCardClickable
+          listing={toListingCardListing(listing)}
+          onClick={handleCardClick}
+          showSave={false}
+          showShare={false}
+          disableHoverLift={isManaging || isDeleting}
+          thumbnailOverlay={
+            <>
+              <div className="absolute top-2 left-2">
+                <span
+                  className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono font-bold rounded-pill border"
+                  style={{ background: badge.bg, color: badge.text, borderColor: badge.border }}
+                >
+                  {badge.label}
+                </span>
               </div>
-            )}
-          </>
-        }
-        footer={
-          <div className="px-3 pb-3 pt-0">
-            <button
-              onClick={e => { e.stopPropagation(); onManage(listing) }}
-              className="w-full py-1.5 text-xs font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
-            >
-              Manage
-            </button>
-          </div>
-        }
-      />
+              {isNavigable && !isManaging && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-6 h-6 bg-white border border-[#E8E9EA] rounded-full flex items-center justify-center text-[#1A1D20] hover:border-[#9A9DA2] transition-colors">
+                    <ExternalLinkIcon />
+                  </div>
+                </div>
+              )}
+            </>
+          }
+          footer={
+            <div className="px-3 pb-3 pt-0">
+              <button
+                onClick={e => { e.stopPropagation(); onManage(listing) }}
+                className="w-full py-1.5 text-xs font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
+              >
+                Manage
+              </button>
+            </div>
+          }
+        />
+      </div>
+      {listing.status === 'pending_review' && (
+        <p className="mt-2 px-1 text-[12px] leading-relaxed" style={{ color: '#9CA3AF' }}>
+          Your listing is pending approval and will go live once reviewed by our team.
+        </p>
+      )}
     </div>
   )
 }
@@ -589,6 +596,7 @@ export default function DashboardPage() {
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
   const [showLimitModal, setShowLimitModal] = useState(false)
+  const [sellerId, setSellerId] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -630,6 +638,7 @@ export default function DashboardPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setSellerId(user.id)
 
       const [planRes, listingsRes] = await Promise.all([
         supabase.from('users').select('plan').eq('id', user.id).single(),
@@ -661,6 +670,39 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    if (!sellerId) return
+
+    const channel = supabase
+      .channel(`seller-listings-${sellerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'listings',
+          filter: `seller_id=eq.${sellerId}`,
+        },
+        payload => {
+          const updated = payload.new as { id?: string; status?: ListingStatus }
+          if (!updated.id || !updated.status) return
+
+          setListings(prev =>
+            prev.map(listing =>
+              listing.id === updated.id
+                ? { ...listing, status: updated.status as ListingStatus }
+                : listing,
+            ),
+          )
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [sellerId, supabase])
 
   useEffect(() => {
     if (activeMainTab === 'saved') fetchSaved()

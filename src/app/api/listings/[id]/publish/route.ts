@@ -108,19 +108,11 @@ export async function PATCH(
   // Regenerate slug from the final title so drafts don't keep 'untitled-draft-xxx'
   const slug = `${slugify(listing.title)}-${params.id.slice(0, 8)}`
 
-  const { count: unresolvedFlags } = await adminClient
-    .from('listing_flags')
-    .select('id', { count: 'exact', head: true })
-    .eq('listing_id', params.id)
-    .is('resolved_at', null)
-
-  const newStatus = (unresolvedFlags ?? 0) > 0 ? 'pending_review' : 'active'
-
   const { error } = await adminClient
     .from('listings')
-    .update({ status: newStatus, slug, updated_at: new Date().toISOString() })
+    .update({ status: 'pending_review', slug, updated_at: new Date().toISOString() })
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true, status: newStatus })
+  return NextResponse.json({ success: true, status: 'pending_review' })
 }
