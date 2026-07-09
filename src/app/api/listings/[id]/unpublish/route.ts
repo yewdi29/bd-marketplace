@@ -29,7 +29,7 @@ export async function PATCH(
 
   const { error } = await adminClient
     .from('listings')
-    .update({ status: 'pending_review', updated_at: new Date().toISOString() })
+    .update({ status: 'draft', updated_at: new Date().toISOString() })
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
