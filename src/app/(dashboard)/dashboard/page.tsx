@@ -27,6 +27,7 @@ interface MyListing {
   status: ListingStatus
   slug: string
   created_at: string
+  last_approved_at: string | null
   location_city: string | null
   location_state: string | null
   primary_image_url: string | null
@@ -571,7 +572,9 @@ function MyListingCard({
       </div>
       {listing.status === 'pending_review' && (
         <p className="mt-2 px-1 text-[12px] leading-relaxed" style={{ color: '#9CA3AF' }}>
-          Your listing is pending approval and will go live once reviewed by our team.
+          {listing.last_approved_at
+            ? 'Your listing was updated and is pending re-approval. It will go live again once reviewed by our team.'
+            : 'Your listing is pending approval and will go live once reviewed by our team.'}
         </p>
       )}
     </div>
@@ -670,6 +673,28 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  const newListingFromUrl = useRef(false)
+  useEffect(() => {
+    if (loading || newListingFromUrl.current) return
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('new') !== 'true') return
+
+    newListingFromUrl.current = true
+    params.delete('new')
+    const remaining = params.toString()
+    window.history.replaceState({}, '', window.location.pathname + (remaining ? `?${remaining}` : ''))
+
+    const activeCount = listings.filter(l => l.status === 'active').length
+    const limit = PLAN_LIMITS[plan]
+    if (activeCount >= limit) {
+      router.push('/dashboard/upgrade')
+      return
+    }
+    setResumeListingId(null)
+    setShowNewListing(true)
+  }, [loading, listings, plan, router])
 
   useEffect(() => {
     if (!sellerId) return

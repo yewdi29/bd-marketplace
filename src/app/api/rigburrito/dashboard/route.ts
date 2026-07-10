@@ -3,6 +3,13 @@ import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
 import { calculateMRR } from '@/lib/rigburrito/stripe'
 import { calcTrendPct } from '@/lib/rigburrito/utils'
+import {
+  buildActiveListingsHistory,
+  buildCumulativeUserHistory,
+  buildMrrHistory,
+  buildWeekLabels,
+  buildWeeklyCountHistory,
+} from '@/lib/rigburrito/dashboardHistory'
 
 function buildUserLocations(
   users: { country: string | null }[],
@@ -36,6 +43,29 @@ function buildUserLocations(
   return rows
 }
 
+function buildUserLocationsFull(
+  users: { country: string | null }[],
+  countries: { name: string; iso_code: string | null }[],
+) {
+  const isoByName = new Map(
+    countries.map(c => [c.name.trim().toLowerCase(), c.iso_code]),
+  )
+
+  const counts = new Map<string, number>()
+  for (const user of users) {
+    const key = user.country?.trim() || 'Unknown'
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([country, count]) => ({
+      country,
+      iso_code: isoByName.get(country.toLowerCase()) ?? null,
+      count,
+    }))
+}
+
 export async function GET() {
   const auth = await requireAdminApi()
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
@@ -45,6 +75,8 @@ export async function GET() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
   const lastMonthEnd = monthStart
+  const eightWeeksAgo = new Date()
+  eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
 
   const [
     { count: totalUsers },
@@ -56,10 +88,14 @@ export async function GET() {
     { count: listingsLastMonth },
     { count: activeLastMonth },
     { count: totalLastMonth },
+    { data: allUsers },
     { data: recentUsers },
     { data: pendingListings },
     { data: userCountries },
     { data: countries },
+    { data: allListings },
+    { data: recentListings },
+    { data: recentSignups },
   ] = await Promise.all([
     service.from('users').select('*', { count: 'exact', head: true }),
     service.from('listings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
@@ -73,6 +109,7 @@ export async function GET() {
     service.from('listings').select('*', { count: 'exact', head: true })
       .eq('status', 'active').lt('created_at', monthStart),
     service.from('listings').select('*', { count: 'exact', head: true }).lt('created_at', monthStart),
+    service.from('users').select('created_at, country'),
     service.from('users')
       .select('id, full_name, email, plan, created_at')
       .order('created_at', { ascending: false })
@@ -84,6 +121,9 @@ export async function GET() {
       .limit(5),
     service.from('users').select('country'),
     service.from('countries').select('name, iso_code'),
+    service.from('listings').select('created_at, status'),
+    service.from('listings').select('created_at').gte('created_at', eightWeeksAgo.toISOString()),
+    service.from('users').select('created_at').gte('created_at', eightWeeksAgo.toISOString()),
   ])
 
   let mrr = 0
@@ -91,6 +131,15 @@ export async function GET() {
     mrr = await calculateMRR()
   } catch {
     mrr = 0
+  }
+
+  const weeks = buildWeekLabels()
+  const metricHistory = {
+    total_users: buildCumulativeUserHistory(allUsers ?? [], weeks),
+    active_listings: buildActiveListingsHistory(allListings ?? [], weeks),
+    mrr: buildMrrHistory(mrr, weeks),
+    new_signups: buildWeeklyCountHistory(recentSignups ?? [], weeks),
+    new_listings: buildWeeklyCountHistory(recentListings ?? [], weeks),
   }
 
   const pendingListingsFormatted = (pendingListings ?? []).map(l => {
@@ -104,6 +153,8 @@ export async function GET() {
       seller_name: seller?.full_name ?? seller?.email ?? 'Unknown',
     }
   })
+
+  const userLocationsFull = buildUserLocationsFull(userCountries ?? [], countries ?? [])
 
   return NextResponse.json({
     success: true,
@@ -121,8 +172,15 @@ export async function GET() {
       signups_trend_pct: calcTrendPct(newSignupsMonth ?? 0, signupsLastMonth ?? 0),
       listings_trend_pct: calcTrendPct(newListingsMonth ?? 0, listingsLastMonth ?? 0),
     },
+    metric_history: metricHistory,
+    metric_history_notes: {
+      active_listings:
+        'Approximation: counts active listings created on or before each week — not a true historical snapshot.',
+      mrr: 'Stripe MRR history is unavailable; chart shows flat current MRR across weeks.',
+    },
     recent_users: recentUsers ?? [],
     pending_listings: pendingListingsFormatted,
     user_locations: buildUserLocations(userCountries ?? [], countries ?? []),
+    user_locations_full: userLocationsFull,
   })
 }

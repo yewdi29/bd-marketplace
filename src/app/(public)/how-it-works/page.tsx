@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Button from '@/components/ui/Button'
+import SellerPortalLink from '@/components/SellerPortalLink'
 
 const SELLERS_STEPS = [
   {
@@ -200,12 +200,14 @@ export default function HowItWorksPage() {
         {/* CTA */}
         <div className="mt-12">
           {activeTab === 'sellers' ? (
-            <Link href="/auth/signup">
-              <Button variant="primary" size="lg">Start Listing Equipment</Button>
-            </Link>
+            <SellerPortalLink className="inline-flex items-center justify-center font-sans font-bold tracking-wide transition-all duration-200 rounded-pill bg-orange text-white hover:bg-orange-lt shadow-orange-glow px-8 py-3 text-base">
+              Start Listing Equipment
+            </SellerPortalLink>
           ) : (
             <Link href="/search">
-              <Button variant="primary" size="lg">Browse Equipment</Button>
+              <span className="inline-flex items-center justify-center font-sans font-bold tracking-wide transition-all duration-200 rounded-pill bg-orange text-white hover:bg-orange-lt shadow-orange-glow px-8 py-3 text-base">
+                Browse Equipment
+              </span>
             </Link>
           )}
         </div>
@@ -304,14 +306,12 @@ export default function HowItWorksPage() {
           Ready to get started?
         </h2>
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Link href="/auth/signup">
-            <button
-              className="font-sans font-bold text-sm text-ink bg-white rounded-pill px-8 py-3 transition-all duration-200 hover:bg-white/90"
-              style={{ letterSpacing: '0.01em' }}
-            >
-              List Equipment
-            </button>
-          </Link>
+          <SellerPortalLink
+            className="font-sans font-bold text-sm text-ink bg-white rounded-pill px-8 py-3 transition-all duration-200 hover:bg-white/90 inline-flex items-center justify-center"
+            style={{ letterSpacing: '0.01em' }}
+          >
+            List Equipment
+          </SellerPortalLink>
           <Link href="/search">
             <button
               className="font-sans font-bold text-sm text-white bg-transparent rounded-pill px-8 py-3 transition-all duration-200 hover:bg-white/10"

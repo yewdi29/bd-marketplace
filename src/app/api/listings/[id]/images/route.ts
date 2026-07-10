@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { applyMajorChangeReview } from '@/lib/listings/applyMajorChangeReview'
+import type { ListingChangeSnapshot } from '@/lib/listings/detectMajorChange'
 
 type Params = { params: { id: string } }
 
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   // Ownership check
   const { data: listing } = await adminClient
     .from('listings')
-    .select('seller_id')
+    .select('seller_id, status')
     .eq('id', params.id)
     .single()
 
@@ -36,13 +38,19 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Check photo count limit
-  const { count: existingCount } = await adminClient
+  const statusBeforeEdit = listing.status as string
+
+  const { data: existingImages } = await adminClient
     .from('listing_images')
-    .select('id', { count: 'exact', head: true })
+    .select('id')
     .eq('listing_id', params.id)
 
-  if ((existingCount ?? 0) >= 20) {
+  const oldSnapshot: ListingChangeSnapshot = {
+    listing_images: existingImages ?? [],
+  }
+
+  const existingCount = existingImages?.length ?? 0
+  if (existingCount >= 20) {
     return NextResponse.json({ error: 'Maximum of 20 photos per listing' }, { status: 400 })
   }
 
@@ -73,7 +81,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     .getPublicUrl(storagePath)
 
   // First image in this listing is auto-primary
-  const isPrimary = (existingCount ?? 0) === 0
+  const isPrimary = existingCount === 0
 
   const { data: imgRecord, error: insertError } = await adminClient
     .from('listing_images')
@@ -81,7 +89,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       listing_id: params.id,
       storage_path: storagePath,
       url: publicUrl,
-      sort_order: existingCount ?? 0,
+      sort_order: existingCount,
       is_primary: isPrimary,
     })
     .select('id, url')
@@ -92,6 +100,19 @@ export async function POST(request: NextRequest, { params }: Params) {
     await adminClient.storage.from('listing-images').remove([storagePath])
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
+
+  const { data: updatedImages } = await adminClient
+    .from('listing_images')
+    .select('id')
+    .eq('listing_id', params.id)
+
+  await applyMajorChangeReview(
+    adminClient,
+    params.id,
+    oldSnapshot,
+    { listing_images: updatedImages ?? [] },
+    statusBeforeEdit,
+  )
 
   return NextResponse.json({ image: imgRecord }, { status: 201 })
 }
@@ -122,12 +143,23 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   // Ownership check via listing
   const { data: listing } = await adminClient
     .from('listings')
-    .select('seller_id')
+    .select('seller_id, status')
     .eq('id', params.id)
     .single()
 
   if (!listing || listing.seller_id !== user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const statusBeforeEdit = listing.status as string
+
+  const { data: existingImages } = await adminClient
+    .from('listing_images')
+    .select('id')
+    .eq('listing_id', params.id)
+
+  const oldSnapshot: ListingChangeSnapshot = {
+    listing_images: existingImages ?? [],
   }
 
   // Get the image record
@@ -160,6 +192,19 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       .update({ is_primary: true })
       .eq('id', remaining[0].id)
   }
+
+  const { data: updatedImages } = await adminClient
+    .from('listing_images')
+    .select('id')
+    .eq('listing_id', params.id)
+
+  await applyMajorChangeReview(
+    adminClient,
+    params.id,
+    oldSnapshot,
+    { listing_images: updatedImages ?? [] },
+    statusBeforeEdit,
+  )
 
   return NextResponse.json({ success: true })
 }

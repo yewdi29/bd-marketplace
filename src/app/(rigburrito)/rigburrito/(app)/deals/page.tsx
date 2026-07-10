@@ -23,7 +23,7 @@ import ErrorState from '@/components/rigburrito/ErrorState'
 import SlideOver from '@/components/rigburrito/SlideOver'
 import HoldToConfirmButton from '@/components/rigburrito/HoldToConfirmButton'
 import { formatCurrency, formatDate, getInitials } from '@/lib/rigburrito/utils'
-import { DEAL_STATUSES, type Deal, type DealStatus } from '@/lib/rigburrito/types'
+import { DEAL_ACTIVE_STATUSES, DEAL_NEXT_STAGE, DEAL_STATUSES, type Deal, type DealStatus } from '@/lib/rigburrito/types'
 
 function DealCard({ deal, onClick, highlighted }: { deal: Deal; onClick: () => void; highlighted?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: deal.id })
@@ -90,6 +90,11 @@ export default function DealsPage() {
   })
   const [editForm, setEditForm] = useState<Partial<Deal>>({})
   const [newNote, setNewNote] = useState('')
+  const [closeWonOpen, setCloseWonOpen] = useState(false)
+  const [closeWonDealId, setCloseWonDealId] = useState<string | null>(null)
+  const [closeWonFinalPrice, setCloseWonFinalPrice] = useState('')
+  const [closeWonCommission, setCloseWonCommission] = useState('')
+  const [closeWonError, setCloseWonError] = useState('')
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -147,6 +152,16 @@ export default function DealsPage() {
     if (!newStatus || !DEAL_STATUSES.find(s => s.id === newStatus)) return
     const deal = deals.find(d => d.id === dealId)
     if (!deal || deal.status === newStatus) return
+
+    if (newStatus === 'closed_won') {
+      setCloseWonDealId(dealId)
+      setCloseWonFinalPrice('')
+      setCloseWonCommission('')
+      setCloseWonError('')
+      setCloseWonOpen(true)
+      return
+    }
+
     await fetch(`/api/rigburrito/deals/${dealId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -155,11 +170,84 @@ export default function DealsPage() {
     fetchDeals()
   }
 
+  async function advanceDealStatus(dealId: string, nextStatus: DealStatus) {
+    if (nextStatus === 'closed_won') {
+      setCloseWonDealId(dealId)
+      setCloseWonFinalPrice('')
+      setCloseWonCommission('')
+      setCloseWonError('')
+      setCloseWonOpen(true)
+      return
+    }
+
+    await fetch(`/api/rigburrito/deals/${dealId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nextStatus }),
+    })
+    if (selected?.id === dealId) {
+      const res = await fetch(`/api/rigburrito/deals/${dealId}`)
+      const data = await res.json()
+      setEditForm(data.deal)
+    }
+    fetchDeals()
+  }
+
+  async function markDealLost(dealId: string) {
+    await fetch(`/api/rigburrito/deals/${dealId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'closed_lost' }),
+    })
+    setSelected(null)
+    fetchDeals()
+  }
+
+  async function finalizeCloseWon() {
+    if (!closeWonDealId) return
+    const finalPrice = parseFloat(closeWonFinalPrice)
+    const commissionEarned = parseFloat(closeWonCommission)
+    if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
+      setCloseWonError('Enter a valid final sale price.')
+      return
+    }
+    if (!Number.isFinite(commissionEarned) || commissionEarned < 0) {
+      setCloseWonError('Enter a valid commission earned amount.')
+      return
+    }
+
+    const res = await fetch(`/api/rigburrito/deals/${closeWonDealId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'closed_won',
+        final_sale_price: finalPrice,
+        commission_earned: commissionEarned,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setCloseWonError(data.error ?? 'Failed to close deal')
+      return
+    }
+
+    setCloseWonOpen(false)
+    setCloseWonDealId(null)
+    setSelected(null)
+    fetchDeals()
+  }
+
   async function openDeal(deal: Deal) {
     setSelected(deal)
     const res = await fetch(`/api/rigburrito/deals/${deal.id}`)
     const data = await res.json()
-    setEditForm(data.deal)
+    const d = data.deal as Deal & { listings?: { title: string; price: number } | null }
+    const listing = d.listings
+    setEditForm({
+      ...d,
+      listing_title: deal.listing_title ?? listing?.title ?? null,
+      asking_price: d.asking_price ?? listing?.price ?? null,
+    })
   }
 
   async function saveDeal() {
@@ -183,7 +271,9 @@ export default function DealsPage() {
 
   const closedWon = deals.filter(d => d.status === 'closed_won')
   const totalCommission = closedWon.reduce((s, d) => s + (d.commission_earned ?? 0), 0)
-  const commissionPreview = ((editForm.final_sale_price ?? 0) * (editForm.commission_rate ?? 7)) / 100
+  const currentStatus = (editForm.status ?? selected?.status) as DealStatus | undefined
+  const nextStage = currentStatus ? DEAL_NEXT_STAGE[currentStatus] : undefined
+  const isActiveDeal = currentStatus ? DEAL_ACTIVE_STATUSES.includes(currentStatus) : false
 
   if (loading) return <div><h1 className="rigburrito-page-title">Deal Tracker</h1><TableSkeleton /></div>
   if (error) return <ErrorState message={error} onRetry={fetchDeals} />
@@ -255,31 +345,73 @@ export default function DealsPage() {
 
       <SlideOver open={!!selected} onOpenChange={o => !o && setSelected(null)} title="Deal Details" width="520px" footer={dealFooter}>
         {selected && (
-          <div className="space-y-3">
-            {(['buyer_name', 'buyer_email', 'buyer_phone', 'seller_name'] as const).map(field => (
-              <div key={field}>
-                <label className="rigburrito-card-label mb-1 block capitalize">{field.replace(/_/g, ' ')}</label>
-                <input
-                  value={String(editForm[field] ?? '')}
-                  onChange={e => setEditForm(f => ({ ...f, [field]: e.target.value }))}
-                  className="rigburrito-input w-full"
-                />
-              </div>
-            ))}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="rigburrito-card-label mb-1 block">Final Sale Price</label>
-                <input type="number" value={editForm.final_sale_price ?? ''} onChange={e => setEditForm(f => ({ ...f, final_sale_price: parseFloat(e.target.value) || null }))} className="rigburrito-input rigburrito-mono w-full" />
-              </div>
-              <div>
-                <label className="rigburrito-card-label mb-1 block">Commission Rate %</label>
-                <input type="number" value={editForm.commission_rate ?? 7} onChange={e => setEditForm(f => ({ ...f, commission_rate: parseFloat(e.target.value) || 7 }))} className="rigburrito-input rigburrito-mono w-full" />
-              </div>
-            </div>
+          <div className="space-y-5">
             <div>
-              <label className="rigburrito-card-label mb-1 block">Commission Earned</label>
-              <p className="rigburrito-mono rigburrito-stat-value" style={{ fontSize: 20 }}>{formatCurrency(commissionPreview)}</p>
+              <p className="rigburrito-card-label mb-2">Current stage</p>
+              <StatusBadge status={currentStatus ?? 'identified'} variant="deal" />
             </div>
+
+            <div className="rigburrito-card" style={{ padding: 16 }}>
+              <p className="rigburrito-section-title" style={{ fontSize: 14, marginBottom: 12 }}>Buyer</p>
+              <div className="space-y-2">
+                <p className="rigburrito-body"><span className="rigburrito-caption">Name · </span>{editForm.buyer_name ?? '—'}</p>
+                <p className="rigburrito-body"><span className="rigburrito-caption">Email · </span>{editForm.buyer_email ?? '—'}</p>
+                <div>
+                  <p className="rigburrito-caption mb-1">Inquiry message</p>
+                  <p className="rigburrito-body whitespace-pre-wrap">{editForm.buyer_message ?? '—'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rigburrito-card" style={{ padding: 16 }}>
+              <p className="rigburrito-section-title" style={{ fontSize: 14, marginBottom: 12 }}>Listing &amp; seller</p>
+              <div className="space-y-2">
+                <p className="rigburrito-body"><span className="rigburrito-caption">Listing · </span>{editForm.listing_title ?? '—'}</p>
+                <p className="rigburrito-mono rigburrito-body"><span className="rigburrito-caption font-sans">Price · </span>{formatCurrency(editForm.asking_price ?? 0)}</p>
+                <p className="rigburrito-body"><span className="rigburrito-caption">Seller · </span>{editForm.seller_name ?? '—'}</p>
+              </div>
+            </div>
+
+            {isActiveDeal && selected && (
+              <div className="space-y-2 border-t pt-4" style={{ borderColor: '#F0F1F3' }}>
+                <p className="rigburrito-card-label">Stage controls</p>
+                <div className="flex flex-wrap gap-2">
+                  {nextStage && nextStage !== 'closed_won' && (
+                    <AdminButton
+                      variant="accent"
+                      onClick={() => advanceDealStatus(selected.id, nextStage)}
+                    >
+                      Move to {DEAL_STATUSES.find(s => s.id === nextStage)?.label}
+                    </AdminButton>
+                  )}
+                  {currentStatus === 'negotiating' && (
+                    <AdminButton
+                      variant="success"
+                      onClick={() => advanceDealStatus(selected.id, 'closed_won')}
+                    >
+                      Close Deal Won
+                    </AdminButton>
+                  )}
+                  <AdminButton variant="warning" onClick={() => markDealLost(selected.id)}>
+                    Mark deal lost
+                  </AdminButton>
+                </div>
+              </div>
+            )}
+
+            {currentStatus === 'closed_won' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="rigburrito-card-label mb-1 block">Final Sale Price</label>
+                  <p className="rigburrito-mono rigburrito-body">{formatCurrency(editForm.final_sale_price ?? 0)}</p>
+                </div>
+                <div>
+                  <label className="rigburrito-card-label mb-1 block">Commission Earned</label>
+                  <p className="rigburrito-mono rigburrito-body">{formatCurrency(editForm.commission_earned ?? 0)}</p>
+                </div>
+              </div>
+            )}
+
             {editForm.notes && (
               <div>
                 <label className="rigburrito-card-label mb-1 block">Notes Timeline</label>
@@ -293,6 +425,41 @@ export default function DealsPage() {
           </div>
         )}
       </SlideOver>
+
+      <Dialog.Root open={closeWonOpen} onOpenChange={setCloseWonOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.4)' }} />
+          <Dialog.Content className="rigburrito-card fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-6 outline-none" style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
+            <div className="mb-4 flex items-center justify-between">
+              <Dialog.Title className="rigburrito-section-title" style={{ marginBottom: 0 }}>Close Deal Won</Dialog.Title>
+              <Dialog.Close asChild><button type="button" className="rigburrito-btn-icon"><X size={16} /></button></Dialog.Close>
+            </div>
+            <p className="rigburrito-caption mb-4">Enter the negotiated outcome before moving this deal to Closed Won.</p>
+            <label className="rigburrito-card-label mb-1 block">Final sale price</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={closeWonFinalPrice}
+              onChange={e => setCloseWonFinalPrice(e.target.value)}
+              className="rigburrito-input rigburrito-mono mb-3 w-full"
+            />
+            <label className="rigburrito-card-label mb-1 block">Commission earned</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={closeWonCommission}
+              onChange={e => setCloseWonCommission(e.target.value)}
+              className="rigburrito-input rigburrito-mono mb-3 w-full"
+            />
+            {closeWonError && <p className="mb-3 text-sm text-red-600">{closeWonError}</p>}
+            <AdminButton variant="success" onClick={finalizeCloseWon} className="w-full">
+              Confirm &amp; close won
+            </AdminButton>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
         <Dialog.Portal>

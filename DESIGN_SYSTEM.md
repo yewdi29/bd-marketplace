@@ -342,6 +342,18 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Small pill at `fixed bottom-6 center`: `bg-ink text-white text-xs font-mono px-4 py-2 rounded-pill`
 - Used for in-flight PATCH actions on dashboard cards
 
+### Newsletter Section (`src/components/NewsletterSection.tsx`)
+Canonical newsletter signup block for all public pages. Do not build one-off newsletter layouts — import this component and pass a `source` string for analytics.
+
+- **Outer wrapper:** `py-10 w-full` (`className` prop for page-specific spacing overrides)
+- **Card:** white `rounded-[20px] px-8 py-12 shadow-card border border-[#E8E9EA]`, full width of parent
+- **Layout:** two-column split on `md+` (copy left, form right); stacks on mobile
+- **Label:** `STAY INFORMED` — `font-mono text-[11px] font-bold text-orange uppercase tracking-[0.12em] mb-3`
+- **Headline:** shared homepage section H2 (`clamp(28px, 4vw, 40px)`, `-0.03em` tracking) — "Stay Ahead of the Market."
+- **Subtext:** `mt-4 font-sans text-ink-3 text-base leading-relaxed`
+- **Form:** `NewsletterForm` via deferred `NewsletterFormLazy` — pill input (`40px` height, `100px` radius, `1.5px #E8E9EA` border) + orange Subscribe button (`shadow-orange-glow`)
+- **Used on:** homepage (`source="homepage"`), business/seller profile (`source="seller_profile"`)
+
 ### New Listing Modal (`src/components/listings/NewListingModal.tsx`)
 - Overlay: `rgba(0,0,0,0.55)` + `backdrop-filter: blur(6px)`
 - Card: `max-width: 720px`, `border-radius: 20px`, `max-height: 90vh`, scrollable content area
@@ -460,7 +472,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
 - **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
 - **How It Works:** centered header with `HOW IT WORKS` orange label; step cards in 3-column desktop row
-- **Newsletter:** two-column split on `md+` (text left, form right); white card `rounded-[20px] px-8 py-12 shadow-card border border-[#E8E9EA]` full width of `.page-shell`; `STAY INFORMED` orange label; outer section `py-10`
+- **Newsletter:** see `NewsletterSection` component (§6) — two-column split on `md+`; not homepage-only
 - **Operator Journal:** retains legacy `text-2xl` header until migrated
 
 ### Listings Browse Page
@@ -496,6 +508,12 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - Orange submit button: full width, `py-3`
 - Footer links: `text-ink-3 hover:text-ink` and `text-orange hover:text-orange-lt`
 - No Google OAuth — email and password only
+
+### Careers (`/careers`)
+- Dark hero (`#1A1D20`, `64px 32px` padding): `CAREERS` orange mono label, 44px/800 H1, 17px muted subtext (`opacity: 0.7`, max `720px`)
+- Open positions: centered prose block (`max-width: 720px`, `page-shell`, `py-16 md:py-20`); 32px section H2; orange primary CTA mailto `careers@blackdiamondmkt.com`
+- Culture cards: `#F7F8F9` section, 3-column grid on `md+` (`max-width: 1100px`); white cards `rounded-[16px] shadow-card border border-[#E8E9EA]`, 24px padding — same pattern as How It Works feature cards
+- Static content only; dynamic job listings deferred (comment placeholder in page source)
 
 ### Dashboard (Seller)
 - Page padding: `px-6 py-8`, max-width `1280px`
@@ -587,6 +605,8 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.32 | June 2026 | **Careers page.** New static `/careers` route (footer link target): dark hero, open-positions block with mailto CTA (`careers@blackdiamondmkt.com`), 3-column culture cards on `#F7F8F9` — patterns match How It Works and Contact. Added to sitemap. |
+| v2.31 | June 2026 | **Global newsletter section.** Extracted homepage newsletter into shared `NewsletterSection` + `NewsletterFormLazy` (`src/components/`). Business/seller profile page now uses the same two-column card layout, copy, and form styling as the homepage — no one-off newsletter blocks. Documented canonical component in §6. |
 | v2.30 | June 2026 | **Homepage section header unification.** Featured Equipment and Browse by Industry headlines upgraded to shared fluid H2 (`clamp(28px, 4vw, 40px)`, `-0.03em` tracking) with `text-base` subtext — matching How It Works and Newsletter. Documented shared homepage section header pattern in §7; section padding updated to `py-16 lg:py-20`; newsletter card spec updated (`rounded-[20px]`, `shadow-card`, full `.page-shell` width, two-column layout). |
 | v2.29 | June 2026 | **Browse by Industry redesign + Forestry.** Homepage `CategoryBrowse`: 6 industries (added Forestry with Lucide `Trees`), 3×2 grid (1 col mobile / 2 tablet / 3 desktop). Cards are thin horizontal rows (~68px): 40×40px orange-tint icon box (`rounded-lg`) + bold 14px title + muted 12px subtitle. Links use `/search?industry=` slug. Skeleton updated to match. |
 | v2.28 | June 2026 | **Dashboard publish actions + photo drag + featured cap.** Draft/unpublished manage overlay: "Publish" uses light orange accent (`bg-orange-bg`, `border-orange-bdr`, `text-orange`); unpublished action order is Publish → Edit → Archive. Photo sortable tiles: full-tile drag on desktop (grip visual only); `cursor-grab` on hover, `cursor-grabbing` while pressed/dragging. Homepage Featured Equipment capped at 5 listings (one row at ≥1280px). |

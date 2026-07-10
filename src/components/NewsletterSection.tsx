@@ -1,9 +1,15 @@
-import NewsletterFormLazy from '@/components/home/NewsletterFormLazy'
+import NewsletterFormLazy from '@/components/NewsletterFormLazy'
 
-/** Server-rendered newsletter block — form submit is a deferred client island. */
-export default function NewsletterSection() {
+interface NewsletterSectionProps {
+  /** Passed to the API as the subscription source (e.g. homepage, seller_profile). */
+  source?: string
+  className?: string
+}
+
+/** Canonical newsletter signup block — use on any public page. */
+export default function NewsletterSection({ source = 'homepage', className = '' }: NewsletterSectionProps) {
   return (
-    <section className="py-10 w-full">
+    <section className={`py-10 w-full ${className}`.trim()}>
       <div className="w-full bg-white border border-[#E8E9EA] rounded-[20px] px-8 py-12 shadow-card">
         <div className="flex flex-col md:flex-row md:items-center gap-8 md:gap-10 lg:gap-12">
           <div className="md:w-1/2 min-w-0">
@@ -22,7 +28,7 @@ export default function NewsletterSection() {
           </div>
 
           <div className="md:w-1/2 min-w-0 flex items-center">
-            <NewsletterFormLazy source="homepage" />
+            <NewsletterFormLazy source={source} />
           </div>
         </div>
       </div>

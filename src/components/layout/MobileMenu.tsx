@@ -163,7 +163,7 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
           ) : (
             <div className="flex flex-col gap-3 pb-5 mb-2 border-b border-[#E8E9EA]">
               <Link
-                href="/how-it-works"
+                href="/auth/signup"
                 onClick={onClose}
                 className="flex items-center text-sm font-medium text-ink-2 hover:text-ink transition-colors"
                 style={{ minHeight: 44 }}

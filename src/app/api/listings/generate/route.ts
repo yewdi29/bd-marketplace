@@ -55,16 +55,37 @@ Use exactly these field names and value constraints:
 }
 
 TITLE RULES:
-Build the title using this exact priority structure, in order:
-[Year or Size] [Brand/Manufacturer] [Main Equipment Type/Category] — [Unique Descriptor or Quantity]
+Build the title using this exact format:
+[Year or Size] [Brand/Manufacturer] [Equipment Type] — [3-word max descriptor]
 
-- First element — lead with the model year if the equipment has one (e.g. "2012"). If there is no year, lead with a size or spec only if that size is the primary differentiator for this kind of equipment (e.g. "5 1/2\"", "42\" x 28'"). If neither a year nor a meaningfully differentiating size/spec exists, skip this element.
-- Second element — the brand or manufacturer name if it is known or confidently mentioned (e.g. "Serva Group", "Caterpillar", "Komatsu"). Omit this element entirely if the manufacturer is unknown — never guess a brand.
-- Third element — the main equipment type using industry-standard terminology that matches the category taxonomy provided below (e.g. "Coil Tubing Trailer", "Tricone Drill Bit", "Drill Pipe", "Crawler Dozer"). This element is required.
-- Fourth element — after a dash separator ("—"), add one concise, specific descriptor or quantity that adds real differentiation: something unique, measurable, or operationally relevant (e.g. "Enclosed Operator Cab", "Sealed Bearing", "255 Joints", "4,200 Hours"). Omit this element if nothing specific and confidently known can be said.
-- Keep the full title under 80 characters where possible.
-- Never use generic filler words or vague superlatives such as "Heavy Duty", "High Quality", "Great Condition", "Excellent", "Premium", or similar — every word must carry real informational value.
-- If any element (year/size, brand, or descriptor) is unknown or cannot be confidently inferred from the seller's description, omit that element entirely rather than guessing or inserting a placeholder. Never fabricate a year, brand, or spec that wasn't stated or clearly implied.
+Main title elements (before the dash):
+- Lead with year if known, or size/dimension if no year and size is the primary identifier (e.g. "2019", "42\"", "5½\"").
+- Follow with brand or manufacturer if known — omit entirely if unknown, never guess.
+- Follow with the standard industry equipment type name matching the category taxonomy below. This element is required.
+- Keep the full title under 60 characters where possible.
+- Never use filler words like "Heavy Duty", "High Quality", "Great Condition", or vague superlatives — every word must carry real informational value.
+
+Descriptor rules (after the dash — omit the entire dash and descriptor if no meaningful one exists):
+- Maximum 3 words — never more.
+- Must describe exactly ONE of the following:
+  - Condition note: "Low Hours", "Fair Condition", "Needs Work", "Like New"
+  - Quantity: "255 Joints", "3 Units", "12 Sets"
+  - Single key spec: "4WD", "Extended Reach", "Tier 4", "Sealed Bearing"
+- Never use marketing language, adjectives like "excellent" or "great", or full sentences.
+- If no meaningful 3-word descriptor exists from the seller's description, omit the dash and descriptor entirely — do not force one.
+
+Correct examples:
+- 2019 Caterpillar 336 Excavator — Low Hours
+- 42" Pipe Racks — 255 Joints
+- 2018 Kenworth T800 Flatbed — Needs Engine
+- 5½" Drill Pipe — Sealed Bearing
+- 2015 Komatsu D65 Crawler Dozer — Tier 4
+- John Deere 8R Tractor (no descriptor if nothing meaningful to add)
+
+Incorrect examples to avoid:
+- 2019 Caterpillar 336 Excavator — Enclosed Operator Cab with Hydraulic Raise System (descriptor too long)
+- High Quality Drill Pipe in Great Condition (no year/size, marketing language)
+- 2018 Kenworth T800 Heavy Duty Flatbed Truck — Excellent Condition Ready to Work (filler words, descriptor too long)
 
 LOCATION RULES:
 - If the seller mentions a US city/state (e.g. "Midland, Texas" or "Houston, TX"), set country_slug to united-states and location_state to the 2-letter code.

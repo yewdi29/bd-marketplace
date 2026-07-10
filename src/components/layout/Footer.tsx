@@ -1,11 +1,16 @@
+'use client'
+
 import Link from 'next/link'
+import SellerPortalLink from '@/components/SellerPortalLink'
+
+const FOOTER_LINK_CLASS =
+  'font-sans text-white/55 hover:text-white/90 transition-colors'
 
 const SITEMAP = [
   {
     heading: 'Company',
     links: [
       { label: 'About', href: '/about' },
-      { label: 'The Operator Journal', href: '/knowledge-base' },
       { label: 'Contact', href: '/contact' },
       { label: 'Careers', href: '/careers' },
     ],
@@ -24,21 +29,23 @@ const SITEMAP = [
     heading: 'Resources',
     links: [
       { label: 'How It Works', href: '/how-it-works' },
-      { label: 'Pricing', href: '/pricing' },
+      { label: 'Pricing', href: '/dashboard/upgrade' },
       { label: 'The Operator Journal', href: '/knowledge-base' },
-      { label: 'Help Center', href: '/help' },
     ],
   },
   {
     heading: 'Business',
     links: [
-      { label: 'List Your Equipment', href: '/auth/signup' },
-      { label: 'Become a Seller', href: '/auth/signup' },
+      { label: 'List Your Equipment', sellerPortal: true },
+      { label: 'Become a Seller', sellerPortal: true },
       { label: 'Business Directory', href: '/sellers' },
-      { label: 'Verified Sellers', href: '/sellers?verified=true' },
     ],
   },
-]
+] as const
+
+type FooterLink =
+  | { label: string; href: string; sellerPortal?: false }
+  | { label: string; sellerPortal: true; href?: undefined }
 
 const LANGUAGES = ['English', 'Español', 'Français', 'Deutsch', 'Português']
 const CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'AUD']
@@ -99,6 +106,24 @@ const SOCIALS = [
   { label: 'X',         icon: <IconX />         },
 ]
 
+function FooterNavLink({ link }: { link: FooterLink }) {
+  const style = { fontSize: '13px' }
+
+  if ('sellerPortal' in link && link.sellerPortal) {
+    return (
+      <SellerPortalLink className={FOOTER_LINK_CLASS} style={style}>
+        {link.label}
+      </SellerPortalLink>
+    )
+  }
+
+  return (
+    <Link href={link.href} className={FOOTER_LINK_CLASS} style={style}>
+      {link.label}
+    </Link>
+  )
+}
+
 export default function Footer() {
   const year = new Date().getFullYear()
 
@@ -121,14 +146,8 @@ export default function Footer() {
                 </h3>
                 <ul className="space-y-2.5">
                   {col.links.map(link => (
-                    <li key={link.href + link.label}>
-                      <Link
-                        href={link.href}
-                        className="font-sans text-white/55 hover:text-white/90 transition-colors"
-                        style={{ fontSize: '13px' }}
-                      >
-                        {link.label}
-                      </Link>
+                    <li key={link.label}>
+                      <FooterNavLink link={link} />
                     </li>
                   ))}
                 </ul>

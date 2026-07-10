@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
 import { applyTaxonomyFieldsToUpdates } from '@/lib/listingTaxonomyUpdate'
+import { applyMajorChangeReview } from '@/lib/listings/applyMajorChangeReview'
+import type { ListingChangeSnapshot } from '@/lib/listings/detectMajorChange'
 
 type Params = { params: { id: string } }
 
@@ -31,15 +33,33 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Ownership check
+  // Ownership check — fetch fields needed for major-change detection
   const { data: listing } = await adminClient
     .from('listings')
-    .select('seller_id, title, category')
+    .select(`
+      seller_id, title, category, status, description, price, condition,
+      location_city, location_state, country_id, industry_id, category_id,
+      listing_images(id)
+    `)
     .eq('id', params.id)
     .single()
 
   if (!listing || listing.seller_id !== user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const statusBeforeEdit = listing.status as string
+  const oldSnapshot: ListingChangeSnapshot = {
+    title: listing.title,
+    description: listing.description,
+    price: listing.price,
+    location_city: listing.location_city,
+    location_state: listing.location_state,
+    country_id: listing.country_id,
+    category_id: listing.category_id,
+    industry_id: listing.industry_id,
+    condition: listing.condition,
+    listing_images: listing.listing_images as { id: string }[] | null,
   }
 
   const body = await request.json() as Record<string, unknown>
@@ -122,6 +142,39 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       .eq('id', params.id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  const { data: updatedListing } = await adminClient
+    .from('listings')
+    .select(`
+      title, description, price, condition,
+      location_city, location_state, country_id, industry_id, category_id,
+      listing_images(id)
+    `)
+    .eq('id', params.id)
+    .single()
+
+  if (updatedListing) {
+    const newSnapshot: ListingChangeSnapshot = {
+      title: updatedListing.title,
+      description: updatedListing.description,
+      price: updatedListing.price,
+      location_city: updatedListing.location_city,
+      location_state: updatedListing.location_state,
+      country_id: updatedListing.country_id,
+      category_id: updatedListing.category_id,
+      industry_id: updatedListing.industry_id,
+      condition: updatedListing.condition,
+      listing_images: updatedListing.listing_images as { id: string }[] | null,
+    }
+
+    await applyMajorChangeReview(
+      adminClient,
+      params.id,
+      oldSnapshot,
+      newSnapshot,
+      statusBeforeEdit,
+    )
   }
 
   return NextResponse.json({ success: true })

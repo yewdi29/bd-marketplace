@@ -10,6 +10,7 @@ export interface Deal {
   buyer_name: string | null
   buyer_email: string | null
   buyer_phone: string | null
+  buyer_message?: string | null
   seller_name: string | null
   asking_price: number | null
   final_sale_price: number | null
@@ -18,6 +19,7 @@ export interface Deal {
   status: DealStatus
   notes: string | null
   assigned_to: string | null
+  lead_id?: string | null
   created_at: string
   updated_at: string
   listing_title?: string | null
@@ -122,6 +124,14 @@ export const DEAL_STATUSES: { id: DealStatus; label: string }[] = [
   { id: 'closed_won', label: 'Closed Won' },
   { id: 'closed_lost', label: 'Closed Lost' },
 ]
+
+export const DEAL_ACTIVE_STATUSES: DealStatus[] = ['identified', 'contacted', 'negotiating']
+
+export const DEAL_NEXT_STAGE: Partial<Record<DealStatus, DealStatus>> = {
+  identified: 'contacted',
+  contacted: 'negotiating',
+  negotiating: 'closed_won',
+}
 
 export const ARTICLE_CATEGORIES: { value: ArticleCategory; label: string }[] = [
   { value: 'drill_pipe', label: 'Drill Pipe' },

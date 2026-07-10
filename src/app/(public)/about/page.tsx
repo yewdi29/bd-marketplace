@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Cpu, ShieldCheck, Wrench, Clock } from 'lucide-react'
+import SellerPortalLink from '@/components/SellerPortalLink'
 
 export const metadata: Metadata = {
   title: 'About Us',
@@ -218,12 +219,11 @@ export default function AboutPage() {
             Thank You for Your Trust and Your Business.
           </h2>
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Link
-              href="/auth/signup"
+            <SellerPortalLink
               className="px-6 py-2.5 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow"
             >
               List Equipment
-            </Link>
+            </SellerPortalLink>
             <Link
               href="/search"
               className="px-6 py-2.5 text-sm font-bold text-white bg-transparent border border-white rounded-pill hover:bg-white hover:text-ink transition-colors"

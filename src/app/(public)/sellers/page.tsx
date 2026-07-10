@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js'
 export const dynamic = 'force-dynamic'
 import type { MembershipPlan } from '@/lib/types/database'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
+import BusinessDirectoryGate from '@/components/sellers/BusinessDirectoryGate'
+import { getDirectoryAccess } from '@/lib/directoryAccess'
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
@@ -119,6 +121,11 @@ function SellerCard({ seller }: { seller: SellerRow }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function SellersDirectoryPage() {
+  const access = await getDirectoryAccess()
+  if (!access.allowed) {
+    return <BusinessDirectoryGate signedIn={access.signedIn} />
+  }
+
   const admin = getAdminClient()
 
   // Fetch all users who have at least one active listing and a company_slug

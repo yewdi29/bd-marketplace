@@ -38,6 +38,7 @@ export async function PATCH(
       location_city, location_state,
       country_id, region_id, state_id,
       industry_id, category_id,
+      last_approved_at, last_major_edit_at,
       countries(slug),
       listing_images(id)
     `)
@@ -108,11 +109,24 @@ export async function PATCH(
   // Regenerate slug from the final title so drafts don't keep 'untitled-draft-xxx'
   const slug = `${slugify(listing.title)}-${params.id.slice(0, 8)}`
 
+  // First publish always requires review; republish skips review if no major edits since approval
+  let status: 'active' | 'pending_review'
+  if (!listing.last_approved_at) {
+    status = 'pending_review'
+  } else if (
+    !listing.last_major_edit_at ||
+    listing.last_major_edit_at < listing.last_approved_at
+  ) {
+    status = 'active'
+  } else {
+    status = 'pending_review'
+  }
+
   const { error } = await adminClient
     .from('listings')
-    .update({ status: 'pending_review', slug, updated_at: new Date().toISOString() })
+    .update({ status, slug, updated_at: new Date().toISOString() })
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true, status: 'pending_review' })
+  return NextResponse.json({ success: true, status })
 }

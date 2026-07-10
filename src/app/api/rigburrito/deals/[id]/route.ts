@@ -33,15 +33,26 @@ export async function PATCH(
   const body = await req.json()
   const service = createServiceClient()
 
-  const { data: existing } = await service.from('deals').select('notes').eq('id', id).single()
+  const { data: existing } = await service.from('deals').select('status, notes').eq('id', id).single()
 
   const updates: Record<string, unknown> = {}
   const fields = [
-    'deal_tier', 'buyer_name', 'buyer_email', 'buyer_phone', 'seller_name',
-    'asking_price', 'final_sale_price', 'commission_rate', 'status', 'assigned_to',
+    'deal_tier', 'buyer_name', 'buyer_email', 'buyer_phone', 'buyer_message', 'seller_name',
+    'asking_price', 'final_sale_price', 'commission_rate', 'commission_earned', 'status', 'assigned_to',
   ]
   for (const f of fields) {
     if (body[f] !== undefined) updates[f] = body[f]
+  }
+
+  if (body.status === 'closed_won') {
+    const finalPrice = body.final_sale_price ?? updates.final_sale_price
+    const commissionEarned = body.commission_earned ?? updates.commission_earned
+    if (finalPrice == null || finalPrice === '' || commissionEarned == null || commissionEarned === '') {
+      return NextResponse.json(
+        { error: 'Final sale price and commission earned are required to close a deal as won.' },
+        { status: 400 },
+      )
+    }
   }
 
   if (body.new_note?.trim()) {

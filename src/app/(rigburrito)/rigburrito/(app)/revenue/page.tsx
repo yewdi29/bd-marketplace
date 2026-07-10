@@ -58,12 +58,12 @@ export default function RevenuePage() {
       <h1 className="rigburrito-page-title">Revenue & Subscriptions</h1>
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="MRR" value={formatCurrency(stats?.mrr ?? 0)} showSparkline={false} />
-        <StatCard label="Active Subscriptions" value={String(stats?.active_subscriptions ?? 0)} showSparkline={false} />
-        <StatCard label="New This Month" value={String(stats?.new_this_month ?? 0)} showSparkline={false} />
-        <StatCard label="Churned This Month" value={String(stats?.churned_this_month ?? 0)} showSparkline={false} />
-        <StatCard label="Starter" value={String(stats?.starter_count ?? 0)} showSparkline={false} />
-        <StatCard label="Pro / Max" value={`${stats?.pro_count ?? 0} / ${stats?.max_count ?? 0}`} showSparkline={false} />
+        <StatCard label="MRR" value={formatCurrency(stats?.mrr ?? 0)} />
+        <StatCard label="Active Subscriptions" value={String(stats?.active_subscriptions ?? 0)} />
+        <StatCard label="New This Month" value={String(stats?.new_this_month ?? 0)} />
+        <StatCard label="Churned This Month" value={String(stats?.churned_this_month ?? 0)} />
+        <StatCard label="Starter" value={String(stats?.starter_count ?? 0)} />
+        <StatCard label="Pro / Max" value={`${stats?.pro_count ?? 0} / ${stats?.max_count ?? 0}`} />
       </div>
 
       <Tabs.Root defaultValue="active">

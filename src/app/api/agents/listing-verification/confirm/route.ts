@@ -129,12 +129,14 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
         }
 
+        const now = new Date().toISOString()
         const { error: updateError } = await service
           .from('listings')
           .update({
             status: 'active',
             admin_flagged: false,
-            updated_at: new Date().toISOString(),
+            last_approved_at: now,
+            updated_at: now,
           })
           .eq('id', listingId)
 

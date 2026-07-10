@@ -1,33 +1,56 @@
-import { TrendingDown, TrendingUp } from 'lucide-react'
-import StatSparkline from './StatSparkline'
-
 interface StatCardProps {
   label: string
   value: string
   trendPct?: number | null
-  showSparkline?: boolean
+  /** Favorable = green delta; unfavorable metrics can set invertTrendColor */
+  invertTrendColor?: boolean
+  selected?: boolean
+  selectable?: boolean
+  onClick?: () => void
 }
 
-export default function StatCard({ label, value, trendPct, showSparkline = true }: StatCardProps) {
+export default function StatCard({
+  label,
+  value,
+  trendPct,
+  invertTrendColor = false,
+  selected = false,
+  selectable = false,
+  onClick,
+}: StatCardProps) {
   const hasTrend = trendPct !== null && trendPct !== undefined
   const positive = (trendPct ?? 0) >= 0
+  const favorable = invertTrendColor ? !positive : positive
 
-  return (
-    <div className="rigburrito-stat-card">
+  const className = [
+    'rigburrito-stat-card',
+    selectable ? 'rigburrito-metric-card--selectable' : '',
+    selected ? 'rigburrito-metric-card--selected' : '',
+  ].filter(Boolean).join(' ')
+
+  const inner = (
+    <>
       <p className="rigburrito-card-label">{label}</p>
-      <div className="rigburrito-stat-value-row">
+      <div className="rigburrito-metric-value-row">
         <p className="rigburrito-stat-value">{value}</p>
-        {showSparkline && hasTrend && (
-          <StatSparkline positive={positive} />
+        {hasTrend && (
+          <span
+            className={`rigburrito-metric-delta ${favorable ? 'rigburrito-metric-delta--positive' : 'rigburrito-metric-delta--negative'}`}
+          >
+            {positive ? '+' : '−'}{Math.abs(trendPct!)}%
+          </span>
         )}
       </div>
-      {hasTrend && (
-        <div className={`rigburrito-trend ${positive ? 'rigburrito-trend--positive' : 'rigburrito-trend--negative'}`}>
-          {positive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-          <span>{Math.abs(trendPct!)}%</span>
-          <span className="rigburrito-caption">vs last month</span>
-        </div>
-      )}
-    </div>
+    </>
   )
+
+  if (selectable && onClick) {
+    return (
+      <button type="button" className={className} onClick={onClick} aria-pressed={selected}>
+        {inner}
+      </button>
+    )
+  }
+
+  return <div className={className}>{inner}</div>
 }

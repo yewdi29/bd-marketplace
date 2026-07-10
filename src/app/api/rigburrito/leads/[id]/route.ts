@@ -61,9 +61,9 @@ export async function PATCH(
 
   const { id } = await params
   const body = await req.json()
-  const action = body.action as 'approve' | 'deny' | 'commission'
+  const action = body.action as 'approve' | 'deny' | 'discard' | 'commission'
 
-  if (!['approve', 'deny', 'commission'].includes(action)) {
+  if (!['approve', 'deny', 'discard', 'commission'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   }
 
@@ -147,7 +147,18 @@ export async function PATCH(
     return NextResponse.json({ success: true })
   }
 
-  // commission opportunity
+  if (action === 'discard') {
+    const { error } = await service
+      .from('leads')
+      .update({ status: 'discarded', reviewed_by: auth.userId, reviewed_at: now })
+      .eq('id', id)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    return NextResponse.json({ success: true })
+  }
+
+  // commission — convert lead to deal in Identified stage
   if (!lead.listing_id) {
     return NextResponse.json({ error: 'Lead has no associated listing' }, { status: 400 })
   }
@@ -164,15 +175,18 @@ export async function PATCH(
     .from('deals')
     .insert({
       listing_id: lead.listing_id,
+      lead_id: lead.id,
       deal_tier: dealTier,
       buyer_name: body.buyer_name ?? lead.buyer_name,
       buyer_email: body.buyer_email ?? lead.buyer_email,
       buyer_phone: body.buyer_phone ?? lead.buyer_phone,
+      buyer_message: lead.message,
       seller_name: listing?.users?.full_name ?? null,
       asking_price: askingPrice,
       commission_rate: commissionRate,
       status: 'identified',
-      assigned_to: auth.userId,
+      assigned_to: null,
+      notes: `Inquiry message:\n${lead.message}`,
     })
     .select()
     .single()

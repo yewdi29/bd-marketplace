@@ -8,10 +8,11 @@ interface HoldToConfirmButtonProps {
   disabled?: boolean
   variant?: 'danger' | 'warning'
   holdLabel?: string
+  holdMs?: number
   icon?: ReactNode
 }
 
-const HOLD_MS = 2000
+const DEFAULT_HOLD_MS = 2000
 const RING_SIZE = 20
 const RING_STROKE = 2
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2
@@ -23,6 +24,7 @@ export default function HoldToConfirmButton({
   disabled = false,
   variant = 'danger',
   holdLabel,
+  holdMs = DEFAULT_HOLD_MS,
   icon,
 }: HoldToConfirmButtonProps) {
   const [progress, setProgress] = useState(0)
@@ -41,7 +43,7 @@ export default function HoldToConfirmButton({
   const tick = useCallback(() => {
     if (!startRef.current) return
     const elapsed = Date.now() - startRef.current
-    const pct = Math.min(elapsed / HOLD_MS, 1)
+    const pct = Math.min(elapsed / holdMs, 1)
     setProgress(pct)
     if (pct >= 1) {
       stop()
@@ -49,7 +51,7 @@ export default function HoldToConfirmButton({
       return
     }
     rafRef.current = requestAnimationFrame(tick)
-  }, [onConfirm, stop])
+  }, [onConfirm, stop, holdMs])
 
   const startHold = () => {
     if (disabled) return

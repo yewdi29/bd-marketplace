@@ -6,6 +6,44 @@ export interface AdminAuthResult {
   email: string
 }
 
+async function getAuthenticatedAdminUserId(): Promise<string | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') return null
+  return user.id
+}
+
+/** Redirect non-admin and unauthenticated visitors to homepage silently. */
+export async function requireRigburritoAccess(): Promise<void> {
+  const adminId = await getAuthenticatedAdminUserId()
+  if (!adminId) redirect('/')
+}
+
+/** Server guard for MFA auth pages — admin role required before render. */
+export async function requireAdminAuthPage(): Promise<AdminAuthResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') redirect('/')
+
+  return { userId: user.id, email: user.email ?? '' }
+}
+
 export async function getAdminSession(): Promise<AdminAuthResult | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -29,7 +67,15 @@ export async function requireAdminLayout(): Promise<AdminAuthResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/rigburrito/login')
+  if (!user) redirect('/')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') redirect('/')
 
   const { data: factors } = await supabase.auth.mfa.listFactors()
   const hasVerifiedTotp = factors?.totp?.some(f => f.status === 'verified') ?? false
@@ -40,14 +86,6 @@ export async function requireAdminLayout(): Promise<AdminAuthResult> {
   if (aal?.currentLevel !== 'aal2' && aal?.nextLevel === 'aal2') {
     redirect('/rigburrito/verify')
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') redirect('/')
 
   return { userId: user.id, email: user.email ?? '' }
 }

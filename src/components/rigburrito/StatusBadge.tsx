@@ -14,28 +14,37 @@ const STATUS_COLORS: Record<string, BadgeColors> = {
   published: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   sold: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   closed_won: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
-  pending_review: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  yellow: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  negotiating: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
-  removed: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  red: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  closed_lost: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  draft: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
-  archived: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
   identified: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
   contacted: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+  negotiating: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  closed_lost: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  pending_review: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  yellow: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  red: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  removed: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  draft: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+  archived: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
   new: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   forwarded: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   denied: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  discarded: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
   commission_opportunity: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
   green: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
 }
 
 const NEUTRAL: BadgeColors = { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' }
 
+const DEAL_LABELS: Record<string, string> = {
+  negotiating: 'In Negotiation',
+  closed_won: 'Closed Won',
+  closed_lost: 'Closed Lost',
+}
+
 export default function StatusBadge({ status, variant = 'listing' }: StatusBadgeProps) {
   const colors = STATUS_COLORS[status] ?? NEUTRAL
-  const label = status.replace(/_/g, ' ')
+  const label = (variant === 'deal' && DEAL_LABELS[status])
+    ? DEAL_LABELS[status]
+    : status.replace(/_/g, ' ')
   return (
     <span
       className="inline-block capitalize"
@@ -49,7 +58,7 @@ export default function StatusBadge({ status, variant = 'listing' }: StatusBadge
         border: `1px solid ${colors.border}`,
       }}
     >
-      {variant === 'deal' && status === 'negotiating' ? 'In Negotiation' : label}
+      {label}
     </span>
   )
 }

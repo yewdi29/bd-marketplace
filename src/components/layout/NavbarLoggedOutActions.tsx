@@ -5,7 +5,7 @@ export default function NavbarLoggedOutActions() {
   return (
     <div className="flex items-center gap-4">
       <Link
-        href="/how-it-works"
+        href="/auth/signup"
         className="hidden sm:block text-sm font-medium transition-colors hover:text-ink text-[#4A4D52]"
       >
         Sell With Us

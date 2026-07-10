@@ -120,6 +120,225 @@
 .rigburrito-trend--positive { color: #16A34A; }
 .rigburrito-trend--negative { color: #DC2626; }
 
+/* Dashboard metric strip */
+.rigburrito-metric-strip {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.rigburrito-metric-strip > .rigburrito-stat-card,
+.rigburrito-metric-strip > button.rigburrito-stat-card {
+  flex: 1 0 0;
+  min-width: 140px;
+}
+
+.rigburrito-metric-strip--stacked {
+  flex-direction: column;
+  overflow-x: visible;
+}
+
+.rigburrito-metric-strip--stacked > .rigburrito-stat-card,
+.rigburrito-metric-strip--stacked > button.rigburrito-stat-card {
+  flex: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.rigburrito-metric-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rigburrito-metric-value-row .rigburrito-stat-value {
+  margin: 0;
+}
+
+.rigburrito-metric-delta {
+  font-family: var(--font-dm-mono), 'Andale Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.rigburrito-metric-delta--positive { color: #16A34A; }
+.rigburrito-metric-delta--negative { color: #DC2626; }
+
+.rigburrito-metric-card--selectable {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+button.rigburrito-stat-card {
+  appearance: none;
+  font: inherit;
+}
+
+.rigburrito-metric-strip .rigburrito-metric-card--selectable:not(.rigburrito-metric-card--selected) {
+  background: transparent;
+}
+
+.rigburrito-metric-card--selectable:hover {
+  border-color: #E5E7EB;
+}
+
+.rigburrito-metric-card--selected {
+  background: #FFFFFF;
+  border-color: #F0F1F3;
+}
+
+/* Dashboard detail region */
+.rigburrito-detail-region {
+  background: #FFFFFF;
+  border: 1px solid #F0F1F3;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.rigburrito-detail-region-header {
+  margin-bottom: 12px;
+}
+
+.rigburrito-trend-chart {
+  width: 100%;
+}
+
+/* Geographic breakdown */
+.rigburrito-geo-breakdown {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.4fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.rigburrito-geo-breakdown--stacked {
+  grid-template-columns: 1fr;
+}
+
+.rigburrito-geo-table-wrap {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.rigburrito-geo-map-wrap {
+  background: #FFFFFF;
+  border: 1px solid #F0F1F3;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.rigburrito-world-map {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.rigburrito-geo-row--active td {
+  background: rgba(255, 107, 53, 0.06);
+}
+
+/* Dashboard tab bar — lifted pill */
+.rigburrito-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.rigburrito-tab-bar-trigger {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.rigburrito-tab-bar-trigger[data-state='active'] {
+  background: #FFFFFF;
+  color: #0F1117;
+  font-weight: 600;
+  box-shadow: 0 0 0 1px #F0F1F3;
+}
+
+.rigburrito-tab-panel {
+  margin-top: 0;
+}
+
+/* Expandable data table */
+.rigburrito-expandable-table tbody tr.rigburrito-expandable-row--open td {
+  border-bottom: none;
+}
+
+.rigburrito-expandable-detail-row td {
+  padding: 0 16px 16px !important;
+  background: #FAFAFA;
+  border-bottom: 1px solid #F8F9FA;
+}
+
+.rigburrito-table--data tr.rigburrito-expandable-detail-row td {
+  white-space: normal;
+}
+
+.rigburrito-expandable-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: #FFFFFF;
+  border: 1px solid #F0F1F3;
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.rigburrito-expandable-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.rigburrito-expandable-detail-field {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rigburrito-expandable-detail-field .rigburrito-card-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.rigburrito-expandable-detail-field .rigburrito-body {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+@media (max-width: 1023px) {
+  .rigburrito-expandable-detail-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rigburrito-expandable-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .rigburrito-btn {
   display: inline-flex;
   align-items: center;

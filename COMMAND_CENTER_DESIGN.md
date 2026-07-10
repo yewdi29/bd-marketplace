@@ -162,21 +162,69 @@ The sidebar is a **floating panel** elevated above the `#F8F9FA` page background
 
 ## Stat Cards
 
-Each stat card contains, top to bottom:
+Each stat card contains:
 
-1. Card label in all-caps muted style
-2. Large value in DM Mono bold
-3. Trend row: trend arrow icon + percentage in DM Mono + "vs last month" caption
-4. Optional: small inline sparkline chart right-aligned on the same row as the value
+1. Card label in all-caps muted style (`11px`, `#6B7280`, letter-spacing `0.06em`)
+2. Value row on one line: large DM Mono value (`32px`, `700`) + inline delta (`12px`, DM Mono) immediately to the right on the same baseline
+3. Delta colors: green `#16A34A` for positive/favorable, red `#DC2626` for negative/unfavorable
+4. No sparklines, no separate "vs last month" row — the card is label, number, and inline delta only
 
-### Sparklines
+### Dashboard metric strip
 
-Use recharts `<LineChart>` with no axes, no grid, no tooltip — just the line.
+- Six cards in a single horizontal row at desktop (`flex`, equal width via `flex: 1 0 0`)
+- Horizontal scroll when the row does not fit (do not wrap at desktop/tablet)
+- Below `lg` (`1024px`): stack vertically
+- Cards are clickable; one selected at a time (`border-color: #FF6B35`, subtle orange tint)
+- Selecting a time-series metric opens a trend chart below; selecting User Locations opens the geographic breakdown
 
-- Stroke: `2px`
-- Positive trend: orange `#FF6B35`
-- Negative trend: red `#DC2626`
-- Dimensions: `80px` × `32px`
+### Sparklines (deprecated)
+
+Inline sparklines are **removed** from stat cards. Trend visualization lives in the dashboard detail region only.
+
+---
+
+## Orange Sequential Scale (geographic choropleth only)
+
+Used **only** for the Dashboard User Locations map — not listing tier badges.
+
+| Step | Hex | Usage |
+|------|-----|-------|
+| 0 | transparent fill, `#E5E5E5` stroke | zero users |
+| 50 | `#FEF6EC` | lowest non-zero band |
+| 100 | `#FCE4C6` | |
+| 200 | `#F8C88C` | |
+| 300 | `#F2A555` | |
+| 400 | `#E8801F` | |
+| 500 | `#C96412` | system orange base (rescales if brand orange `#FF6B35` is adopted here later) |
+| 600 | `#8F4508` | highest-density band |
+
+Bucket non-zero countries by **quantile** across the current count distribution.
+
+---
+
+## Dashboard Tab Bar
+
+- No card wrapper around the tab list
+- Active tab: lifted pill (`border-radius: 999px`, white background, `box-shadow: 0 0 0 1px #F0F1F3`)
+- Inactive tabs: transparent background, `#6B7280` text
+- Tabs separated by a `1px` hairline divider (`#E5E7EB`, `16px` tall) — no full borders or boxes
+- CSS classes: `rigburrito-tab-bar`, `rigburrito-tab-bar-trigger`, `rigburrito-tab-bar-divider`
+
+> **Note:** Other command center pages still use the older bordered `rigburrito-tab` pattern until migrated.
+
+---
+
+## Expandable Data Table
+
+Generic table for dashboard tab panels. One component, per-tab column/detail/action config.
+
+| Element | Spec |
+|---------|------|
+| Container | `rigburrito-table-wrap` + `rigburrito-expandable-table` |
+| Row click | Expands in place below the row |
+| Expanded panel | White inset card on `#FAFAFA` row background |
+| Detail fields | Grid of label (`rigburrito-card-label`) + value (`rigburrito-body`) |
+| Actions | `rigburrito-btn` variants in a flex row |
 
 ---
 
@@ -362,6 +410,7 @@ Centered in the content area.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.8 | 2026-07-10 | Dashboard restructure: metric strip, detail region, lifted-pill tab bar, expandable table, orange choropleth scale; stat card sparklines removed |
 | 2.7 | 2026-07-04 | Listing slide-over: cursor-following image hover preview (320×240) |
 | 2.6 | 2026-07-04 | Admin listings: always show price in table (bracketed when hidden); slide-over price visibility badge |
 | 2.5 | 2026-07-04 | Listings price shows unit suffix; users table row-only navigation with hover underline |

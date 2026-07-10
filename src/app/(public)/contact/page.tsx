@@ -88,7 +88,7 @@ export default function ContactPage() {
           </p>
 
           <a
-            href="mailto:contact@blackdiamondmarketplace.com"
+            href="mailto:contact@blackdiamondmkt.com"
             className="flex items-center gap-3 text-ink hover:text-orange transition-colors group"
           >
             {/* Envelope icon */}
@@ -106,7 +106,7 @@ export default function ContactPage() {
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            <span className="font-mono text-sm">contact@blackdiamondmarketplace.com</span>
+            <span className="font-mono text-sm">contact@blackdiamondmkt.com</span>
           </a>
 
           <p

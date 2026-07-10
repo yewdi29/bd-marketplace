@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Listing, MembershipPlan } from '@/lib/types/database'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 import CompanyAvatar from '@/components/ui/CompanyAvatar'
-import NewsletterForm from '@/components/NewsletterForm'
+import NewsletterSection from '@/components/NewsletterSection'
 import SellerListingsSection from './SellerListingsSection'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -211,24 +211,7 @@ export default async function SellerProfilePage({ params }: Props) {
           soldListings={(soldListings ?? []) as Listing[]}
         />
 
-        {/* ── Newsletter section ── */}
-        <div
-          className="bg-white border border-[#E8E9EA] rounded-[20px] mt-10 text-center"
-          style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)', padding: '40px 48px' }}
-        >
-          <p
-            className="font-sans font-bold text-ink mb-2"
-            style={{ fontSize: '20px', letterSpacing: '-0.02em' }}
-          >
-            Stay in the Loop
-          </p>
-          <p className="font-sans text-ink-3 mb-6" style={{ fontSize: '14px' }}>
-            Get notified when new equipment is listed on Black Diamond Marketplace.
-          </p>
-          <div className="max-w-sm mx-auto">
-            <NewsletterForm source="seller_profile" />
-          </div>
-        </div>
+        <NewsletterSection source="seller_profile" className="!pb-0" />
 
       </div>
     </div>

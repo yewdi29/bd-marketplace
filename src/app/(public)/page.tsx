@@ -1,4 +1,5 @@
 import HeroGlobeLazy from '@/components/home/HeroGlobeLazy'
+import HeroListEquipmentLink from '@/components/home/HeroListEquipmentLink'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
@@ -6,7 +7,7 @@ import FeaturedEquipmentSection, { FeaturedCarouselSkeleton } from '@/components
 import CategoryBrowse from '@/components/home/CategoryBrowse'
 import HowItWorksHeader from '@/components/home/HowItWorksHeader'
 import HowItWorksLazy from '@/components/home/HowItWorksLazy'
-import NewsletterSection from '@/components/home/NewsletterSection'
+import NewsletterSection from '@/components/NewsletterSection'
 import OperatorJournalSection from '@/components/home/OperatorJournalSection'
 import {
   CategoryBrowseSkeleton,
@@ -169,13 +170,7 @@ export default function HomePage() {
                 >
                   Browse Equipment
                 </Link>
-                <Link
-                  href="/how-it-works"
-                  className="inline-flex items-center px-[18px] py-2 bg-orange text-white rounded-pill font-bold text-[13px] no-underline whitespace-nowrap font-sans transition-all duration-200 hover:bg-orange-lt"
-                  style={{ boxShadow: '0 6px 20px rgba(255,107,53,0.3)' }}
-                >
-                  List Your Equipment
-                </Link>
+                <HeroListEquipmentLink />
               </div>
             </div>
           </div>

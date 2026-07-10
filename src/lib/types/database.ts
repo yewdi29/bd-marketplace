@@ -73,6 +73,8 @@ export interface Listing {
   state_id: string | null
   latitude: number | null
   longitude: number | null
+  last_approved_at: string | null
+  last_major_edit_at: string | null
 }
 
 export interface Industry {
