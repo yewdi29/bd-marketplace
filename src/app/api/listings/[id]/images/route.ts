@@ -4,6 +4,11 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { applyMajorChangeReview } from '@/lib/listings/applyMajorChangeReview'
 import type { ListingChangeSnapshot } from '@/lib/listings/detectMajorChange'
+import {
+  ALLOWED_LISTING_PHOTO_TYPES,
+  MAX_LISTING_PHOTO_BYTES,
+  MAX_LISTING_PHOTOS,
+} from '@/lib/listings/listingPhotoUpload'
 
 type Params = { params: { id: string } }
 
@@ -50,8 +55,8 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   const existingCount = existingImages?.length ?? 0
-  if (existingCount >= 20) {
-    return NextResponse.json({ error: 'Maximum of 20 photos per listing' }, { status: 400 })
+  if (existingCount >= MAX_LISTING_PHOTOS) {
+    return NextResponse.json({ error: `Maximum of ${MAX_LISTING_PHOTOS} photos per listing` }, { status: 400 })
   }
 
   // Parse multipart form data
@@ -59,6 +64,14 @@ export async function POST(request: NextRequest, { params }: Params) {
   const file = form.get('file') as File | null
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+
+  if (!ALLOWED_LISTING_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_LISTING_PHOTO_TYPES)[number])) {
+    return NextResponse.json({ error: 'Only PNG and JPG files are allowed' }, { status: 400 })
+  }
+
+  if (file.size > MAX_LISTING_PHOTO_BYTES) {
+    return NextResponse.json({ error: 'File must be under 4 MB' }, { status: 400 })
+  }
 
   const bytes = await file.arrayBuffer()
   const buffer = new Uint8Array(bytes)

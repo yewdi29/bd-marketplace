@@ -11,12 +11,16 @@ import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper, l
 import NewListingMobileFlow from '@/components/listings/NewListingMobileFlow'
 import { useIsBelowLg } from '@/hooks/useIsBelowLg'
 import {
+  LISTING_PHOTO_ACCEPT,
+  LISTING_PHOTO_UPLOAD_HINT,
+  MAX_LISTING_PHOTOS,
+  uploadListingPhotos,
+} from '@/lib/listings/listingPhotoUpload'
+import {
   EMPTY_TAXONOMY_VALUES,
   useListingTaxonomy,
   type ListingTaxonomyFormValues,
 } from '@/hooks/useListingTaxonomy'
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -336,25 +340,27 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
 
   async function handleFileSelect(files: FileList) {
     if (!listingId) return
-    const remaining = 20 - photos.length
-    const toUpload = Array.from(files).slice(0, remaining)
+    const remaining = MAX_LISTING_PHOTOS - photos.length
+    if (remaining <= 0) return
 
     setUploadingPhoto(true)
     setError('')
 
-    for (const file of toUpload) {
-      const fd = new FormData()
-      fd.append('file', file)
+    const { uploaded, errors } = await uploadListingPhotos(
+      listingId,
+      Array.from(files),
+      remaining,
+    )
 
-      try {
-        const res = await fetch(`/api/listings/${listingId}/images`, { method: 'POST', body: fd })
-        const data = await res.json() as { image?: { id: string; url: string }; error?: string }
-        if (data.image) {
-          setPhotos(prev => [...prev, { id: data.image!.id, url: data.image!.url }])
-        }
-      } catch {
-        // Continue uploading remaining files
-      }
+    if (uploaded.length > 0) {
+      setPhotos(prev => [
+        ...prev,
+        ...uploaded.map(image => ({ id: image.id, url: image.url })),
+      ])
+    }
+
+    if (errors.length > 0) {
+      setError(errors.join(' '))
     }
 
     setUploadingPhoto(false)
@@ -878,7 +884,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                 Photos &amp; video
               </h2>
               <p className="text-sm text-ink-2 mb-5">
-                Add up to 20 photos. Drag to reorder — the first photo is the cover image.
+                Add up to {MAX_LISTING_PHOTOS} photos. Drag to reorder — the first photo is the cover image.
               </p>
 
               {/* Drop zone */}
@@ -895,7 +901,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/png, image/jpeg"
+                  accept={LISTING_PHOTO_ACCEPT}
                   multiple
                   className="hidden"
                   onChange={e => { if (e.target.files) handleFileSelect(e.target.files) }}
@@ -916,7 +922,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                     <p className="text-sm font-sans text-ink-2">
                       <span className="font-semibold text-orange">Click to browse</span> or drag &amp; drop
                     </p>
-                    <p className="text-xs text-ink-3">PNG, JPG — up to 20 photos</p>
+                    <p className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</p>
                   </>
                 )}
               </div>
@@ -924,7 +930,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               {/* Photo count */}
               {photos.length > 0 && (
                 <p className="text-xs font-mono text-ink-3 mt-2 mb-3 text-right">
-                  {photos.length} / 20 photos
+                  {photos.length} / {MAX_LISTING_PHOTOS} photos
                 </p>
               )}
 

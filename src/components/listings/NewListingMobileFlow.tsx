@@ -14,6 +14,11 @@ import { useListingTaxonomy } from '@/hooks/useListingTaxonomy'
 import type { ListingTaxonomyFormValues } from '@/hooks/useListingTaxonomy'
 import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
+import {
+  LISTING_PHOTO_ACCEPT,
+  LISTING_PHOTO_UPLOAD_HINT,
+  MAX_LISTING_PHOTOS,
+} from '@/lib/listings/listingPhotoUpload'
 import type { ListingForm, PhotoState } from './NewListingModal'
 import ListingPhotoSortableList from './ListingPhotoSortableList'
 
@@ -570,7 +575,7 @@ export default function NewListingMobileFlow({
                 Add Photos &amp; Video.
               </h1>
               <p className="text-[15px] text-ink-2 leading-relaxed mb-5">
-                Add up to 20 photos. Press and hold a photo to reorder — the first photo is your cover image.
+                Add up to {MAX_LISTING_PHOTOS} photos. Press and hold a photo to reorder — the first photo is your cover image.
               </p>
 
               <button
@@ -591,6 +596,7 @@ export default function NewListingMobileFlow({
                     <CameraIcon />
                     <span className="text-sm font-sans font-semibold text-ink">Add Photos</span>
                     <span className="text-xs text-ink-3">Take a photo or choose from library</span>
+                    <span className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</span>
                   </>
                 )}
               </button>
@@ -598,7 +604,7 @@ export default function NewListingMobileFlow({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept={LISTING_PHOTO_ACCEPT}
                 multiple
                 className="hidden"
                 onChange={e => { if (e.target.files) handleFileSelect(e.target.files) }}
@@ -607,7 +613,7 @@ export default function NewListingMobileFlow({
               {photos.length > 0 && (
                 <>
                   <p className="text-xs font-mono text-ink-3 mt-3 mb-2 text-right">
-                    {photos.length} / 20 photos
+                    {photos.length} / {MAX_LISTING_PHOTOS} photos
                   </p>
                   <ListingPhotoSortableList
                     photos={photos}

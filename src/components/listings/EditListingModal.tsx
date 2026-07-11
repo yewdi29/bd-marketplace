@@ -7,6 +7,12 @@ import ListingPhotoSortableList from '@/components/listings/ListingPhotoSortable
 import EditListingMobileFlow from '@/components/listings/EditListingMobileFlow'
 import { useIsBelowLg } from '@/hooks/useIsBelowLg'
 import {
+  LISTING_PHOTO_ACCEPT,
+  LISTING_PHOTO_UPLOAD_HINT,
+  MAX_LISTING_PHOTOS,
+  uploadListingPhotos,
+} from '@/lib/listings/listingPhotoUpload'
+import {
   EMPTY_TAXONOMY_VALUES,
   useListingTaxonomy,
   type ListingTaxonomyFormValues,
@@ -31,7 +37,7 @@ const PRICE_UNITS = [
   { value: 'per_meter', label: 'Per Meter' },
 ]
 
-const MAX_PHOTOS = 20
+const MAX_PHOTOS = MAX_LISTING_PHOTOS
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -138,23 +144,28 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
 
   async function handleFileSelect(files: FileList) {
     const remaining = MAX_PHOTOS - photos.length
-    const toUpload = Array.from(files).slice(0, remaining)
-    if (toUpload.length === 0) return
+    if (remaining <= 0) return
 
     setUploadingPhoto(true)
-    for (const file of toUpload) {
-      const fd = new FormData()
-      fd.append('file', file)
-      try {
-        const res = await fetch(`/api/listings/${listingId}/images`, { method: 'POST', body: fd })
-        const data = await res.json() as { image?: { id: string; url: string }; error?: string }
-        if (data.image) {
-          setPhotos(prev => [...prev, { id: data.image!.id, url: data.image!.url }])
-        }
-      } catch {
-        // Continue with remaining files
-      }
+    setError('')
+
+    const { uploaded, errors } = await uploadListingPhotos(
+      listingId,
+      Array.from(files),
+      remaining,
+    )
+
+    if (uploaded.length > 0) {
+      setPhotos(prev => [
+        ...prev,
+        ...uploaded.map(image => ({ id: image.id, url: image.url })),
+      ])
     }
+
+    if (errors.length > 0) {
+      setError(errors.join(' '))
+    }
+
     setUploadingPhoto(false)
   }
 
@@ -427,7 +438,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/png, image/jpeg"
+                      accept={LISTING_PHOTO_ACCEPT}
                       multiple
                       className="hidden"
                       onChange={e => { if (e.target.files) handleFileSelect(e.target.files) }}
@@ -449,7 +460,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                           <span className="font-semibold text-orange">Click to browse</span> or drag &amp; drop
                         </p>
                         {photos.length === 0 && (
-                          <p className="text-xs text-ink-3">PNG, JPG — up to {MAX_PHOTOS} photos</p>
+                          <p className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</p>
                         )}
                       </>
                     )}

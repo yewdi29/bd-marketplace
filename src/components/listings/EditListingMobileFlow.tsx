@@ -11,6 +11,13 @@ import ListingTaxonomyFields, {
 import ListingPhotoSortableList from '@/components/listings/ListingPhotoSortableList'
 import type { EditForm, PhotoState } from './EditListingModal'
 import type { ListingTaxonomyFormValues } from '@/hooks/useListingTaxonomy'
+import {
+  LISTING_PHOTO_ACCEPT,
+  LISTING_PHOTO_UPLOAD_HINT,
+  MAX_LISTING_PHOTOS,
+} from '@/lib/listings/listingPhotoUpload'
+
+const MAX_PHOTOS = MAX_LISTING_PHOTOS
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -28,8 +35,6 @@ const PRICE_UNITS = [
   { value: 'per_set', label: 'Per Set' },
   { value: 'per_meter', label: 'Per Meter' },
 ]
-
-const MAX_PHOTOS = 20
 
 function ChevronLeftIcon() {
   return (
@@ -317,6 +322,7 @@ export default function EditListingMobileFlow({
                         <CameraIcon />
                         <span className="text-sm font-sans font-semibold text-ink">Add Photos</span>
                         <span className="text-xs text-ink-3">Take a photo or choose from library</span>
+                        <span className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</span>
                       </>
                     )}
                   </button>
@@ -325,7 +331,7 @@ export default function EditListingMobileFlow({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={LISTING_PHOTO_ACCEPT}
                   multiple
                   className="hidden"
                   onChange={e => { if (e.target.files) void handleFileSelect(e.target.files) }}
