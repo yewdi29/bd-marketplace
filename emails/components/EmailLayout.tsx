@@ -5,6 +5,7 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -23,6 +24,14 @@ export const emailColors = {
   feedbackBg: '#F8F9FA',
 } as const
 
+/** Same wordmark as site navbar — served from /public at deploy time. */
+export const EMAIL_LOGO_URL = 'https://www.blackdiamondmkt.com/bd_logo-black.svg'
+
+export const emailInlineLinkStyle = {
+  color: emailColors.orange,
+  textDecoration: 'underline',
+} as const
+
 interface EmailLayoutProps {
   preview: string
   title: string
@@ -37,16 +46,13 @@ export default function EmailLayout({ preview, title, children }: EmailLayoutPro
       <Body style={bodyStyle}>
         <Container style={containerStyle}>
           <Section style={logoSectionStyle}>
-            <table cellPadding={0} cellSpacing={0} role="presentation">
-              <tbody>
-                <tr>
-                  <td style={logoMarkStyle} />
-                  <td style={wordmarkCellStyle}>
-                    <Text style={wordmarkStyle}>BLACK DIAMOND</Text>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <Img
+              src={EMAIL_LOGO_URL}
+              alt="Black Diamond Marketplace"
+              width={140}
+              height={27}
+              style={logoImageStyle}
+            />
           </Section>
 
           <Heading style={headingStyle}>{title}</Heading>
@@ -87,6 +93,42 @@ export function EmailFeedbackBlock({ children }: { children: ReactNode }) {
   )
 }
 
+export function EmailFromBlock({
+  buyerName,
+  buyerEmail,
+  buyerCompany,
+  buyerPhone,
+}: {
+  buyerName: string
+  buyerEmail: string
+  buyerCompany?: string | null
+  buyerPhone?: string | null
+}) {
+  const company = buyerCompany?.trim() || null
+  const phone = buyerPhone?.trim() || null
+  const telHref = phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : null
+
+  return (
+    <Section style={fromBlockStyle}>
+      <Text style={fromLabelStyle}>FROM</Text>
+      <Text style={fromRowStyle}>{buyerName}</Text>
+      {company && <Text style={fromRowStyle}>{company}</Text>}
+      <Text style={phone ? fromRowStyle : fromRowLastStyle}>
+        <Link href={`mailto:${buyerEmail}`} style={emailInlineLinkStyle}>
+          {buyerEmail}
+        </Link>
+      </Text>
+      {phone && telHref && (
+        <Text style={fromRowLastStyle}>
+          <Link href={telHref} style={emailInlineLinkStyle}>
+            {phone}
+          </Link>
+        </Text>
+      )}
+    </Section>
+  )
+}
+
 const bodyStyle = {
   backgroundColor: emailColors.bg,
   fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -107,24 +149,11 @@ const logoSectionStyle = {
   marginBottom: '24px',
 }
 
-const logoMarkStyle = {
-  width: '28px',
-  height: '28px',
-  borderRadius: '7px',
-  backgroundColor: emailColors.ink,
-}
-
-const wordmarkCellStyle = {
-  paddingLeft: '10px',
-  verticalAlign: 'middle',
-}
-
-const wordmarkStyle = {
-  color: emailColors.ink,
-  fontSize: '13px',
-  fontWeight: 700,
-  letterSpacing: '0.04em',
-  margin: 0,
+const logoImageStyle = {
+  display: 'block',
+  height: '27px',
+  width: 'auto',
+  maxWidth: '140px',
 }
 
 const headingStyle = {
@@ -172,6 +201,37 @@ const feedbackTextStyle = {
   lineHeight: '1.7',
   margin: 0,
   whiteSpace: 'pre-wrap' as const,
+}
+
+const fromBlockStyle = {
+  backgroundColor: emailColors.white,
+  border: `1px solid ${emailColors.border}`,
+  borderRadius: '8px',
+  margin: '16px 0',
+  padding: '16px 20px',
+}
+
+const fromLabelStyle = {
+  color: emailColors.ink3,
+  fontSize: '11px',
+  fontWeight: 600,
+  letterSpacing: '0.08em',
+  margin: '0 0 10px',
+  textTransform: 'uppercase' as const,
+}
+
+const fromRowStyle = {
+  color: emailColors.ink,
+  fontSize: '14px',
+  lineHeight: '1.5',
+  margin: '0 0 6px',
+}
+
+const fromRowLastStyle = {
+  color: emailColors.ink,
+  fontSize: '14px',
+  lineHeight: '1.5',
+  margin: 0,
 }
 
 const hrStyle = {

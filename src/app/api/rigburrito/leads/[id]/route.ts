@@ -119,8 +119,10 @@ export async function PATCH(
         leadId: id,
         listingTitle: emailCtx.listingTitle,
         buyerName: emailCtx.buyerName,
-        buyerMessage: emailCtx.message,
         buyerEmail: emailCtx.buyerEmail,
+        buyerCompany: emailCtx.buyerCompany,
+        buyerPhone: emailCtx.buyerPhone,
+        buyerMessage: emailCtx.message,
       })
     }
 

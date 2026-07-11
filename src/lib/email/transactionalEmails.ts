@@ -76,8 +76,10 @@ export async function dispatchNewInquirySellerEmail(opts: {
   leadId: string
   listingTitle: string
   buyerName: string
+  buyerEmail: string
   buyerMessage: string
-  buyerEmail?: string
+  buyerCompany?: string | null
+  buyerPhone?: string | null
 }): Promise<void> {
   sendTransactionalEmailSafe({
     templateType: 'NewInquirySeller',
@@ -89,6 +91,9 @@ export async function dispatchNewInquirySellerEmail(opts: {
     react: createElement(NewInquirySeller, {
       listingTitle: opts.listingTitle,
       buyerName: opts.buyerName,
+      buyerEmail: opts.buyerEmail,
+      buyerCompany: opts.buyerCompany,
+      buyerPhone: opts.buyerPhone,
       buyerMessage: opts.buyerMessage,
       dashboardUrl: `${getAppUrl()}/dashboard`,
     }),

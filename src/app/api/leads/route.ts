@@ -31,8 +31,10 @@ async function processInquiryNotifications(
       leadId,
       listingTitle: ctx.listingTitle,
       buyerName: ctx.buyerName,
-      buyerMessage: ctx.message,
       buyerEmail: ctx.buyerEmail,
+      buyerCompany: ctx.buyerCompany,
+      buyerPhone: ctx.buyerPhone,
+      buyerMessage: ctx.message,
     })
   } else {
     await sendAdminInquiryAlert(dealTier, ctx)
