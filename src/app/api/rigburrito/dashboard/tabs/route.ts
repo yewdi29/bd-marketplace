@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
          users!listings_seller_id_fkey(full_name, email)`,
       )
       .eq('status', 'pending_review')
-      .in('tier', ['yellow', 'red'])
       .order('created_at', { ascending: false })
       .limit(TAB_LIMIT)
 
@@ -47,12 +46,79 @@ export async function GET(req: NextRequest) {
   if (tab === 'agent_activity') {
     const { data, error } = await service
       .from('agent_activity_log')
-      .select('id, agent_name, action, entity_type, entity_id, outcome, summary, created_at')
+      .select(
+        'id, agent_name, action, entity_type, entity_id, outcome, summary, created_at, overall_score, score_breakdown, flag_comment, reasoning',
+      )
       .order('created_at', { ascending: false })
       .limit(TAB_LIMIT)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ success: true, tab, rows: data ?? [] })
+
+    const rows = data ?? []
+    const listingVerifierListingIds = [
+      ...new Set(
+        rows
+          .filter(
+            row =>
+              row.agent_name === 'Listing Verifier'
+              && row.entity_type === 'listing'
+              && row.entity_id,
+          )
+          .map(row => row.entity_id as string),
+      ),
+    ]
+
+    type RecommendationBackfill = {
+      confidence_score: number | null
+      reasoning: string | null
+      flag_comment: string | null
+    }
+    const recommendationByListing = new Map<string, RecommendationBackfill>()
+    if (listingVerifierListingIds.length > 0) {
+      const { data: recommendations } = await service
+        .from('agent_recommendations')
+        .select('entity_id, confidence_score, reasoning, flag_comment, created_at')
+        .eq('entity_type', 'listing')
+        .eq('agent_name', 'Listing Verifier')
+        .in('entity_id', listingVerifierListingIds)
+        .order('created_at', { ascending: false })
+
+      for (const rec of recommendations ?? []) {
+        if (!recommendationByListing.has(rec.entity_id)) {
+          recommendationByListing.set(rec.entity_id, {
+            confidence_score: rec.confidence_score != null ? Number(rec.confidence_score) : null,
+            reasoning: rec.reasoning ?? null,
+            flag_comment: rec.flag_comment ?? null,
+          })
+        }
+      }
+    }
+
+    const enrichedRows = rows.map(row => {
+      if (row.agent_name !== 'Listing Verifier' || !row.entity_id) {
+        return row
+      }
+
+      const rec = recommendationByListing.get(row.entity_id)
+      const summaryMatch = row.summary?.match(/\(confidence:\s*(\d+(?:\.\d+)?)%\)\s*$/i)
+      const overallScore =
+        row.overall_score != null
+          ? Number(row.overall_score)
+          : rec?.confidence_score != null
+            ? rec.confidence_score
+            : summaryMatch
+              ? Number(summaryMatch[1])
+              : null
+
+      return {
+        ...row,
+        overall_score: overallScore,
+        reasoning: row.reasoning ?? rec?.reasoning ?? null,
+        flag_comment: row.flag_comment ?? rec?.flag_comment ?? null,
+      }
+    })
+
+    return NextResponse.json({ success: true, tab, rows: enrichedRows })
   }
 
   if (tab === 'yellow_red_leads') {

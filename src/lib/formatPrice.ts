@@ -8,11 +8,13 @@ const PRICE_UNITS: Record<string, string> = {
 }
 
 export function formatPriceAmount(price: number, priceUnit: string): string {
+  const cents = Math.round(Math.abs(price) * 100) % 100
+  const hasCents = cents !== 0
   const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
   }).format(price)
   return formatted + (PRICE_UNITS[priceUnit] ?? '')
 }

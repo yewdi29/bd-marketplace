@@ -339,6 +339,111 @@ button.rigburrito-stat-card {
   gap: 8px;
 }
 
+/* Agent Activity tab — pills, confidence, feedback */
+.rigburrito-agent-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.rigburrito-agent-confidence {
+  font-family: 'DM Mono', 'Andale Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rigburrito-expandable-detail-section {
+  border-top: 1px solid #F0F1F3;
+  padding-top: 12px;
+}
+
+.rigburrito-agent-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rigburrito-agent-feedback-breakdown {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rigburrito-agent-feedback-criterion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rigburrito-agent-feedback-criterion-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6B7280;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rigburrito-agent-feedback-criterion-score {
+  font-family: 'DM Mono', 'Andale Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rigburrito-agent-feedback-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #0F1117;
+}
+
+.rigburrito-agent-summary-cell {
+  white-space: normal !important;
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.rigburrito-agent-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rigburrito-agent-summary-headline,
+.rigburrito-agent-summary-line,
+.rigburrito-agent-summary-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #0F1117;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.rigburrito-agent-summary-headline {
+  font-weight: 500;
+}
+
+.rigburrito-agent-summary-label {
+  font-weight: 600;
+  color: #6B7280;
+}
+
+@media (max-width: 1023px) {
+  .rigburrito-agent-feedback-breakdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .rigburrito-btn {
   display: inline-flex;
   align-items: center;

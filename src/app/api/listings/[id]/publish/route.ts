@@ -115,7 +115,7 @@ export async function PATCH(
     status = 'pending_review'
   } else if (
     !listing.last_major_edit_at ||
-    listing.last_major_edit_at < listing.last_approved_at
+    listing.last_major_edit_at <= listing.last_approved_at
   ) {
     status = 'active'
   } else {

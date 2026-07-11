@@ -4,6 +4,22 @@ import { createServiceClient } from '@/lib/rigburrito/service'
 
 const AGENT_NAME = 'Listing Verifier'
 
+interface ScoreBreakdown {
+  title: number
+  required_fields: number
+  description: number
+  photos: number
+  price: number
+}
+
+function isScoreBreakdown(value: unknown): value is ScoreBreakdown {
+  if (!value || typeof value !== 'object') return false
+  const row = value as Record<string, unknown>
+  return ['title', 'required_fields', 'description', 'photos', 'price'].every(
+    key => typeof row[key] === 'number',
+  )
+}
+
 export async function POST(req: NextRequest) {
   const authError = verifyPaperclipSecret(req)
   if (authError) return authError
@@ -16,12 +32,14 @@ export async function POST(req: NextRequest) {
       confidence_score,
       reasoning,
       flag_comment,
+      score_breakdown,
     } = body as {
       listing_id?: string
       recommended_action?: 'approve' | 'flag'
       confidence_score?: number
       reasoning?: string
       flag_comment?: string
+      score_breakdown?: ScoreBreakdown
     }
 
     if (!listing_id || !recommended_action || confidence_score == null || !reasoning) {
@@ -36,6 +54,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'flag_comment is required when recommending flag' }, { status: 400 })
     }
 
+    if (score_breakdown != null && !isScoreBreakdown(score_breakdown)) {
+      return NextResponse.json({ error: 'Invalid score_breakdown' }, { status: 400 })
+    }
+
     const service = createServiceClient()
 
     const { data: listing, error: listingError } = await service
@@ -46,6 +68,23 @@ export async function POST(req: NextRequest) {
 
     if (listingError || !listing) {
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+    }
+
+    const { data: existingPending } = await service
+      .from('agent_recommendations')
+      .select('id')
+      .eq('agent_name', AGENT_NAME)
+      .eq('entity_type', 'listing')
+      .eq('entity_id', listing_id)
+      .eq('status', 'pending')
+      .maybeSingle()
+
+    if (existingPending) {
+      return NextResponse.json({
+        success: true,
+        recommendation_id: existingPending.id,
+        deduplicated: true,
+      })
     }
 
     const { data: recommendation, error: recError } = await service
@@ -64,11 +103,30 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (recError || !recommendation) {
+      if (recError?.code === '23505') {
+        const { data: racedPending } = await service
+          .from('agent_recommendations')
+          .select('id')
+          .eq('agent_name', AGENT_NAME)
+          .eq('entity_type', 'listing')
+          .eq('entity_id', listing_id)
+          .eq('status', 'pending')
+          .maybeSingle()
+
+        if (racedPending) {
+          return NextResponse.json({
+            success: true,
+            recommendation_id: racedPending.id,
+            deduplicated: true,
+          })
+        }
+      }
+
       return NextResponse.json({ error: recError?.message ?? 'Failed to save recommendation' }, { status: 500 })
     }
 
     const actionLabel = recommended_action.toUpperCase()
-    const summary = `Recommended ${actionLabel} for ${listing.title} (confidence: ${confidence_score}%)`
+    const summary = `Recommended ${actionLabel} for ${listing.title}`
 
     const { error: logError } = await service.from('agent_activity_log').insert({
       agent_name: AGENT_NAME,
@@ -77,6 +135,10 @@ export async function POST(req: NextRequest) {
       entity_id: listing_id,
       outcome: 'pending_review',
       summary,
+      overall_score: confidence_score,
+      score_breakdown: score_breakdown ?? null,
+      flag_comment: flag_comment?.trim() ?? null,
+      reasoning,
     })
 
     if (logError) {

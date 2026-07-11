@@ -11,14 +11,26 @@ import ExpandableDataTable, {
   type ExpandableTableAction,
   type ExpandableTableColumn,
   type ExpandableTableDetailField,
+  type ExpandableTableDetailSection,
 } from '@/components/rigburrito/ExpandableDataTable'
+import AdminListingsModerationTable from '@/components/rigburrito/AdminListingsModerationTable'
+import {
+  AgentActivityFeedback,
+  AgentActivitySummary,
+  AgentConfidenceValue,
+  AgentListingViewLink,
+  AgentNamePill,
+  AgentOutcomePill,
+} from '@/components/rigburrito/AgentActivityCells'
+import ListingPreviewSlideOver from '@/components/rigburrito/ListingPreviewSlideOver'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
 import ErrorState from '@/components/rigburrito/ErrorState'
 import EmptyState from '@/components/rigburrito/EmptyState'
 import StatusBadge from '@/components/rigburrito/StatusBadge'
 import PlanBadge from '@/components/rigburrito/PlanBadge'
-import { formatCurrency, formatDate, formatDateTime, truncateText } from '@/lib/rigburrito/utils'
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/rigburrito/utils'
 import type { DashboardStats } from '@/lib/rigburrito/types'
+import type { AdminListingRow } from '@/lib/rigburrito/types'
 import type { MetricHistoryPoint, MetricKey } from '@/lib/rigburrito/dashboardHistory'
 import type { GeoCountryRow } from '@/components/rigburrito/WorldChoroplethMap'
 import { useIsBelowLg } from '@/hooks/useIsBelowLg'
@@ -29,28 +41,8 @@ type DashboardTab =
   | 'yellow_red_leads'
   | 'membership_activity'
 
-interface PendingApprovalRow {
-  id: string
-  title: string
-  slug: string | null
-  tier: string | null
-  status: string
-  price: number
-  price_unit: string
-  seller_name: string
-  created_at: string
-}
-
-interface AgentActivityRow {
-  id: string
-  agent_name: string
-  action: string
-  entity_type: string | null
-  entity_id: string | null
-  outcome: string | null
-  summary: string
-  created_at: string
-}
+import type { AgentActivityRow } from '@/lib/rigburrito/agentActivity'
+import { parseScoreBreakdown, resolveAgentConfidence } from '@/lib/rigburrito/agentActivity'
 
 interface YellowRedLeadRow {
   id: string
@@ -101,11 +93,15 @@ export default function DashboardPage() {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('total_users')
   const [activeTab, setActiveTab] = useState<DashboardTab>('pending_approvals')
   const [tabRows, setTabRows] = useState<unknown[]>([])
+  const [pendingListings, setPendingListings] = useState<AdminListingRow[]>([])
+  const [pendingLoading, setPendingLoading] = useState(true)
+  const [pendingError, setPendingError] = useState('')
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [tabLoading, setTabLoading] = useState(true)
   const [error, setError] = useState('')
   const [tabError, setTabError] = useState('')
+  const [previewListingId, setPreviewListingId] = useState<string | null>(null)
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true)
@@ -125,7 +121,28 @@ export default function DashboardPage() {
     }
   }, [])
 
+  const fetchPendingListings = useCallback(async () => {
+    setPendingLoading(true)
+    setPendingError('')
+    try {
+      const res = await fetch('/api/rigburrito/listings?tab=pending&page=1')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to load pending listings')
+      setPendingListings(data.listings ?? [])
+    } catch (err) {
+      setPendingError(err instanceof Error ? err.message : 'Failed to load pending listings')
+      setPendingListings([])
+    } finally {
+      setPendingLoading(false)
+    }
+  }, [])
+
   const fetchTab = useCallback(async (tab: DashboardTab) => {
+    if (tab === 'pending_approvals') {
+      await fetchPendingListings()
+      return
+    }
+
     setTabLoading(true)
     setTabError('')
     setExpandedRowId(null)
@@ -140,7 +157,7 @@ export default function DashboardPage() {
     } finally {
       setTabLoading(false)
     }
-  }, [])
+  }, [fetchPendingListings])
 
   useEffect(() => { fetchDashboard() }, [fetchDashboard])
   useEffect(() => { fetchTab(activeTab) }, [activeTab, fetchTab])
@@ -153,19 +170,6 @@ export default function DashboardPage() {
     () => userLocationsFull.reduce((sum, row) => sum + row.count, 0),
     [userLocationsFull],
   )
-
-  async function patchListing(id: string, updates: Record<string, unknown>) {
-    const res = await fetch(`/api/rigburrito/listings/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error ?? 'Action failed')
-    }
-    await fetchTab(activeTab)
-  }
 
   async function leadAction(id: string, action: 'approve' | 'commission' | 'discard') {
     const res = await fetch(`/api/rigburrito/leads/${id}`, {
@@ -183,43 +187,33 @@ export default function DashboardPage() {
     await fetchTab(activeTab)
   }
 
-  const pendingColumns: ExpandableTableColumn<PendingApprovalRow>[] = [
-    { key: 'title', header: 'Listing', render: r => <span className="font-medium">{r.title}</span> },
-    { key: 'tier', header: 'Tier', render: r => <StatusBadge status={r.tier ?? 'yellow'} variant="deal" /> },
-    { key: 'seller', header: 'Seller', render: r => r.seller_name },
-    { key: 'price', header: 'Price', render: r => <span className="rigburrito-mono">{formatCurrency(r.price)}</span> },
-    { key: 'created', header: 'Submitted', render: r => formatDate(r.created_at) },
-  ]
-
-  const pendingDetails: ExpandableTableDetailField<PendingApprovalRow>[] = [
-    { label: 'Status', render: r => <StatusBadge status={r.status} /> },
-    { label: 'Seller', render: r => r.seller_name },
-    { label: 'Submitted', render: r => formatDateTime(r.created_at) },
-  ]
-
-  const pendingActions: ExpandableTableAction<PendingApprovalRow>[] = [
-    { label: 'Approve', variant: 'success', onClick: r => patchListing(r.id, { status: 'active' }) },
-    { label: 'Reject', variant: 'danger', onClick: r => patchListing(r.id, { status: 'draft' }) },
-    {
-      label: 'Request info',
-      variant: 'warning',
-      onClick: r => router.push(`/rigburrito/listings?highlight=${r.id}`),
-    },
-  ]
-
   const agentColumns: ExpandableTableColumn<AgentActivityRow>[] = [
-    { key: 'agent', header: 'Agent', render: r => r.agent_name },
-    { key: 'action', header: 'Action', render: r => r.action },
-    { key: 'outcome', header: 'Outcome', render: r => r.outcome ?? '—' },
-    { key: 'summary', header: 'Summary', render: r => truncateText(r.summary, 72) },
+    { key: 'agent', header: 'Agent', render: r => <AgentNamePill agentName={r.agent_name} /> },
+    {
+      key: 'view',
+      header: 'View',
+      render: r => <AgentListingViewLink row={r} onView={setPreviewListingId} />,
+    },
+    { key: 'outcome', header: 'Outcome', render: r => <AgentOutcomePill outcome={r.outcome} /> },
+    { key: 'confidence', header: 'Confidence', render: r => <AgentConfidenceValue score={resolveAgentConfidence(r)} /> },
+    {
+      key: 'summary',
+      header: 'Summary',
+      className: 'rigburrito-agent-summary-cell',
+      render: r => <AgentActivitySummary row={r} truncate={120} />,
+    },
     { key: 'when', header: 'When', render: r => formatDate(r.created_at) },
   ]
 
   const agentDetails: ExpandableTableDetailField<AgentActivityRow>[] = [
-    { label: 'Summary', render: r => r.summary },
+    { label: 'Summary', render: r => <AgentActivitySummary row={r} /> },
     { label: 'Entity', render: r => `${r.entity_type ?? '—'} · ${r.entity_id ?? '—'}` },
-    { label: 'Outcome', render: r => r.outcome ?? '—' },
+    { label: 'Outcome', render: r => <AgentOutcomePill outcome={r.outcome} /> },
     { label: 'Timestamp', render: r => formatDateTime(r.created_at) },
+  ]
+
+  const agentDetailSections: ExpandableTableDetailSection<AgentActivityRow>[] = [
+    { render: r => <AgentActivityFeedback row={r} /> },
   ]
 
   const leadColumns: ExpandableTableColumn<YellowRedLeadRow>[] = [
@@ -349,32 +343,30 @@ export default function DashboardPage() {
         </Tabs.List>
 
         <Tabs.Content value="pending_approvals" className="rigburrito-tab-panel">
-          {tabLoading ? <TableSkeleton cols={5} /> : tabError ? (
-            <ErrorState message={tabError} onRetry={() => fetchTab('pending_approvals')} />
-          ) : (
-            <ExpandableDataTable
-              rows={tabRows as PendingApprovalRow[]}
-              columns={pendingColumns}
-              detailFields={pendingDetails}
-              actions={pendingActions}
-              getRowId={r => r.id}
-              expandedId={expandedRowId}
-              onToggle={id => setExpandedRowId(prev => (prev === id ? null : id))}
-              emptyState={
-                <EmptyState icon={Inbox} title="No pending approvals" description="Yellow and Red tier listings awaiting review will appear here." />
-              }
-            />
-          )}
+          <AdminListingsModerationTable
+            listings={pendingListings}
+            mode="pending"
+            loading={pendingLoading}
+            error={pendingError}
+            onRetry={fetchPendingListings}
+            onRefresh={fetchPendingListings}
+            emptyTitle="No pending approvals"
+            emptyDescription="Listings awaiting admin review will appear here."
+          />
         </Tabs.Content>
 
         <Tabs.Content value="agent_activity" className="rigburrito-tab-panel">
-          {tabLoading ? <TableSkeleton cols={5} /> : tabError ? (
+          {tabLoading ? <TableSkeleton cols={6} /> : tabError ? (
             <ErrorState message={tabError} onRetry={() => fetchTab('agent_activity')} />
           ) : (
             <ExpandableDataTable
-              rows={tabRows as AgentActivityRow[]}
+              rows={(tabRows as AgentActivityRow[]).map(row => ({
+                ...row,
+                score_breakdown: parseScoreBreakdown(row.score_breakdown),
+              }))}
               columns={agentColumns}
               detailFields={agentDetails}
+              detailSections={agentDetailSections}
               actions={[]}
               getRowId={r => r.id}
               expandedId={expandedRowId}
@@ -424,6 +416,11 @@ export default function DashboardPage() {
           )}
         </Tabs.Content>
       </Tabs.Root>
+
+      <ListingPreviewSlideOver
+        listingId={previewListingId}
+        onClose={() => setPreviewListingId(null)}
+      />
     </div>
   )
 }

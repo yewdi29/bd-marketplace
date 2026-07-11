@@ -51,6 +51,13 @@ export async function PATCH(
     return NextResponse.json({ error: 'No valid fields' }, { status: 400 })
   }
 
+  if (updates.status === 'active') {
+    const now = new Date().toISOString()
+    updates.last_approved_at = now
+    updates.admin_flagged = false
+    updates.updated_at = now
+  }
+
   const { error } = await service.from('listings').update(updates).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

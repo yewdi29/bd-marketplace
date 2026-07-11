@@ -15,6 +15,10 @@ export interface ExpandableTableDetailField<T> {
   render: (row: T) => ReactNode
 }
 
+export interface ExpandableTableDetailSection<T> {
+  render: (row: T) => ReactNode
+}
+
 export interface ExpandableTableAction<T> {
   label: string
   variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'muted' | 'orange'
@@ -27,6 +31,7 @@ interface ExpandableDataTableProps<T> {
   rows: T[]
   columns: ExpandableTableColumn<T>[]
   detailFields: ExpandableTableDetailField<T>[]
+  detailSections?: ExpandableTableDetailSection<T>[]
   actions: ExpandableTableAction<T>[]
   getRowId: (row: T) => string
   expandedId: string | null
@@ -38,6 +43,7 @@ export default function ExpandableDataTable<T>({
   rows,
   columns,
   detailFields,
+  detailSections = [],
   actions,
   getRowId,
   expandedId,
@@ -68,6 +74,7 @@ export default function ExpandableDataTable<T>({
                 row={row}
                 columns={columns}
                 detailFields={detailFields}
+                detailSections={detailSections}
                 actions={actions}
                 expanded={expanded}
                 onToggle={() => onToggle(id)}
@@ -84,6 +91,7 @@ function ExpandableRow<T>({
   row,
   columns,
   detailFields,
+  detailSections,
   actions,
   expanded,
   onToggle,
@@ -91,6 +99,7 @@ function ExpandableRow<T>({
   row: T
   columns: ExpandableTableColumn<T>[]
   detailFields: ExpandableTableDetailField<T>[]
+  detailSections: ExpandableTableDetailSection<T>[]
   actions: ExpandableTableAction<T>[]
   expanded: boolean
   onToggle: () => void
@@ -117,6 +126,15 @@ function ExpandableRow<T>({
                   </div>
                 ))}
               </div>
+              {detailSections.map((section, index) => {
+                const content = section.render(row)
+                if (!content) return null
+                return (
+                  <div key={index} className="rigburrito-expandable-detail-section">
+                    {content}
+                  </div>
+                )
+              })}
               {actions.length > 0 && (
               <div className="rigburrito-expandable-detail-actions">
                 {actions.map(action => {
