@@ -575,6 +575,38 @@ button.rigburrito-stat-card {
   overflow-x: auto;
 }
 
+/* Dashboard / moderation tables: vertical scroll with sticky header */
+.rigburrito-table-wrap--scroll-y {
+  position: relative;
+}
+
+.rigburrito-table-scroll-inner {
+  position: relative;
+  max-height: min(480px, 60vh);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rigburrito-table-scroll-inner .rigburrito-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #F8F9FA;
+  box-shadow: 0 1px 0 #F0F1F3;
+}
+
+.rigburrito-table-scroll-inner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.92));
+  z-index: 3;
+}
+
 .rigburrito-table {
   width: 100%;
   text-align: left;

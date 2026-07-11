@@ -4,11 +4,12 @@ import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/rigburrito/service'
 import {
   sendAdminInquiryAlert,
-  sendBuyerInquiryAutoReplyGreen,
-  sendBuyerInquiryAutoReplyIntercepted,
-  sendSellerInquiryNotification,
   type InquiryEmailContext,
 } from '@/lib/email/inquiryEmails'
+import {
+  dispatchInquiryReceivedBuyerEmail,
+  dispatchNewInquirySellerEmail,
+} from '@/lib/email/transactionalEmails'
 
 type DealTier = 'green' | 'yellow' | 'red'
 
@@ -16,17 +17,25 @@ async function processInquiryNotifications(
   dealTier: DealTier,
   sellerEmail: string,
   ctx: InquiryEmailContext,
+  leadId: string,
 ): Promise<void> {
-  try {
-    if (dealTier === 'green') {
-      await sendSellerInquiryNotification(sellerEmail, ctx)
-      await sendBuyerInquiryAutoReplyGreen(ctx.buyerEmail)
-    } else {
-      await sendAdminInquiryAlert(dealTier, ctx)
-      await sendBuyerInquiryAutoReplyIntercepted(ctx.buyerEmail)
-    }
-  } catch (err) {
-    console.error('[leads] notification error:', err)
+  await dispatchInquiryReceivedBuyerEmail({
+    buyerEmail: ctx.buyerEmail,
+    leadId,
+    listingTitle: ctx.listingTitle,
+  })
+
+  if (dealTier === 'green') {
+    await dispatchNewInquirySellerEmail({
+      sellerEmail,
+      leadId,
+      listingTitle: ctx.listingTitle,
+      buyerName: ctx.buyerName,
+      buyerMessage: ctx.message,
+      buyerEmail: ctx.buyerEmail,
+    })
+  } else {
+    await sendAdminInquiryAlert(dealTier, ctx)
   }
 }
 
@@ -129,7 +138,7 @@ export async function POST(request: NextRequest) {
         buyerCompany: buyer_company,
         message,
       }
-      await processInquiryNotifications(dealTier, sellerEmail, emailCtx)
+      await processInquiryNotifications(dealTier, sellerEmail, emailCtx, data.id)
     }
 
     return NextResponse.json({ lead: data }, { status: 201 })

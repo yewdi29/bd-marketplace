@@ -55,34 +55,36 @@ export default function ExpandableDataTable<T>({
   }
 
   return (
-    <div className="rigburrito-table-wrap">
-      <table className="rigburrito-table rigburrito-table--data rigburrito-expandable-table">
-        <thead>
-          <tr>
-            {columns.map(col => (
-              <th key={col.key} className={col.className}>{col.header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => {
-            const id = getRowId(row)
-            const expanded = expandedId === id
-            return (
-              <ExpandableRow
-                key={id}
-                row={row}
-                columns={columns}
-                detailFields={detailFields}
-                detailSections={detailSections}
-                actions={actions}
-                expanded={expanded}
-                onToggle={() => onToggle(id)}
-              />
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="rigburrito-table-wrap rigburrito-table-wrap--scroll-y">
+      <div className="rigburrito-table-scroll-inner">
+        <table className="rigburrito-table rigburrito-table--data rigburrito-expandable-table">
+          <thead>
+            <tr>
+              {columns.map(col => (
+                <th key={col.key} className={col.className}>{col.header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => {
+              const id = getRowId(row)
+              const expanded = expandedId === id
+              return (
+                <ExpandableRow
+                  key={id}
+                  row={row}
+                  columns={columns}
+                  detailFields={detailFields}
+                  detailSections={detailSections}
+                  actions={actions}
+                  expanded={expanded}
+                  onToggle={() => onToggle(id)}
+                />
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

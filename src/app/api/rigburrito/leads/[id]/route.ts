@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import {
-  sendBuyerDenialNotification,
-  sendBuyerForwardedNotification,
-  sendBuyerInquiryAutoReplyIntercepted,
-  sendSellerInquiryNotification,
-  type InquiryEmailContext,
-} from '@/lib/email/inquiryEmails'
+import { dispatchNewInquirySellerEmail } from '@/lib/email/transactionalEmails'
+import type { InquiryEmailContext } from '@/lib/email/inquiryEmails'
 
 export async function GET(
   _req: NextRequest,
@@ -119,12 +114,14 @@ export async function PATCH(
 
     const sellerEmail = listing?.users?.email
     if (sellerEmail) {
-      try {
-        await sendSellerInquiryNotification(sellerEmail, emailCtx)
-        await sendBuyerForwardedNotification(lead.buyer_email)
-      } catch (err) {
-        console.error('[leads] approve notification error:', err)
-      }
+      await dispatchNewInquirySellerEmail({
+        sellerEmail,
+        leadId: id,
+        listingTitle: emailCtx.listingTitle,
+        buyerName: emailCtx.buyerName,
+        buyerMessage: emailCtx.message,
+        buyerEmail: emailCtx.buyerEmail,
+      })
     }
 
     return NextResponse.json({ success: true })
@@ -137,12 +134,6 @@ export async function PATCH(
       .eq('id', id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    try {
-      await sendBuyerDenialNotification(lead.buyer_email)
-    } catch (err) {
-      console.error('[leads] deny notification error:', err)
-    }
 
     return NextResponse.json({ success: true })
   }
@@ -199,12 +190,6 @@ export async function PATCH(
     .eq('id', id)
 
   if (leadUpdateError) return NextResponse.json({ error: leadUpdateError.message }, { status: 500 })
-
-  try {
-    await sendBuyerInquiryAutoReplyIntercepted(lead.buyer_email)
-  } catch (err) {
-    console.error('[leads] commission notification error:', err)
-  }
 
   return NextResponse.json({ success: true, deal })
 }

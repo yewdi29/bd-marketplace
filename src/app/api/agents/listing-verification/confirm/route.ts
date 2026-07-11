@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import {
-  sendListingApprovedNotification,
-  sendListingFlaggedNotification,
-} from '@/lib/email/inquiryEmails'
+import { dispatchListingApprovedEmail, dispatchListingNeedsChangesEmail } from '@/lib/email/transactionalEmails'
 
 const AGENT_NAME = 'Listing Verifier'
 
@@ -33,6 +30,7 @@ async function flagListing(
   listingId: string,
   adminId: string,
   comment: string,
+  options?: { notifySeller?: boolean },
 ) {
   const { data: listing, error: listingError } = await service
     .from('listings')
@@ -68,12 +66,13 @@ async function flagListing(
   }
 
   const seller = listing.users as unknown as { email: string } | null
-  if (seller?.email) {
-    try {
-      await sendListingFlaggedNotification(seller.email, listing.title, comment)
-    } catch (err) {
-      console.error('[agents] flag notification error:', err)
-    }
+  if (options?.notifySeller !== false && seller?.email) {
+    await dispatchListingNeedsChangesEmail({
+      sellerEmail: seller.email,
+      listingId,
+      listingTitle: listing.title,
+      flagComment: comment,
+    })
   }
 
   return { ok: true as const, listing }
@@ -163,11 +162,12 @@ export async function POST(req: NextRequest) {
 
         const seller = listing.users as unknown as { email: string } | null
         if (seller?.email) {
-          try {
-            await sendListingApprovedNotification(seller.email, listing.title, listing.slug)
-          } catch (err) {
-            console.error('[agents] approval notification error:', err)
-          }
+          await dispatchListingApprovedEmail({
+            sellerEmail: seller.email,
+            listingId,
+            listingTitle: listing.title,
+            listingSlug: listing.slug,
+          })
         }
 
         return NextResponse.json({ success: true })
@@ -179,7 +179,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Agent flag comment is missing or too short' }, { status: 400 })
         }
 
-        const flagResult = await flagListing(service, listingId, auth.userId, comment)
+        const flagResult = await flagListing(service, listingId, auth.userId, comment, {
+          notifySeller: false,
+        })
         if (!flagResult.ok) {
           return NextResponse.json({ error: flagResult.error }, { status: flagResult.status })
         }

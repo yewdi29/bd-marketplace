@@ -9,9 +9,11 @@ import ListingCardLink from '@/components/listings/ListingCardLink'
 import { toListingCardListing } from '@/components/listings/listingCardTypes'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingCardSkeleton from '@/components/listings/ListingCardSkeleton'
+import StaleListingBanner from '@/components/listings/StaleListingBanner'
 import NewListingModal from '@/components/listings/NewListingModal'
 import EditListingModal from '@/components/listings/EditListingModal'
 import type { MembershipPlan } from '@/lib/types/database'
+import { isStaleActiveListing } from '@/lib/listings/staleness'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +29,7 @@ interface MyListing {
   status: ListingStatus
   slug: string
   created_at: string
+  updated_at: string
   last_approved_at: string | null
   location_city: string | null
   location_state: string | null
@@ -485,25 +488,32 @@ function MyListingCard({
   isManaging,
   onCloseManage,
   onAction,
+  onRelist,
   onDelete,
   onEdit,
   atLimit,
   onLimitReached,
   isDeleting,
+  actionLoadingKey,
 }: {
   listing: MyListing
   onManage: (l: MyListing) => void
   isManaging: boolean
   onCloseManage: () => void
   onAction: (id: string, action: string) => Promise<void>
+  onRelist: (id: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onEdit: (id: string) => void
   atLimit: boolean
   onLimitReached: () => void
   isDeleting: boolean
+  actionLoadingKey: string | null
 }) {
   const badge = statusBadge(listing.status)
   const isNavigable = listing.status === 'active' && !!listing.slug
+  const isStale = isStaleActiveListing(listing.status, listing.updated_at)
+  const relistLoading = actionLoadingKey === `${listing.id}:relist`
+  const soldLoading = actionLoadingKey === `${listing.id}:sold`
 
   function handleCardClick() {
     if (isManaging || isDeleting) return
@@ -560,6 +570,14 @@ function MyListingCard({
           }
           footer={
             <div className="px-3 pb-3 pt-0">
+              {isStale && !isManaging && (
+                <StaleListingBanner
+                  onRelist={() => void onRelist(listing.id)}
+                  onMarkSold={() => void onAction(listing.id, 'sold')}
+                  relistLoading={relistLoading}
+                  soldLoading={soldLoading}
+                />
+              )}
               <button
                 onClick={e => { e.stopPropagation(); onManage(listing) }}
                 className="w-full py-1.5 text-xs font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
@@ -751,6 +769,31 @@ export default function DashboardPage() {
         return
       }
       await fetchData()
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handleRelist(id: string) {
+    const now = new Date().toISOString()
+    setListings(prev => prev.map(listing => (
+      listing.id === id ? { ...listing, updated_at: now } : listing
+    )))
+    setActionLoading(`${id}:relist`)
+    try {
+      const res = await fetch(`/api/listings/${id}/relist`, { method: 'PATCH' })
+      if (!res.ok) {
+        const json = await res.json() as { error?: string }
+        console.error('Relist failed:', json.error)
+        await fetchData()
+        return
+      }
+      const json = await res.json() as { updated_at?: string }
+      if (json.updated_at) {
+        setListings(prev => prev.map(listing => (
+          listing.id === id ? { ...listing, updated_at: json.updated_at! } : listing
+        )))
+      }
     } finally {
       setActionLoading(null)
     }
@@ -974,11 +1017,13 @@ export default function DashboardPage() {
                   isManaging={manageListing?.id === listing.id}
                   onCloseManage={() => setManageListing(null)}
                   onAction={handleAction}
+                  onRelist={handleRelist}
                   onDelete={handleDelete}
                   onEdit={() => handleEditListing(listing)}
                   atLimit={activeCount >= PLAN_LIMITS[plan]}
                   onLimitReached={() => setShowLimitModal(true)}
                   isDeleting={deletingIds.has(listing.id)}
+                  actionLoadingKey={actionLoading}
                 />
               ))}
             </ListingCardGrid>

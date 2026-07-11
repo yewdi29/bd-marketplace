@@ -22,6 +22,7 @@ import {
   AgentNamePill,
   AgentOutcomePill,
 } from '@/components/rigburrito/AgentActivityCells'
+import AgentActivityDateRangeControl from '@/components/rigburrito/AgentActivityDateRange'
 import ListingPreviewSlideOver from '@/components/rigburrito/ListingPreviewSlideOver'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
 import ErrorState from '@/components/rigburrito/ErrorState'
@@ -43,6 +44,12 @@ type DashboardTab =
 
 import type { AgentActivityRow } from '@/lib/rigburrito/agentActivity'
 import { parseScoreBreakdown, resolveAgentConfidence } from '@/lib/rigburrito/agentActivity'
+import {
+  DEFAULT_AGENT_ACTIVITY_RANGE,
+  loadStoredAgentActivityRange,
+  storeAgentActivityRange,
+  type AgentActivityDateRange,
+} from '@/lib/rigburrito/agentActivityDateRange'
 
 interface YellowRedLeadRow {
   id: string
@@ -102,6 +109,9 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [tabError, setTabError] = useState('')
   const [previewListingId, setPreviewListingId] = useState<string | null>(null)
+  const [agentActivityRange, setAgentActivityRange] = useState<AgentActivityDateRange>(
+    DEFAULT_AGENT_ACTIVITY_RANGE,
+  )
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true)
@@ -137,7 +147,7 @@ export default function DashboardPage() {
     }
   }, [])
 
-  const fetchTab = useCallback(async (tab: DashboardTab) => {
+  const fetchTab = useCallback(async (tab: DashboardTab, activityRange?: AgentActivityDateRange) => {
     if (tab === 'pending_approvals') {
       await fetchPendingListings()
       return
@@ -147,7 +157,12 @@ export default function DashboardPage() {
     setTabError('')
     setExpandedRowId(null)
     try {
-      const res = await fetch(`/api/rigburrito/dashboard/tabs?tab=${tab}`)
+      const params = new URLSearchParams({ tab })
+      if (tab === 'agent_activity') {
+        params.set('range', activityRange ?? agentActivityRange)
+      }
+
+      const res = await fetch(`/api/rigburrito/dashboard/tabs?${params}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to load tab data')
       setTabRows(data.rows ?? [])
@@ -157,10 +172,22 @@ export default function DashboardPage() {
     } finally {
       setTabLoading(false)
     }
-  }, [fetchPendingListings])
+  }, [fetchPendingListings, agentActivityRange])
+
+  useEffect(() => {
+    const storedRange = loadStoredAgentActivityRange()
+    if (storedRange) setAgentActivityRange(storedRange)
+  }, [])
 
   useEffect(() => { fetchDashboard() }, [fetchDashboard])
-  useEffect(() => { fetchTab(activeTab) }, [activeTab, fetchTab])
+  useEffect(() => {
+    fetchTab(activeTab, activeTab === 'agent_activity' ? agentActivityRange : undefined)
+  }, [activeTab, agentActivityRange, fetchTab])
+
+  function handleAgentActivityRangeChange(range: AgentActivityDateRange) {
+    storeAgentActivityRange(range)
+    setAgentActivityRange(range)
+  }
 
   function selectMetric(key: MetricKey) {
     setSelectedMetric(key)
@@ -356,8 +383,15 @@ export default function DashboardPage() {
         </Tabs.Content>
 
         <Tabs.Content value="agent_activity" className="rigburrito-tab-panel">
+          <AgentActivityDateRangeControl
+            value={agentActivityRange}
+            onChange={handleAgentActivityRangeChange}
+          />
           {tabLoading ? <TableSkeleton cols={6} /> : tabError ? (
-            <ErrorState message={tabError} onRetry={() => fetchTab('agent_activity')} />
+            <ErrorState
+              message={tabError}
+              onRetry={() => fetchTab('agent_activity', agentActivityRange)}
+            />
           ) : (
             <ExpandableDataTable
               rows={(tabRows as AgentActivityRow[]).map(row => ({

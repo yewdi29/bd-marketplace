@@ -162,19 +162,26 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
   const isMobileFlow = useIsBelowLg()
   const taxonomyData = useListingTaxonomy()
 
-  // ── AI prompt canvas glow — always-on when modal is open ───────────────────
+  const [promptFocused, setPromptFocused] = useState(false)
+
+  // ── AI prompt canvas glow — active on focus only (matches SearchBar) ───────
   const promptCanvasRef    = useRef<HTMLCanvasElement>(null)
   const promptContainerRef = useRef<HTMLDivElement>(null)
-  const { onFocus: promptGlowFocus } = useGlowBorder(
+  const { onFocus: promptGlowFocus, onBlur: promptGlowBlur } = useGlowBorder(
     promptCanvasRef,
     promptContainerRef,
     { burstSpeed: 0.8, settleSpeed: 0.12, arcLen: 80, borderRadius: 10 },
   )
 
-  // Activate glow immediately on mount and keep it alive — never call onBlur
-  useEffect(() => {
+  function handlePromptFocus() {
+    setPromptFocused(true)
     promptGlowFocus()
-  }, [promptGlowFocus])
+  }
+
+  function handlePromptBlur() {
+    setPromptFocused(false)
+    promptGlowBlur()
+  }
 
   // Create draft on mount — or resume an existing step-1 draft.
   useEffect(() => {
@@ -564,6 +571,9 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         setPriceError={setPriceError}
         promptContainerRef={promptContainerRef}
         promptCanvasRef={promptCanvasRef}
+        promptFocused={promptFocused}
+        onPromptFocus={handlePromptFocus}
+        onPromptBlur={handlePromptBlur}
         fileInputRef={fileInputRef}
         handleGenerate={handleGenerate}
         handleSaveFields={handleSaveFields}
@@ -685,9 +695,18 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                 <textarea
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
+                  onFocus={handlePromptFocus}
+                  onBlur={handlePromptBlur}
                   placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location. Just talk to us like you would a buyer."
-                  className={`${inputCls} resize-none leading-relaxed`}
-                  style={{ minHeight: '200px', borderColor: 'transparent', display: 'block', position: 'relative', zIndex: 1 }}
+                  className={`${inputCls} resize-none leading-relaxed focus:outline-none focus:ring-0`}
+                  style={{
+                    minHeight: '200px',
+                    borderColor: promptFocused ? 'transparent' : '#E8E9EA',
+                    display: 'block',
+                    position: 'relative',
+                    zIndex: 1,
+                    transition: 'border-color 0.15s',
+                  }}
                   disabled={generating}
                 />
                 <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>

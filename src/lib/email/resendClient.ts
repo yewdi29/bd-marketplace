@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-export const EMAIL_FROM = 'no-reply@blackdiamonddrilling.com'
+export const EMAIL_FROM = 'Black Diamond Marketplace <noreply@blackdiamondmkt.com>'
 
 export function getAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'

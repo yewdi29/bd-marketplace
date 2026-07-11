@@ -158,7 +158,7 @@ export default function SearchPage() {
   return (
     <div className="-mt-6">
       <Suspense fallback={<FilterBarFallback />}>
-        <FilterBar maxContentWidth={1450} />
+        <FilterBar maxContentWidth={1450} showClearAll />
       </Suspense>
 
       <Suspense fallback={

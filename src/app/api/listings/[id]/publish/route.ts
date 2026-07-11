@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { dispatchListingApprovedEmail } from '@/lib/email/transactionalEmails'
 
 function slugify(text: string): string {
   return text
@@ -128,5 +129,23 @@ export async function PATCH(
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (status === 'active') {
+    const { data: sellerProfile } = await adminClient
+      .from('users')
+      .select('email')
+      .eq('id', user.id)
+      .single()
+
+    if (sellerProfile?.email) {
+      await dispatchListingApprovedEmail({
+        sellerEmail: sellerProfile.email,
+        listingId: params.id,
+        listingTitle: listing.title,
+        listingSlug: slug,
+      })
+    }
+  }
+
   return NextResponse.json({ success: true, status })
 }

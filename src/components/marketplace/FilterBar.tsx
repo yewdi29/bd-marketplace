@@ -32,6 +32,7 @@ const PILL =
   'inline-flex items-center gap-1.5 shrink-0 px-4 h-9 text-sm font-semibold rounded-pill transition-colors cursor-pointer border select-none whitespace-nowrap'
 const PILL_DEFAULT = `${PILL} bg-white text-ink-2 border-[#E8E9EA] hover:border-[#D4D5D7] hover:text-ink`
 const PILL_ACTIVE  = `${PILL} bg-[#FFF2ED] text-orange border-[#FF6B35]`
+const PILL_CLEAR   = `${PILL} bg-[#FEF6EC] text-orange border-[#FCE4C6] hover:border-[#FF6B35] hover:bg-[#FFF2ED]`
 
 const POPOVER_CLASSES = [
   'z-50 border border-[#E8E9EA] bg-white outline-none',
@@ -85,6 +86,14 @@ function CheckMark() {
   return (
     <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  )
+}
+
+function ClearIcon() {
+  return (
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   )
 }
@@ -285,9 +294,11 @@ function CategoryPill({
 
 interface FilterBarProps {
   maxContentWidth?: 1450 | 1600
+  /** Show "Clear all" when filters are active — search page only */
+  showClearAll?: boolean
 }
 
-export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
+export default function FilterBar({ maxContentWidth = 1600, showClearAll = false }: FilterBarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -336,6 +347,16 @@ export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
   const countrySlugs  = parseMultiParam(searchParams, 'country')
   const sort          = searchParams.get('sort') ?? ''
   const q             = searchParams.get('q') ?? ''
+
+  const hasActiveFilters =
+    industrySlugs.length > 0
+    || catSlugs.length > 0
+    || countrySlugs.length > 0
+    || !!sort
+
+  function clearAllFilters() {
+    navigate({ industry: [], cat: [], country: [], sort: '' })
+  }
 
   function pruneCategories(nextIndustrySlugs: string[], nextCatSlugs: string[]): string[] {
     if (nextIndustrySlugs.length === 0) return nextCatSlugs
@@ -422,6 +443,17 @@ export default function FilterBar({ maxContentWidth = 1600 }: FilterBarProps) {
               options={SORT_OPTIONS}
               onChange={v => navigate({ sort: v })}
             />
+
+            {showClearAll && hasActiveFilters && (
+              <button
+                type="button"
+                className={PILL_CLEAR}
+                onClick={clearAllFilters}
+              >
+                <ClearIcon />
+                Clear all
+              </button>
+            )}
           </div>
         </div>
       </div>

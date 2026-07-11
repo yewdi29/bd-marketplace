@@ -123,6 +123,9 @@ export interface NewListingMobileFlowProps {
   setPriceError: (v: string) => void
   promptContainerRef: React.RefObject<HTMLDivElement>
   promptCanvasRef: React.RefObject<HTMLCanvasElement>
+  promptFocused: boolean
+  onPromptFocus: () => void
+  onPromptBlur: () => void
   fileInputRef: React.RefObject<HTMLInputElement>
   handleGenerate: () => Promise<void>
   handleSaveFields: () => Promise<void>
@@ -160,6 +163,9 @@ export default function NewListingMobileFlow({
   setPriceError,
   promptContainerRef,
   promptCanvasRef,
+  promptFocused,
+  onPromptFocus,
+  onPromptBlur,
   fileInputRef,
   handleGenerate,
   handleSaveFields,
@@ -403,9 +409,17 @@ export default function NewListingMobileFlow({
                 <textarea
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
+                  onFocus={onPromptFocus}
+                  onBlur={onPromptBlur}
                   placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location."
-                  className={`${inputCls} flex-1 resize-none leading-relaxed min-h-[220px]`}
-                  style={{ display: 'block', position: 'relative', zIndex: 1 }}
+                  className={`${inputCls} flex-1 resize-none leading-relaxed min-h-[220px] focus:outline-none focus:ring-0`}
+                  style={{
+                    display: 'block',
+                    position: 'relative',
+                    zIndex: 1,
+                    borderColor: promptFocused ? 'transparent' : '#E8E9EA',
+                    transition: 'border-color 0.15s',
+                  }}
                   disabled={generating}
                 />
                 <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>

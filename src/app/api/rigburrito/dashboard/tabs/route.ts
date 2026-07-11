@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
+import {
+  agentActivityCreatedAtLowerBound,
+  DEFAULT_AGENT_ACTIVITY_RANGE,
+  isAgentActivityDateRange,
+} from '@/lib/rigburrito/agentActivityDateRange'
 import { createServiceClient } from '@/lib/rigburrito/service'
 import { stripe, tierFromPriceId } from '@/lib/rigburrito/stripe'
 
@@ -44,13 +49,26 @@ export async function GET(req: NextRequest) {
   }
 
   if (tab === 'agent_activity') {
-    const { data, error } = await service
+    const rangeParam = req.nextUrl.searchParams.get('range') ?? DEFAULT_AGENT_ACTIVITY_RANGE
+    if (!isAgentActivityDateRange(rangeParam)) {
+      return NextResponse.json({ error: 'Invalid agent activity date range' }, { status: 400 })
+    }
+
+    const createdAtLowerBound = agentActivityCreatedAtLowerBound(rangeParam)
+
+    let query = service
       .from('agent_activity_log')
       .select(
         'id, agent_name, action, entity_type, entity_id, outcome, summary, created_at, overall_score, score_breakdown, flag_comment, reasoning',
       )
       .order('created_at', { ascending: false })
       .limit(TAB_LIMIT)
+
+    if (createdAtLowerBound) {
+      query = query.gte('created_at', createdAtLowerBound)
+    }
+
+    const { data, error } = await query
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -118,7 +136,7 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true, tab, rows: enrichedRows })
+    return NextResponse.json({ success: true, tab, range: rangeParam, rows: enrichedRows })
   }
 
   if (tab === 'yellow_red_leads') {

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import { sendListingRemovedNotification } from '@/lib/email/inquiryEmails'
+import {
+  dispatchListingApprovedEmail,
+  dispatchListingRemovedEmail,
+} from '@/lib/email/transactionalEmails'
 
 export async function GET(
   _req: NextRequest,
@@ -67,37 +70,68 @@ export async function PATCH(
       .update({ resolved_at: new Date().toISOString() })
       .eq('listing_id', id)
       .is('resolved_at', null)
+
+    const { data: listing } = await service
+      .from('listings')
+      .select('id, title, slug, users!listings_seller_id_fkey(email)')
+      .eq('id', id)
+      .single()
+
+    const seller = listing?.users as unknown as { email: string } | null
+    if (seller?.email && listing) {
+      await dispatchListingApprovedEmail({
+        sellerEmail: seller.email,
+        listingId: listing.id,
+        listingTitle: listing.title,
+        listingSlug: listing.slug,
+      })
+    }
   }
 
   return NextResponse.json({ success: true })
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await requireAdminApi()
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const { id } = await params
+  const body = await req.json().catch(() => ({})) as { removal_reason?: string }
+  const removalReason = body.removal_reason?.trim()
+
+  if (!removalReason || removalReason.length < 20) {
+    return NextResponse.json(
+      { error: 'removal_reason is required and must be at least 20 characters' },
+      { status: 400 },
+    )
+  }
+
   const service = createServiceClient()
 
   const { data: listing } = await service
     .from('listings')
-    .select('title, users!listings_seller_id_fkey(email)')
+    .select('id, title, users!listings_seller_id_fkey(email)')
     .eq('id', id)
     .single()
 
-  const { error } = await service.from('listings').update({ status: 'removed' }).eq('id', id)
+  const now = new Date().toISOString()
+  const { error } = await service
+    .from('listings')
+    .update({ status: 'removed', removal_reason: removalReason, updated_at: now })
+    .eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const seller = listing?.users as unknown as { email: string } | null
   if (seller?.email && listing?.title) {
-    try {
-      await sendListingRemovedNotification(seller.email, listing.title)
-    } catch (err) {
-      console.error('[listings] remove notification error:', err)
-    }
+    await dispatchListingRemovedEmail({
+      sellerEmail: seller.email,
+      listingId: listing.id,
+      listingTitle: listing.title,
+      removalReason,
+    })
   }
 
   return NextResponse.json({ success: true })

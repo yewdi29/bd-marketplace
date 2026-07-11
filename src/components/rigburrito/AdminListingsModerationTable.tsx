@@ -46,6 +46,10 @@ export default function AdminListingsModerationTable({
   const [flagComment, setFlagComment] = useState('')
   const [flagError, setFlagError] = useState('')
   const [flagging, setFlagging] = useState(false)
+  const [removeOpen, setRemoveOpen] = useState(false)
+  const [removeReason, setRemoveReason] = useState('')
+  const [removeError, setRemoveError] = useState('')
+  const [removing, setRemoving] = useState(false)
 
   async function openListing(listing: AdminListingRow) {
     setSelected(listing)
@@ -104,14 +108,29 @@ export default function AdminListingsModerationTable({
 
   async function removeListing() {
     if (!selected) return
-    if (!window.confirm(`Remove "${selected.title}"? This cannot be undone.`)) return
-    const res = await fetch(`/api/rigburrito/listings/${selected.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error ?? 'Failed to remove listing')
+    if (removeReason.trim().length < 20) {
+      setRemoveError('Removal reason must be at least 20 characters')
+      return
     }
-    closeListing()
-    onRefresh()
+    setRemoving(true)
+    setRemoveError('')
+    try {
+      const res = await fetch(`/api/rigburrito/listings/${selected.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removal_reason: removeReason.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to remove listing')
+      setRemoveOpen(false)
+      setRemoveReason('')
+      closeListing()
+      onRefresh()
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : 'Failed to remove listing')
+    } finally {
+      setRemoving(false)
+    }
   }
 
   const images = (detail?.listing_images as { url: string }[] | undefined) ?? []
@@ -145,7 +164,7 @@ export default function AdminListingsModerationTable({
           View Public
         </a>
       )}
-      <AdminButton variant="danger" onClick={removeListing}>
+      <AdminButton variant="danger" onClick={() => { setRemoveReason(''); setRemoveError(''); setRemoveOpen(true) }}>
         <Trash2 size={14} strokeWidth={2} />
         Remove
       </AdminButton>
@@ -160,7 +179,7 @@ export default function AdminListingsModerationTable({
 
   return (
     <>
-      <div className="rigburrito-table-wrap rigburrito-table-wrap--scroll">
+      <div className="rigburrito-table-wrap rigburrito-table-wrap--scroll-y">
         {listings.length === 0 ? (
           <EmptyState
             icon={Inbox}
@@ -173,21 +192,22 @@ export default function AdminListingsModerationTable({
             }
           />
         ) : (
-          <table className="rigburrito-table rigburrito-table--data">
-            <thead>
-              <tr>
-                {['', 'Title', 'Seller', 'Category', 'Price', 'Location', 'Status', 'Created'].map(h => (
-                  <th key={h}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {listings.map(l => (
-                <tr
-                  key={l.id}
-                  className="rigburrito-table-row--clickable"
-                  onClick={() => { void openListing(l) }}
-                >
+          <div className="rigburrito-table-scroll-inner">
+            <table className="rigburrito-table rigburrito-table--data">
+              <thead>
+                <tr>
+                  {['', 'Title', 'Seller', 'Category', 'Price', 'Location', 'Status', 'Created'].map(h => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {listings.map(l => (
+                  <tr
+                    key={l.id}
+                    className="rigburrito-table-row--clickable"
+                    onClick={() => { void openListing(l) }}
+                  >
                   <td>
                     {l.primary_image_url ? (
                       <Image
@@ -220,6 +240,7 @@ export default function AdminListingsModerationTable({
               ))}
             </tbody>
           </table>
+          </div>
         )}
         {footer}
       </div>
@@ -320,6 +341,49 @@ export default function AdminListingsModerationTable({
                 onClick={flagListing}
               >
                 Flag &amp; Unpublish
+              </AdminButton>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={removeOpen} onOpenChange={setRemoveOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.4)' }} />
+          <Dialog.Content
+            className="rigburrito-card fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 p-6 outline-none"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <Dialog.Title className="rigburrito-section-title" style={{ marginBottom: 0 }}>
+                Remove Listing
+              </Dialog.Title>
+              <Dialog.Close asChild>
+                <button type="button" className="rigburrito-btn-icon"><X size={16} /></button>
+              </Dialog.Close>
+            </div>
+            <p className="rigburrito-body mb-3" style={{ color: '#6B7280' }}>
+              This will remove the listing from the marketplace and notify the seller with your reason.
+            </p>
+            <label className="rigburrito-card-label mb-2 block">
+              Removal reason — required
+            </label>
+            <textarea
+              value={removeReason}
+              onChange={e => { setRemoveReason(e.target.value); setRemoveError('') }}
+              rows={4}
+              className="rigburrito-textarea mb-2 w-full"
+              placeholder="Explain why this listing is being removed (minimum 20 characters)..."
+            />
+            {removeError && <p className="mb-3 text-sm text-red-600">{removeError}</p>}
+            <div className="flex gap-2 justify-end">
+              <AdminButton variant="muted" onClick={() => setRemoveOpen(false)}>Cancel</AdminButton>
+              <AdminButton
+                variant="danger"
+                disabled={removing || removeReason.trim().length < 20}
+                onClick={removeListing}
+              >
+                Remove listing
               </AdminButton>
             </div>
           </Dialog.Content>

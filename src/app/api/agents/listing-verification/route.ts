@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPaperclipSecret } from '@/lib/agents/verifyPaperclipSecret'
 import { createServiceClient } from '@/lib/rigburrito/service'
+import { dispatchListingNeedsChangesEmail } from '@/lib/email/transactionalEmails'
 
 const AGENT_NAME = 'Listing Verifier'
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     const { data: listing, error: listingError } = await service
       .from('listings')
-      .select('id, title')
+      .select('id, title, users!listings_seller_id_fkey(email)')
       .eq('id', listing_id)
       .single()
 
@@ -157,6 +158,18 @@ export async function POST(req: NextRequest) {
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    if (recommended_action === 'flag' && flag_comment?.trim()) {
+      const seller = listing.users as unknown as { email: string } | null
+      if (seller?.email) {
+        await dispatchListingNeedsChangesEmail({
+          sellerEmail: seller.email,
+          listingId: listing_id,
+          listingTitle: listing.title,
+          flagComment: flag_comment.trim(),
+        })
+      }
     }
 
     return NextResponse.json({ success: true, recommendation_id: recommendation.id })

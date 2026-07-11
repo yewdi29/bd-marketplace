@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import { sendListingFlaggedNotification } from '@/lib/email/inquiryEmails'
+import { dispatchListingNeedsChangesEmail } from '@/lib/email/transactionalEmails'
 
 export async function POST(
   req: NextRequest,
@@ -50,11 +50,12 @@ export async function POST(
 
   const seller = listing.users as unknown as { email: string } | null
   if (seller?.email) {
-    try {
-      await sendListingFlaggedNotification(seller.email, listing.title, comment)
-    } catch (err) {
-      console.error('[listings] flag notification error:', err)
-    }
+    await dispatchListingNeedsChangesEmail({
+      sellerEmail: seller.email,
+      listingId: listing.id,
+      listingTitle: listing.title,
+      flagComment: comment,
+    })
   }
 
   return NextResponse.json({ success: true })
