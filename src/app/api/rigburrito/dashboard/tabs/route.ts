@@ -55,8 +55,8 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const rows = data ?? []
-    const listingVerifierListingIds = [
-      ...new Set(
+    const listingVerifierListingIds = Array.from(
+      new Set(
         rows
           .filter(
             row =>
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
           )
           .map(row => row.entity_id as string),
       ),
-    ]
+    )
 
     type RecommendationBackfill = {
       confidence_score: number | null
