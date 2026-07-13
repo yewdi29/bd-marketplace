@@ -1,4 +1,5 @@
 import DashboardNav from '@/components/layout/DashboardNav'
+import Footer from '@/components/layout/Footer'
 import { createClient } from '@/lib/supabase/server'
 import type { MembershipPlan } from '@/lib/types/database'
 import type { Metadata } from 'next'
@@ -42,6 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <main className="flex-1 pt-[64px]">
         {children}
       </main>
+      <Footer />
     </div>
   )
 }

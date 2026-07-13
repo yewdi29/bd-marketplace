@@ -1,4 +1,4 @@
-import EmailLayout, { EmailParagraph } from '../components/EmailLayout'
+import EmailLayout, { EMAIL_SUPPORT_ADDRESS, EmailParagraph } from '../components/EmailLayout'
 
 interface ListingRemovedProps {
   listingTitle: string
@@ -9,7 +9,7 @@ interface ListingRemovedProps {
 export default function ListingRemoved({
   listingTitle,
   removalReason,
-  supportEmail = 'support@blackdiamonddrilling.com',
+  supportEmail = EMAIL_SUPPORT_ADDRESS,
 }: ListingRemovedProps) {
   return (
     <EmailLayout

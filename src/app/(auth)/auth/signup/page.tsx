@@ -80,11 +80,11 @@ export default function SignupPage() {
           <Link href="/" className="inline-flex mb-6">
             <Image src="/bd_logo-black.svg" alt="Black Diamond" width={140} height={40} priority style={{ height: '27px', width: 'auto' }} />
           </Link>
-          <h1 className="font-sans font-extrabold text-[32px] text-ink" style={{ letterSpacing: '-0.03em' }}>
+          <h1 className="font-sans font-bold text-[32px] text-ink" style={{ letterSpacing: '-0.03em' }}>
             Create your account
           </h1>
           <p className="mt-2 text-[15px] font-sans text-ink-2">
-            Free to join. List up to 3 pieces of equipment.
+            Start listing your equipment for free today!
           </p>
         </div>
 
@@ -223,27 +223,6 @@ export default function SignupPage() {
               </Link>
             </p>
           </div>
-        </div>
-
-        {/* Plan comparison */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {[
-            { plan: 'FREE', features: ['Up to 3 listings', 'Direct buyer contact', 'Standard support'] },
-            { plan: 'PREMIUM', features: ['Unlimited listings', 'Priority placement', 'Full broker support'] },
-          ].map(p => (
-            <div key={p.plan} className="bg-white border border-[#E8E9EA] rounded-[16px] p-4" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-              <div className={`text-xs font-sans font-bold uppercase tracking-wider mb-3 ${p.plan === 'PREMIUM' ? 'text-orange' : 'text-ink-3'}`}>
-                {p.plan}
-              </div>
-              <ul className="space-y-1.5">
-                {p.features.map(f => (
-                  <li key={f} className="flex items-center gap-2 text-xs font-sans text-ink-3">
-                    <span className="text-orange font-bold">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
         </div>
       </div>
     </div>

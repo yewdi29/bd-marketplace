@@ -96,17 +96,17 @@ export default function BusinessDirectoryGate({ signedIn }: BusinessDirectoryGat
                 with BD Verified badges, active listing counts, and direct company profiles.
               </p>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="flex flex-col items-stretch gap-3 w-full max-w-[280px] mx-auto">
                 <Link
                   href="/dashboard/upgrade"
-                  className="inline-flex items-center justify-center px-8 py-3 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow w-full sm:w-auto"
+                  className="inline-flex items-center justify-center px-8 py-3 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow w-full"
                 >
                   View membership plans
                 </Link>
                 {!signedIn && (
                   <Link
                     href="/auth/signup"
-                    className="inline-flex items-center justify-center px-8 py-3 text-sm font-bold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-orange hover:text-orange transition-colors w-full sm:w-auto"
+                    className="inline-flex items-center justify-center px-8 py-3 text-sm font-bold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-orange hover:text-orange transition-colors w-full"
                   >
                     Create an account
                   </Link>

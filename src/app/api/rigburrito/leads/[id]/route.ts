@@ -118,6 +118,7 @@ export async function PATCH(
         sellerEmail,
         leadId: id,
         listingTitle: emailCtx.listingTitle,
+        listingSlug: emailCtx.listingSlug,
         buyerName: emailCtx.buyerName,
         buyerEmail: emailCtx.buyerEmail,
         buyerCompany: emailCtx.buyerCompany,

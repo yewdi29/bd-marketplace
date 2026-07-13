@@ -2,7 +2,7 @@ import {
   blockquote,
   emailLayout,
   escapeHtml,
-  getAppUrl,
+  getEmailAppUrl,
   infoRow,
   sendEmail,
   tierBadge,
@@ -22,7 +22,7 @@ export interface InquiryEmailContext {
 }
 
 function listingUrl(slug: string | null): string {
-  const base = getAppUrl()
+  const base = getEmailAppUrl()
   return slug ? `${base}/listings/${slug}` : base
 }
 
@@ -54,7 +54,7 @@ export async function sendAdminInquiryAlert(
 
   const tierLabel = dealTier === 'yellow' ? 'YELLOW' : 'RED'
   const url = listingUrl(ctx.listingSlug)
-  const leadsUrl = `${getAppUrl()}/rigburrito/leads`
+  const leadsUrl = `${getEmailAppUrl()}/rigburrito/leads`
 
   await sendEmail({
     to: adminEmail,
@@ -95,7 +95,7 @@ export async function sendRedTierListingAlert(opts: {
     return
   }
 
-  const commandCenterUrl = `${getAppUrl()}/rigburrito/listings`
+  const commandCenterUrl = `${getEmailAppUrl()}/rigburrito/listings`
   const formattedPrice = formatPriceAmount(opts.listingPrice, 'total')
 
   await sendEmail({

@@ -42,8 +42,8 @@ export default function LoginPage() {
           <Link href="/" className="inline-flex mb-6">
             <Image src="/bd_logo-black.svg" alt="Black Diamond" width={140} height={40} priority style={{ height: '27px', width: 'auto' }} />
           </Link>
-          <h1 className="font-sans font-extrabold text-[32px] text-ink" style={{ letterSpacing: '-0.03em' }}>
-            Welcome
+          <h1 className="font-sans font-bold text-[32px] text-ink" style={{ letterSpacing: '-0.03em' }}>
+            Welcome Back
           </h1>
           <p className="mt-2 text-[15px] font-sans text-ink-2">
             Sign in to your marketplace account

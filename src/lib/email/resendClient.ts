@@ -2,8 +2,20 @@ import { Resend } from 'resend'
 
 export const EMAIL_FROM = 'Black Diamond Marketplace <noreply@blackdiamondmkt.com>'
 
+/** Canonical production origin for links in outbound emails. */
+export const EMAIL_APP_URL = 'https://blackdiamondmkt.com'
+
 export function getAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+}
+
+/** Production domain for transactional email links — never vercel.app or preview URLs. */
+export function getEmailAppUrl(): string {
+  const appUrl = getAppUrl()
+  if (appUrl.includes('localhost') || appUrl.includes('127.0.0.1')) {
+    return appUrl
+  }
+  return EMAIL_APP_URL
 }
 
 export function getResend(): Resend | null {

@@ -22,10 +22,11 @@ export async function POST(
   }
 
   const service = createServiceClient()
+  const now = new Date().toISOString()
 
   const { data: listing, error: listingError } = await service
     .from('listings')
-    .select('id, title, seller_id, users!listings_seller_id_fkey(email)')
+    .select('id, title, status, seller_id, users!listings_seller_id_fkey(email)')
     .eq('id', id)
     .single()
 
@@ -43,10 +44,29 @@ export async function POST(
 
   const { error: updateError } = await service
     .from('listings')
-    .update({ status: 'draft', admin_flagged: true, updated_at: new Date().toISOString() })
+    .update({
+      status: 'draft',
+      admin_flagged: true,
+      last_major_edit_at: now,
+      updated_at: now,
+    })
     .eq('id', id)
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+
+  const { error: logError } = await service.from('agent_activity_log').insert({
+    agent_name: 'Admin',
+    action: 'listing_flagged',
+    entity_type: 'listing',
+    entity_id: id,
+    outcome: 'flagged',
+    summary: `Admin flagged ${listing.status === 'active' ? 'live' : ''} listing "${listing.title}"`,
+    flag_comment: comment,
+  })
+
+  if (logError) {
+    console.error('[flag] failed to write agent_activity_log:', logError.message)
+  }
 
   const seller = listing.users as unknown as { email: string } | null
   if (seller?.email) {

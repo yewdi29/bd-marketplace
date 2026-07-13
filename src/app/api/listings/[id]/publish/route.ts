@@ -39,7 +39,7 @@ export async function PATCH(
       location_city, location_state,
       country_id, region_id, state_id,
       industry_id, category_id,
-      last_approved_at, last_major_edit_at,
+      last_approved_at, last_major_edit_at, admin_flagged,
       countries(slug),
       listing_images(id)
     `)
@@ -110,9 +110,12 @@ export async function PATCH(
   // Regenerate slug from the final title so drafts don't keep 'untitled-draft-xxx'
   const slug = `${slugify(listing.title)}-${params.id.slice(0, 8)}`
 
-  // First publish always requires review; republish skips review if no major edits since approval
+  // First publish always requires review; republish skips review if no major edits since approval.
+  // Listings flagged by admin must always re-enter review — never bypass the agent.
   let status: 'active' | 'pending_review'
-  if (!listing.last_approved_at) {
+  if (listing.admin_flagged) {
+    status = 'pending_review'
+  } else if (!listing.last_approved_at) {
     status = 'pending_review'
   } else if (
     !listing.last_major_edit_at ||

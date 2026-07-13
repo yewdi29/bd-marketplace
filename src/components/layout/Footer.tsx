@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import SellerPortalLink from '@/components/SellerPortalLink'
 
 const FOOTER_LINK_CLASS =
@@ -88,14 +89,15 @@ function IconX() {
 
 function DiamondMark() {
   return (
-    <div
-      className="flex items-center justify-center shrink-0"
-      style={{ width: '24px', height: '24px', borderRadius: '5px', background: 'rgba(255,255,255,0.12)' }}
-    >
-      <svg viewBox="0 0 32 32" width="12" height="12" fill="none">
-        <path d="M16 3L4.5 12 16 29.5 27.5 12 16 3z" fill="white" />
-      </svg>
-    </div>
+    <Image
+      src="/bd_logo-icon.svg"
+      alt=""
+      width={20}
+      height={17}
+      className="shrink-0"
+      style={{ width: 20, height: 'auto', filter: 'brightness(0) invert(1)' }}
+      aria-hidden
+    />
   )
 }
 

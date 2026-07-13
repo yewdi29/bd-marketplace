@@ -1,7 +1,6 @@
 import { Link } from '@react-email/components'
 import EmailLayout, {
-  EmailFeedbackBlock,
-  EmailFromBlock,
+  EmailInquiryCard,
   EmailParagraph,
   emailInlineLinkStyle,
 } from '../components/EmailLayout'
@@ -13,7 +12,7 @@ interface NewInquirySellerProps {
   buyerCompany?: string | null
   buyerPhone?: string | null
   buyerMessage: string
-  dashboardUrl: string
+  listingUrl: string
 }
 
 export default function NewInquirySeller({
@@ -23,7 +22,7 @@ export default function NewInquirySeller({
   buyerCompany,
   buyerPhone,
   buyerMessage,
-  dashboardUrl,
+  listingUrl,
 }: NewInquirySellerProps) {
   return (
     <EmailLayout
@@ -32,18 +31,18 @@ export default function NewInquirySeller({
     >
       <EmailParagraph>
         You have a new inquiry from <strong>{buyerName}</strong> on{' '}
-        <Link href={dashboardUrl} style={emailInlineLinkStyle}>
+        <Link href={listingUrl} style={emailInlineLinkStyle}>
           {listingTitle}
         </Link>
         .
       </EmailParagraph>
-      <EmailFromBlock
+      <EmailInquiryCard
         buyerName={buyerName}
         buyerEmail={buyerEmail}
         buyerCompany={buyerCompany}
         buyerPhone={buyerPhone}
+        message={buyerMessage}
       />
-      <EmailFeedbackBlock>{buyerMessage}</EmailFeedbackBlock>
     </EmailLayout>
   )
 }

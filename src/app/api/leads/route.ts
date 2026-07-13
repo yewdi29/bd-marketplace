@@ -30,6 +30,7 @@ async function processInquiryNotifications(
       sellerEmail,
       leadId,
       listingTitle: ctx.listingTitle,
+      listingSlug: ctx.listingSlug,
       buyerName: ctx.buyerName,
       buyerEmail: ctx.buyerEmail,
       buyerCompany: ctx.buyerCompany,

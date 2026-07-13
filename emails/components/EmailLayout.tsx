@@ -24,13 +24,27 @@ export const emailColors = {
   feedbackBg: '#F8F9FA',
 } as const
 
+/** Native dimensions from public/bd_logo-black.svg (viewBox 244×29). */
+export const EMAIL_LOGO_NATURAL_WIDTH = 244
+export const EMAIL_LOGO_NATURAL_HEIGHT = 29
+export const EMAIL_LOGO_DISPLAY_HEIGHT = 27
+export const EMAIL_LOGO_DISPLAY_WIDTH = Math.round(
+  EMAIL_LOGO_DISPLAY_HEIGHT * (EMAIL_LOGO_NATURAL_WIDTH / EMAIL_LOGO_NATURAL_HEIGHT),
+)
+
 /** Same wordmark as site navbar — served from /public at deploy time. */
 export const EMAIL_LOGO_URL = 'https://www.blackdiamondmkt.com/bd_logo-black.svg'
+
+export const emailFontFamily =
+  'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
 
 export const emailInlineLinkStyle = {
   color: emailColors.orange,
   textDecoration: 'underline',
 } as const
+
+/** Canonical support contact for all transactional email footers. */
+export const EMAIL_SUPPORT_ADDRESS = 'support@blackdiamondmkt.com'
 
 interface EmailLayoutProps {
   preview: string
@@ -49,8 +63,8 @@ export default function EmailLayout({ preview, title, children }: EmailLayoutPro
             <Img
               src={EMAIL_LOGO_URL}
               alt="Black Diamond Marketplace"
-              width={140}
-              height={27}
+              width={EMAIL_LOGO_DISPLAY_WIDTH}
+              height={EMAIL_LOGO_DISPLAY_HEIGHT}
               style={logoImageStyle}
             />
           </Section>
@@ -65,6 +79,10 @@ export default function EmailLayout({ preview, title, children }: EmailLayoutPro
             <br />
             <Link href="https://blackdiamondmkt.com" style={footerLinkStyle}>
               blackdiamondmkt.com
+            </Link>
+            <br />
+            <Link href={`mailto:${EMAIL_SUPPORT_ADDRESS}`} style={footerLinkStyle}>
+              {EMAIL_SUPPORT_ADDRESS}
             </Link>
           </Text>
         </Container>
@@ -85,55 +103,64 @@ export function EmailButton({ href, children }: { href: string; children: ReactN
   )
 }
 
+/** Bordered content card for quoted text (e.g. admin feedback). */
 export function EmailFeedbackBlock({ children }: { children: ReactNode }) {
   return (
-    <Section style={feedbackBlockStyle}>
-      <Text style={feedbackTextStyle}>{children}</Text>
+    <Section style={cardStyle}>
+      <Text style={cardBodyStyle}>{children}</Text>
     </Section>
   )
 }
 
-export function EmailFromBlock({
+/** Unified FROM + MESSAGE card for seller inquiry notifications. */
+export function EmailInquiryCard({
   buyerName,
   buyerEmail,
   buyerCompany,
   buyerPhone,
+  message,
 }: {
   buyerName: string
   buyerEmail: string
   buyerCompany?: string | null
   buyerPhone?: string | null
+  message: string
 }) {
   const company = buyerCompany?.trim() || null
   const phone = buyerPhone?.trim() || null
   const telHref = phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : null
 
   return (
-    <Section style={fromBlockStyle}>
-      <Text style={fromLabelStyle}>FROM</Text>
-      <Text style={fromRowStyle}>{buyerName}</Text>
-      {company && <Text style={fromRowStyle}>{company}</Text>}
-      <Text style={phone ? fromRowStyle : fromRowLastStyle}>
+    <Section style={cardStyle}>
+      <Text style={metaLabelStyle}>FROM</Text>
+      <Text style={cardRowStyle}>{buyerName}</Text>
+      {company && <Text style={cardRowStyle}>{company}</Text>}
+      <Text style={phone ? cardRowStyle : cardRowLastStyle}>
         <Link href={`mailto:${buyerEmail}`} style={emailInlineLinkStyle}>
           {buyerEmail}
         </Link>
       </Text>
       {phone && telHref && (
-        <Text style={fromRowLastStyle}>
+        <Text style={cardRowLastStyle}>
           <Link href={telHref} style={emailInlineLinkStyle}>
             {phone}
           </Link>
         </Text>
       )}
+
+      <Hr style={cardDividerStyle} />
+
+      <Text style={metaLabelStyle}>MESSAGE</Text>
+      <Text style={messageBodyStyle}>{message}</Text>
     </Section>
   )
 }
 
 const bodyStyle = {
   backgroundColor: emailColors.bg,
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontFamily: emailFontFamily,
   margin: 0,
-  padding: '24px 0',
+  padding: '32px 16px',
 }
 
 const containerStyle = {
@@ -142,26 +169,28 @@ const containerStyle = {
   borderRadius: '12px',
   margin: '0 auto',
   maxWidth: '600px',
-  padding: '32px',
+  padding: '40px 32px',
 }
 
 const logoSectionStyle = {
-  marginBottom: '24px',
+  marginBottom: '28px',
+  paddingTop: '4px',
 }
 
 const logoImageStyle = {
   display: 'block',
-  height: '27px',
-  width: 'auto',
-  maxWidth: '140px',
+  width: `${EMAIL_LOGO_DISPLAY_WIDTH}px`,
+  height: 'auto',
+  maxWidth: '100%',
 }
 
 const headingStyle = {
   color: emailColors.ink,
-  fontSize: '20px',
+  fontFamily: emailFontFamily,
+  fontSize: '22px',
   fontWeight: 600,
   lineHeight: '1.3',
-  margin: '0 0 20px',
+  margin: '0 0 24px',
 }
 
 const contentStyle = {
@@ -170,9 +199,11 @@ const contentStyle = {
 
 const paragraphStyle = {
   color: emailColors.ink2,
-  fontSize: '14px',
-  lineHeight: '1.7',
-  margin: '0 0 16px',
+  fontFamily: emailFontFamily,
+  fontSize: '15px',
+  fontWeight: 400,
+  lineHeight: '1.65',
+  margin: '0 0 20px',
 }
 
 const buttonStyle = {
@@ -180,39 +211,25 @@ const buttonStyle = {
   borderRadius: '999px',
   color: emailColors.white,
   display: 'inline-block',
+  fontFamily: emailFontFamily,
   fontSize: '14px',
   fontWeight: 600,
-  marginTop: '8px',
+  marginTop: '4px',
   padding: '12px 24px',
   textDecoration: 'none',
 }
 
-const feedbackBlockStyle = {
+const cardStyle = {
   backgroundColor: emailColors.feedbackBg,
-  borderLeft: `4px solid ${emailColors.orange}`,
-  borderRadius: '8px',
-  margin: '16px 0',
-  padding: '16px 20px',
-}
-
-const feedbackTextStyle = {
-  color: emailColors.ink,
-  fontSize: '14px',
-  lineHeight: '1.7',
-  margin: 0,
-  whiteSpace: 'pre-wrap' as const,
-}
-
-const fromBlockStyle = {
-  backgroundColor: emailColors.white,
   border: `1px solid ${emailColors.border}`,
-  borderRadius: '8px',
-  margin: '16px 0',
-  padding: '16px 20px',
+  borderRadius: '10px',
+  margin: '20px 0 0',
+  padding: '20px 24px',
 }
 
-const fromLabelStyle = {
+const metaLabelStyle = {
   color: emailColors.ink3,
+  fontFamily: emailFontFamily,
   fontSize: '11px',
   fontWeight: 600,
   letterSpacing: '0.08em',
@@ -220,27 +237,54 @@ const fromLabelStyle = {
   textTransform: 'uppercase' as const,
 }
 
-const fromRowStyle = {
+const cardRowStyle = {
   color: emailColors.ink,
-  fontSize: '14px',
+  fontFamily: emailFontFamily,
+  fontSize: '15px',
   lineHeight: '1.5',
   margin: '0 0 6px',
 }
 
-const fromRowLastStyle = {
+const cardRowLastStyle = {
   color: emailColors.ink,
-  fontSize: '14px',
+  fontFamily: emailFontFamily,
+  fontSize: '15px',
   lineHeight: '1.5',
   margin: 0,
 }
 
+const cardBodyStyle = {
+  color: emailColors.ink,
+  fontFamily: emailFontFamily,
+  fontSize: '15px',
+  lineHeight: '1.65',
+  margin: 0,
+  whiteSpace: 'pre-wrap' as const,
+}
+
+const cardDividerStyle = {
+  border: 'none',
+  borderTop: `1px solid ${emailColors.border}`,
+  margin: '18px 0',
+}
+
+const messageBodyStyle = {
+  color: emailColors.ink,
+  fontFamily: emailFontFamily,
+  fontSize: '15px',
+  lineHeight: '1.65',
+  margin: 0,
+  whiteSpace: 'pre-wrap' as const,
+}
+
 const hrStyle = {
   borderColor: emailColors.border,
-  margin: '32px 0 16px',
+  margin: '36px 0 20px',
 }
 
 const footerStyle = {
   color: emailColors.ink3,
+  fontFamily: emailFontFamily,
   fontSize: '12px',
   lineHeight: '1.6',
   margin: 0,

@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: June 2026 — v2.30
+> Last updated: July 2026 — v2.33
 
 ---
 
@@ -605,6 +605,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.33 | July 2026 | **Transactional email design system.** Shared `EmailLayout` now uses correct logo aspect ratio (244×29 SVG → 227×27 display), unified typography (22px heading, 15px body, 11px uppercase meta labels), spacing rhythm, and bordered content cards. `NewInquirySeller` merges buyer contact + message into one card with FROM/MESSAGE sections. |
 | v2.32 | June 2026 | **Careers page.** New static `/careers` route (footer link target): dark hero, open-positions block with mailto CTA (`careers@blackdiamondmkt.com`), 3-column culture cards on `#F7F8F9` — patterns match How It Works and Contact. Added to sitemap. |
 | v2.31 | June 2026 | **Global newsletter section.** Extracted homepage newsletter into shared `NewsletterSection` + `NewsletterFormLazy` (`src/components/`). Business/seller profile page now uses the same two-column card layout, copy, and form styling as the homepage — no one-off newsletter blocks. Documented canonical component in §6. |
 | v2.30 | June 2026 | **Homepage section header unification.** Featured Equipment and Browse by Industry headlines upgraded to shared fluid H2 (`clamp(28px, 4vw, 40px)`, `-0.03em` tracking) with `text-base` subtext — matching How It Works and Newsletter. Documented shared homepage section header pattern in §7; section padding updated to `py-16 lg:py-20`; newsletter card spec updated (`rounded-[20px]`, `shadow-card`, full `.page-shell` width, two-column layout). |

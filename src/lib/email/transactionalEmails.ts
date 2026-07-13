@@ -4,11 +4,11 @@ import ListingNeedsChanges from '../../../emails/templates/ListingNeedsChanges'
 import ListingRemoved from '../../../emails/templates/ListingRemoved'
 import NewInquirySeller from '../../../emails/templates/NewInquirySeller'
 import InquiryReceivedBuyer from '../../../emails/templates/InquiryReceivedBuyer'
-import { getAppUrl } from './resendClient'
+import { getEmailAppUrl } from './resendClient'
 import { sendTransactionalEmailSafe } from './sendTransactionalEmail'
 
 function listingPublicUrl(slug: string | null): string {
-  const base = getAppUrl()
+  const base = getEmailAppUrl()
   return slug ? `${base}/listings/${slug}` : base
 }
 
@@ -37,7 +37,7 @@ export async function dispatchListingNeedsChangesEmail(opts: {
   listingTitle: string
   flagComment: string
 }): Promise<void> {
-  const editUrl = `${getAppUrl()}/dashboard`
+  const editUrl = `${getEmailAppUrl()}/dashboard`
   sendTransactionalEmailSafe({
     templateType: 'ListingNeedsChanges',
     recipientEmail: opts.sellerEmail,
@@ -75,12 +75,17 @@ export async function dispatchNewInquirySellerEmail(opts: {
   sellerEmail: string
   leadId: string
   listingTitle: string
+  listingSlug?: string | null
   buyerName: string
   buyerEmail: string
   buyerMessage: string
   buyerCompany?: string | null
   buyerPhone?: string | null
 }): Promise<void> {
+  const listingUrl = opts.listingSlug
+    ? `${getEmailAppUrl()}/listings/${opts.listingSlug}`
+    : `${getEmailAppUrl()}/dashboard`
+
   sendTransactionalEmailSafe({
     templateType: 'NewInquirySeller',
     recipientEmail: opts.sellerEmail,
@@ -95,7 +100,7 @@ export async function dispatchNewInquirySellerEmail(opts: {
       buyerCompany: opts.buyerCompany,
       buyerPhone: opts.buyerPhone,
       buyerMessage: opts.buyerMessage,
-      dashboardUrl: `${getAppUrl()}/dashboard`,
+      listingUrl,
     }),
   })
 }
