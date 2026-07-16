@@ -50,13 +50,19 @@ export function AuthProvider({
 
     async function loadProfile(userId: string, email: string) {
       setAuthUser(minimalProfile(email))
-      const [profileRes, countRes] = await Promise.all([
+      const [profileRes, countRes, orgMemberRes] = await Promise.all([
         supabase.from('users').select('full_name, company_name, plan').eq('id', userId).single(),
         supabase
           .from('listings')
           .select('id', { count: 'exact', head: true })
           .eq('seller_id', userId)
           .neq('status', 'removed'),
+        supabase
+          .from('org_members')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .maybeSingle(),
       ])
       if (cancelled) return
       setAuthUser({
@@ -65,6 +71,7 @@ export function AuthProvider({
         company_name: profileRes.data?.company_name ?? null,
         plan: profileRes.data?.plan ?? 'free',
         listing_count: countRes.count ?? 0,
+        has_organization: Boolean(orgMemberRes.data),
       })
     }
 

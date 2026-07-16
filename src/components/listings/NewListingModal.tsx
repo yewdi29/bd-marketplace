@@ -823,7 +823,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                     <select
                       value={form.price_unit}
                       onChange={e => setForm(f => ({ ...f, price_unit: e.target.value }))}
-                      className={`${selectCls} w-[140px] shrink-0`}
+                      className={`${selectCls} min-w-[148px] shrink-0`}
                     >
                       {PRICE_UNITS.map(u => (
                         <option key={u.value} value={u.value}>{u.label}</option>

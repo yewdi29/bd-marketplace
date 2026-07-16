@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials, PROFILE_MENU_LINKS, type ProfileUser } from '@/components/ui/ProfileDropdown'
 import { navLinkPrefetch } from '@/lib/navLink'
-import PlanBadge from '@/components/ui/PlanBadge'
+import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
 
 // Primary navigation links — always shown, regardless of auth state
 const NAV_LINKS = [
@@ -124,7 +124,13 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-ink truncate">{user.full_name ?? user.email}</p>
-                  <div className="mt-1"><PlanBadge plan={user.plan} /></div>
+                  <div className="mt-1">
+                    {user.has_organization ? (
+                      <EnterpriseBadge />
+                    ) : (
+                      <PlanBadge plan={user.plan} />
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -142,6 +148,19 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
                     {item.label}
                   </Link>
                 ))}
+
+                {user.has_organization && (
+                  <Link
+                    href="/dashboard/organization"
+                    prefetch={navLinkPrefetch('/dashboard/organization')}
+                    onClick={onClose}
+                    className={`${ROW} border-b border-[#F0F0F0]`}
+                    style={{ minHeight: 44 }}
+                  >
+                    Company Settings
+                  </Link>
+                )}
+
                 <button
                   type="button"
                   onClick={handleManageSubscription}

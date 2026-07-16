@@ -5,8 +5,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
-import PlanBadge from '@/components/ui/PlanBadge'
+import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
 import { navLinkPrefetch } from '@/lib/navLink'
+import {
+  getAccountListingLimit,
+  hasUnlimitedListings,
+} from '@/lib/planLimits'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,16 +20,7 @@ export interface ProfileUser {
   company_name: string | null
   plan: MembershipPlan
   listing_count: number
-}
-
-// ─── Plan config ──────────────────────────────────────────────────────────────
-
-const PLAN_LIMITS: Record<MembershipPlan, number> = {
-  free: 3,
-  starter: 15,
-  pro: 40,
-  max: Infinity,
-  premium: Infinity,
+  has_organization?: boolean
 }
 
 // Shared with the mobile slide-in menu so both surfaces link to the same places
@@ -64,9 +59,11 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
 
   const initials = getInitials(user.full_name, user.email)
   const firstName = getFirstName(user.full_name, user.email)
-  const limit = PLAN_LIMITS[user.plan]
-  const meterPct = limit !== Infinity ? Math.min(Math.round((user.listing_count / limit) * 100), 100) : 0
-  const showMeter = limit !== Infinity
+  const limit = getAccountListingLimit(user.plan, user.has_organization)
+  const meterPct = !hasUnlimitedListings(user.plan, user.has_organization)
+    ? Math.min(Math.round((user.listing_count / limit) * 100), 100)
+    : 0
+  const showMeter = !hasUnlimitedListings(user.plan, user.has_organization)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -137,7 +134,11 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
               </div>
 
               {/* Plan badge */}
-              <PlanBadge plan={user.plan} />
+              {user.has_organization ? (
+                <EnterpriseBadge />
+              ) : (
+                <PlanBadge plan={user.plan} />
+              )}
 
               {/* Listing meter — finite-limit plans only */}
               {showMeter && (
@@ -166,6 +167,17 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                   {item.label}
                 </Link>
               ))}
+
+              {user.has_organization && (
+                <Link
+                  href="/dashboard/organization"
+                  prefetch={navLinkPrefetch('/dashboard/organization')}
+                  onClick={() => setDropdownOpen(false)}
+                  className="flex items-center px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
+                >
+                  Company Settings
+                </Link>
+              )}
 
               {/* Upgrade Plan — navigates to /dashboard/upgrade (or coming-soon toast for max) */}
               <button

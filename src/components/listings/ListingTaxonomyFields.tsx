@@ -16,7 +16,7 @@ const labelCls = 'block text-sm font-semibold text-ink mb-1.5'
 
 function SelectWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative">
+    <div className="relative [&>select]:pr-10">
       {children}
       <svg
         className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3"

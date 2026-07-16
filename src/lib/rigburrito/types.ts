@@ -1,12 +1,32 @@
-import type { ArticleCategory, ArticleStatus, ListingStatus, MembershipPlan } from '@/lib/types/database'
+import type {
+  ArticleCategory,
+  ArticleStatus,
+  DealType,
+  ListingStatus,
+  MembershipPlan,
+} from '@/lib/types/database'
 
 export type DealTier = 'yellow' | 'red'
 export type DealStatus = 'identified' | 'contacted' | 'negotiating' | 'closed_won' | 'closed_lost'
 
+export interface EnterpriseDealMetadata {
+  company_name: string
+  contact_name: string
+  contact_email: string
+  contact_phone: string | null
+  estimated_team_size: number
+  locations_regions: string
+  message: string | null
+  submitted_at: string
+}
+
 export interface Deal {
   id: string
   listing_id: string | null
-  deal_tier: DealTier
+  deal_type: DealType
+  enterprise_metadata: EnterpriseDealMetadata | Record<string, unknown> | null
+  deal_tier: DealTier | null
+  organization_id?: string | null
   buyer_name: string | null
   buyer_email: string | null
   buyer_phone: string | null

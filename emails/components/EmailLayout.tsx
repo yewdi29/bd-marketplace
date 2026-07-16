@@ -33,7 +33,7 @@ export const EMAIL_LOGO_DISPLAY_WIDTH = Math.round(
 )
 
 /** Same wordmark as site navbar — served from /public at deploy time. */
-export const EMAIL_LOGO_URL = 'https://www.blackdiamondmkt.com/bd_logo-black.svg'
+export const EMAIL_LOGO_URL = 'https://blackdiamondmkt.com/bd_logo-black.svg'
 
 export const emailFontFamily =
   'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'

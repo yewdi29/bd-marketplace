@@ -24,10 +24,15 @@ import SlideOver from '@/components/rigburrito/SlideOver'
 import HoldToConfirmButton from '@/components/rigburrito/HoldToConfirmButton'
 import { formatCurrency, formatDate, getInitials } from '@/lib/rigburrito/utils'
 import { DEAL_ACTIVE_STATUSES, DEAL_NEXT_STAGE, DEAL_STATUSES, type Deal, type DealStatus } from '@/lib/rigburrito/types'
+import { parseEnterpriseMetadata } from '@/lib/organizations/enterpriseDealMetadata'
 
 function DealCard({ deal, onClick, highlighted }: { deal: Deal; onClick: () => void; highlighted?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: deal.id })
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined
+  const isEnterprise = deal.deal_type === 'enterprise'
+  const enterpriseMeta = isEnterprise
+    ? parseEnterpriseMetadata(deal.enterprise_metadata as Record<string, unknown> | null)
+    : null
 
   return (
     <div
@@ -42,10 +47,29 @@ function DealCard({ deal, onClick, highlighted }: { deal: Deal; onClick: () => v
       {...attributes}
       onClick={onClick}
     >
-      <p className="rigburrito-body mb-1 truncate font-medium">{deal.listing_title ?? 'No listing'}</p>
-      <span className="mb-2 inline-block"><StatusBadge status={deal.deal_tier} variant="deal" /></span>
-      <p className="rigburrito-caption" style={{ color: '#6B7280' }}>{deal.buyer_name ?? 'No buyer'}</p>
-      <p className="rigburrito-mono rigburrito-body">{formatCurrency(deal.asking_price ?? 0)}</p>
+      <p className="rigburrito-body mb-1 truncate font-medium">
+        {isEnterprise
+          ? (enterpriseMeta?.company_name ?? 'Enterprise inquiry')
+          : (deal.listing_title ?? 'No listing')}
+      </p>
+      <span className="mb-2 inline-block">
+        <StatusBadge
+          status={isEnterprise ? 'enterprise' : (deal.deal_tier ?? 'yellow')}
+          variant="deal"
+        />
+      </span>
+      <p className="rigburrito-caption" style={{ color: '#6B7280' }}>
+        {isEnterprise
+          ? (enterpriseMeta?.contact_name ?? 'No contact')
+          : (deal.buyer_name ?? 'No buyer')}
+      </p>
+      {isEnterprise ? (
+        <p className="rigburrito-mono rigburrito-caption" style={{ color: '#6B7280' }}>
+          ~{enterpriseMeta?.estimated_team_size ?? '—'} seats
+        </p>
+      ) : (
+        <p className="rigburrito-mono rigburrito-body">{formatCurrency(deal.asking_price ?? 0)}</p>
+      )}
       {deal.assigned_name && (
         <div className="mt-2 flex h-6 w-6 items-center justify-center rounded-full text-xs text-white" style={{ background: '#6B7280' }}>
           {getInitials(deal.assigned_name)}
@@ -95,8 +119,34 @@ export default function DealsPage() {
   const [closeWonFinalPrice, setCloseWonFinalPrice] = useState('')
   const [closeWonCommission, setCloseWonCommission] = useState('')
   const [closeWonError, setCloseWonError] = useState('')
+  const [closeEnterpriseOpen, setCloseEnterpriseOpen] = useState(false)
+  const [closeEnterpriseDealId, setCloseEnterpriseDealId] = useState<string | null>(null)
+  const [closeEnterpriseOrgName, setCloseEnterpriseOrgName] = useState('')
+  const [closeEnterpriseOwnerEmail, setCloseEnterpriseOwnerEmail] = useState('')
+  const [closeEnterpriseBilling, setCloseEnterpriseBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [closeEnterpriseError, setCloseEnterpriseError] = useState('')
+  const [closeEnterpriseLoading, setCloseEnterpriseLoading] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  function openCloseWonFlow(dealId: string) {
+    const deal = deals.find(d => d.id === dealId)
+    if (deal?.deal_type === 'enterprise') {
+      const meta = parseEnterpriseMetadata(deal.enterprise_metadata as Record<string, unknown> | null)
+      setCloseEnterpriseDealId(dealId)
+      setCloseEnterpriseOrgName(meta?.company_name ?? '')
+      setCloseEnterpriseOwnerEmail(meta?.contact_email ?? '')
+      setCloseEnterpriseBilling('monthly')
+      setCloseEnterpriseError('')
+      setCloseEnterpriseOpen(true)
+      return
+    }
+    setCloseWonDealId(dealId)
+    setCloseWonFinalPrice('')
+    setCloseWonCommission('')
+    setCloseWonError('')
+    setCloseWonOpen(true)
+  }
 
   const fetchDeals = useCallback(async () => {
     setLoading(true)
@@ -154,11 +204,7 @@ export default function DealsPage() {
     if (!deal || deal.status === newStatus) return
 
     if (newStatus === 'closed_won') {
-      setCloseWonDealId(dealId)
-      setCloseWonFinalPrice('')
-      setCloseWonCommission('')
-      setCloseWonError('')
-      setCloseWonOpen(true)
+      openCloseWonFlow(dealId)
       return
     }
 
@@ -172,11 +218,7 @@ export default function DealsPage() {
 
   async function advanceDealStatus(dealId: string, nextStatus: DealStatus) {
     if (nextStatus === 'closed_won') {
-      setCloseWonDealId(dealId)
-      setCloseWonFinalPrice('')
-      setCloseWonCommission('')
-      setCloseWonError('')
-      setCloseWonOpen(true)
+      openCloseWonFlow(dealId)
       return
     }
 
@@ -237,6 +279,40 @@ export default function DealsPage() {
     fetchDeals()
   }
 
+  async function finalizeCloseEnterprise() {
+    if (!closeEnterpriseDealId) return
+    if (!closeEnterpriseOrgName.trim() || !closeEnterpriseOwnerEmail.trim()) {
+      setCloseEnterpriseError('Organization name and primary owner email are required.')
+      return
+    }
+
+    setCloseEnterpriseLoading(true)
+    setCloseEnterpriseError('')
+    try {
+      const res = await fetch(`/api/rigburrito/deals/${closeEnterpriseDealId}/close-enterprise`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationName: closeEnterpriseOrgName.trim(),
+          primaryOwnerEmail: closeEnterpriseOwnerEmail.trim(),
+          billingInterval: closeEnterpriseBilling,
+        }),
+      })
+      const data = await res.json() as { error?: string; organizationId?: string }
+      if (!res.ok) {
+        setCloseEnterpriseError(data.error ?? 'Failed to close as Enterprise')
+        return
+      }
+
+      setCloseEnterpriseOpen(false)
+      setCloseEnterpriseDealId(null)
+      setSelected(null)
+      fetchDeals()
+    } finally {
+      setCloseEnterpriseLoading(false)
+    }
+  }
+
   async function openDeal(deal: Deal) {
     setSelected(deal)
     const res = await fetch(`/api/rigburrito/deals/${deal.id}`)
@@ -270,10 +346,15 @@ export default function DealsPage() {
   }
 
   const closedWon = deals.filter(d => d.status === 'closed_won')
-  const totalCommission = closedWon.reduce((s, d) => s + (d.commission_earned ?? 0), 0)
+  const closedWonEquipment = closedWon.filter(d => d.deal_type !== 'enterprise')
+  const totalCommission = closedWonEquipment.reduce((s, d) => s + (d.commission_earned ?? 0), 0)
   const currentStatus = (editForm.status ?? selected?.status) as DealStatus | undefined
   const nextStage = currentStatus ? DEAL_NEXT_STAGE[currentStatus] : undefined
   const isActiveDeal = currentStatus ? DEAL_ACTIVE_STATUSES.includes(currentStatus) : false
+  const isEnterpriseDeal = (editForm.deal_type ?? selected?.deal_type) === 'enterprise'
+  const enterpriseMeta = isEnterpriseDeal
+    ? parseEnterpriseMetadata((editForm.enterprise_metadata ?? selected?.enterprise_metadata) as Record<string, unknown> | null)
+    : null
 
   if (loading) return <div><h1 className="rigburrito-page-title">Deal Tracker</h1><TableSkeleton /></div>
   if (error) return <ErrorState message={error} onRetry={fetchDeals} />
@@ -315,28 +396,37 @@ export default function DealsPage() {
         </Tabs.Content>
 
         <Tabs.Content value="closed">
-          <p className="rigburrito-mono rigburrito-stat-value mb-4" style={{ fontSize: 20 }}>Total Commission: {formatCurrency(totalCommission)}</p>
+          <p className="rigburrito-mono rigburrito-stat-value mb-4" style={{ fontSize: 20 }}>
+            Equipment Commission: {formatCurrency(totalCommission)}
+          </p>
           <div className="rigburrito-table-wrap">
             <table className="rigburrito-table">
               <thead>
                 <tr>
-                  {['Listing', 'Buyer', 'Seller', 'Final Price', 'Rate %', 'Commission', 'Close Date'].map(h => (
+                  {['Type', 'Company / Listing', 'Contact / Buyer', 'Outcome', 'Close Date'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {closedWon.map(d => (
-                  <tr key={d.id}>
-                    <td>{d.listing_title}</td>
-                    <td>{d.buyer_name}</td>
-                    <td>{d.seller_name}</td>
-                    <td className="rigburrito-mono">{formatCurrency(d.final_sale_price ?? 0)}</td>
-                    <td className="rigburrito-mono">{d.commission_rate}%</td>
-                    <td className="rigburrito-mono">{formatCurrency(d.commission_earned ?? 0)}</td>
-                    <td>{formatDate(d.updated_at)}</td>
-                  </tr>
-                ))}
+                {closedWon.map(d => {
+                  const ent = d.deal_type === 'enterprise'
+                    ? parseEnterpriseMetadata(d.enterprise_metadata as Record<string, unknown> | null)
+                    : null
+                  return (
+                    <tr key={d.id}>
+                      <td>{d.deal_type === 'enterprise' ? 'Enterprise' : (d.deal_tier ?? '—')}</td>
+                      <td>{ent?.company_name ?? d.listing_title}</td>
+                      <td>{ent?.contact_name ?? d.buyer_name}</td>
+                      <td className="rigburrito-mono">
+                        {d.deal_type === 'enterprise'
+                          ? (d.organization_id ? 'Org created' : '—')
+                          : `${formatCurrency(d.final_sale_price ?? 0)} · ${formatCurrency(d.commission_earned ?? 0)} comm.`}
+                      </td>
+                      <td>{formatDate(d.updated_at)}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -351,26 +441,55 @@ export default function DealsPage() {
               <StatusBadge status={currentStatus ?? 'identified'} variant="deal" />
             </div>
 
-            <div className="rigburrito-card" style={{ padding: 16 }}>
-              <p className="rigburrito-section-title" style={{ fontSize: 14, marginBottom: 12 }}>Buyer</p>
-              <div className="space-y-2">
-                <p className="rigburrito-body"><span className="rigburrito-caption">Name · </span>{editForm.buyer_name ?? '—'}</p>
-                <p className="rigburrito-body"><span className="rigburrito-caption">Email · </span>{editForm.buyer_email ?? '—'}</p>
-                <div>
-                  <p className="rigburrito-caption mb-1">Inquiry message</p>
-                  <p className="rigburrito-body whitespace-pre-wrap">{editForm.buyer_message ?? '—'}</p>
-                </div>
-              </div>
+            <div>
+              <p className="rigburrito-card-label mb-2">Deal type</p>
+              <StatusBadge status={isEnterpriseDeal ? 'enterprise' : (editForm.deal_tier ?? 'yellow')} variant="deal" />
             </div>
 
-            <div className="rigburrito-card" style={{ padding: 16 }}>
-              <p className="rigburrito-section-title" style={{ fontSize: 14, marginBottom: 12 }}>Listing &amp; seller</p>
-              <div className="space-y-2">
-                <p className="rigburrito-body"><span className="rigburrito-caption">Listing · </span>{editForm.listing_title ?? '—'}</p>
-                <p className="rigburrito-mono rigburrito-body"><span className="rigburrito-caption font-sans">Price · </span>{formatCurrency(editForm.asking_price ?? 0)}</p>
-                <p className="rigburrito-body"><span className="rigburrito-caption">Seller · </span>{editForm.seller_name ?? '—'}</p>
+            {isEnterpriseDeal && enterpriseMeta ? (
+              <div className="rigburrito-card" style={{ padding: 16 }}>
+                <p className="rigburrito-section-title" style={{ fontSize: 14, marginBottom: 12 }}>Enterprise inquiry</p>
+                <div className="space-y-2">
+                  <p className="rigburrito-body"><span className="rigburrito-caption">Company · </span>{enterpriseMeta.company_name}</p>
+                  <p className="rigburrito-body"><span className="rigburrito-caption">Contact · </span>{enterpriseMeta.contact_name}</p>
+                  <p className="rigburrito-body"><span className="rigburrito-caption">Email · </span>{enterpriseMeta.contact_email}</p>
+                  {enterpriseMeta.contact_phone && (
+                    <p className="rigburrito-body"><span className="rigburrito-caption">Phone · </span>{enterpriseMeta.contact_phone}</p>
+                  )}
+                  <p className="rigburrito-body"><span className="rigburrito-caption">Est. team size · </span>{enterpriseMeta.estimated_team_size}</p>
+                  <p className="rigburrito-body"><span className="rigburrito-caption">Locations · </span>{enterpriseMeta.locations_regions}</p>
+                  {enterpriseMeta.message && (
+                    <div>
+                      <p className="rigburrito-caption mb-1">Notes</p>
+                      <p className="rigburrito-body whitespace-pre-wrap">{enterpriseMeta.message}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="rigburrito-card" style={{ padding: 16 }}>
+                  <p className="rigburrito-section-title" style={{ fontSize: 14, marginBottom: 12 }}>Buyer</p>
+                  <div className="space-y-2">
+                    <p className="rigburrito-body"><span className="rigburrito-caption">Name · </span>{editForm.buyer_name ?? '—'}</p>
+                    <p className="rigburrito-body"><span className="rigburrito-caption">Email · </span>{editForm.buyer_email ?? '—'}</p>
+                    <div>
+                      <p className="rigburrito-caption mb-1">Inquiry message</p>
+                      <p className="rigburrito-body whitespace-pre-wrap">{editForm.buyer_message ?? '—'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rigburrito-card" style={{ padding: 16 }}>
+                  <p className="rigburrito-section-title" style={{ fontSize: 14, marginBottom: 12 }}>Listing &amp; seller</p>
+                  <div className="space-y-2">
+                    <p className="rigburrito-body"><span className="rigburrito-caption">Listing · </span>{editForm.listing_title ?? '—'}</p>
+                    <p className="rigburrito-mono rigburrito-body"><span className="rigburrito-caption font-sans">Price · </span>{formatCurrency(editForm.asking_price ?? 0)}</p>
+                    <p className="rigburrito-body"><span className="rigburrito-caption">Seller · </span>{editForm.seller_name ?? '—'}</p>
+                  </div>
+                </div>
+              </>
+            )}
 
             {isActiveDeal && selected && (
               <div className="space-y-2 border-t pt-4" style={{ borderColor: '#F0F1F3' }}>
@@ -389,7 +508,7 @@ export default function DealsPage() {
                       variant="success"
                       onClick={() => advanceDealStatus(selected.id, 'closed_won')}
                     >
-                      Close Deal Won
+                      {isEnterpriseDeal ? 'Close as Enterprise' : 'Close Deal Won'}
                     </AdminButton>
                   )}
                   <AdminButton variant="warning" onClick={() => markDealLost(selected.id)}>
@@ -399,7 +518,7 @@ export default function DealsPage() {
               </div>
             )}
 
-            {currentStatus === 'closed_won' && (
+            {currentStatus === 'closed_won' && !isEnterpriseDeal && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="rigburrito-card-label mb-1 block">Final Sale Price</label>
@@ -412,6 +531,12 @@ export default function DealsPage() {
               </div>
             )}
 
+            {currentStatus === 'closed_won' && isEnterpriseDeal && editForm.organization_id && (
+              <div className="rigburrito-card" style={{ padding: 16 }}>
+                <p className="rigburrito-card-label mb-1">Organization</p>
+                <p className="rigburrito-mono rigburrito-body text-sm">{editForm.organization_id}</p>
+              </div>
+            )}
             {editForm.notes && (
               <div>
                 <label className="rigburrito-card-label mb-1 block">Notes Timeline</label>
@@ -456,6 +581,65 @@ export default function DealsPage() {
             {closeWonError && <p className="mb-3 text-sm text-red-600">{closeWonError}</p>}
             <AdminButton variant="success" onClick={finalizeCloseWon} className="w-full">
               Confirm &amp; close won
+            </AdminButton>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={closeEnterpriseOpen} onOpenChange={setCloseEnterpriseOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50" style={{ background: 'rgba(0,0,0,0.4)' }} />
+          <Dialog.Content className="rigburrito-card fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-6 outline-none" style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
+            <div className="mb-4 flex items-center justify-between">
+              <Dialog.Title className="rigburrito-section-title" style={{ marginBottom: 0 }}>Close as Enterprise</Dialog.Title>
+              <Dialog.Close asChild><button type="button" className="rigburrito-btn-icon"><X size={16} /></button></Dialog.Close>
+            </div>
+            <p className="rigburrito-caption mb-4">
+              Creates the organization, Stripe subscription, and primary owner invite. If Stripe fails, nothing is closed.
+            </p>
+            <label className="rigburrito-card-label mb-1 block">Organization name</label>
+            <input
+              type="text"
+              value={closeEnterpriseOrgName}
+              onChange={e => setCloseEnterpriseOrgName(e.target.value)}
+              className="rigburrito-input mb-3 w-full"
+            />
+            <label className="rigburrito-card-label mb-1 block">Primary owner email</label>
+            <input
+              type="email"
+              value={closeEnterpriseOwnerEmail}
+              onChange={e => setCloseEnterpriseOwnerEmail(e.target.value)}
+              className="rigburrito-input mb-3 w-full"
+            />
+            <label className="rigburrito-card-label mb-2 block">Billing interval</label>
+            <div className="mb-4 flex gap-4">
+              <label className="rigburrito-body flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="billingInterval"
+                  checked={closeEnterpriseBilling === 'monthly'}
+                  onChange={() => setCloseEnterpriseBilling('monthly')}
+                />
+                Monthly ($1,499 + $99/seat)
+              </label>
+              <label className="rigburrito-body flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="billingInterval"
+                  checked={closeEnterpriseBilling === 'annual'}
+                  onChange={() => setCloseEnterpriseBilling('annual')}
+                />
+                Annual (ACH only)
+              </label>
+            </div>
+            {closeEnterpriseError && <p className="mb-3 text-sm text-red-600">{closeEnterpriseError}</p>}
+            <AdminButton
+              variant="success"
+              onClick={() => void finalizeCloseEnterprise()}
+              className="w-full"
+              disabled={closeEnterpriseLoading}
+            >
+              {closeEnterpriseLoading ? 'Creating organization…' : 'Confirm & close as Enterprise'}
             </AdminButton>
           </Dialog.Content>
         </Dialog.Portal>

@@ -19,6 +19,10 @@ import {
   LISTING_PHOTO_UPLOAD_HINT,
   MAX_LISTING_PHOTOS,
 } from '@/lib/listings/listingPhotoUpload'
+import {
+  getAccountListingLimit,
+  hasUnlimitedListings,
+} from '@/lib/planLimits'
 import type { ListingForm, PhotoState } from './NewListingModal'
 import ListingPhotoSortableList from './ListingPhotoSortableList'
 
@@ -38,14 +42,6 @@ const PRICE_UNITS = [
   { value: 'per_set', label: 'Per Set' },
   { value: 'per_meter', label: 'Per Meter' },
 ]
-
-const PLAN_LIMITS: Record<MembershipPlan, number> = {
-  free: 3,
-  starter: 15,
-  pro: 40,
-  max: Infinity,
-  premium: Infinity,
-}
 
 function planLabel(plan: MembershipPlan): string {
   switch (plan) {
@@ -186,7 +182,11 @@ export default function NewListingMobileFlow({
   const [entered, setEntered] = useState(false)
   const [exitConfirm, setExitConfirm] = useState(false)
   const [slideDir, setSlideDir] = useState<'forward' | 'back'>('forward')
-  const [membership, setMembership] = useState<{ plan: MembershipPlan; activeCount: number } | null>(null)
+  const [membership, setMembership] = useState<{
+    plan: MembershipPlan
+    activeCount: number
+    isEnterpriseMember: boolean
+  } | null>(null)
   const [keyboardOffset, setKeyboardOffset] = useState(0)
 
   const taxonomyData = useListingTaxonomy()
@@ -245,13 +245,20 @@ export default function NewListingMobileFlow({
     async function loadMembership() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const [{ data: profile }, { count }] = await Promise.all([
+      const [{ data: profile }, { count }, orgMemberRes] = await Promise.all([
         supabase.from('users').select('plan').eq('id', user.id).single(),
         supabase.from('listings').select('id', { count: 'exact', head: true }).eq('seller_id', user.id).eq('status', 'active'),
+        supabase
+          .from('org_members')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle(),
       ])
       setMembership({
         plan: (profile?.plan as MembershipPlan) ?? 'free',
         activeCount: count ?? 0,
+        isEnterpriseMember: Boolean(orgMemberRes.data),
       })
     }
     loadMembership()
@@ -292,10 +299,15 @@ export default function NewListingMobileFlow({
 
   const previewCountry = taxonomyData.countries.find(c => c.id === taxonomy.country_id)
 
-  const limit = membership ? PLAN_LIMITS[membership.plan] : null
+  const limit = membership
+    ? getAccountListingLimit(membership.plan, membership.isEnterpriseMember)
+    : null
+  const unlimited = membership
+    ? hasUnlimitedListings(membership.plan, membership.isEnterpriseMember)
+    : false
   const membershipLine = membership && limit !== null
-    ? limit === Infinity
-      ? `${planLabel(membership.plan)} plan · Unlimited listings`
+    ? unlimited
+      ? `${membership.isEnterpriseMember ? 'Enterprise' : planLabel(membership.plan)} plan · Unlimited listings`
       : `${planLabel(membership.plan)} plan · ${Math.max(0, limit - membership.activeCount)} of ${limit} listings remaining`
     : null
 

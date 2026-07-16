@@ -1,11 +1,19 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import CompanyAvatar from '@/components/ui/CompanyAvatar'
 import { useRouter } from 'next/navigation'
 import type { MembershipPlan } from '@/lib/types/database'
-import PlanBadge from '@/components/ui/PlanBadge'
+import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
+import { DashboardSettingsShell } from '@/components/dashboard/DashboardSettingsShell'
+import type { OrgMembership } from '@/lib/organizations/auth'
+import {
+  managerHasBillingAccess,
+  managerHasProfileEditAccess,
+} from '@/lib/organizations/managerPermissions'
 
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
@@ -29,6 +37,41 @@ interface UserProfile {
   country: string | null
 }
 
+const readOnlyInputClass =
+  'w-full bg-[#F7F8F9] border border-[#E8E9EA] rounded-[10px] px-3.5 py-2.5 text-sm font-sans cursor-not-allowed'
+const orgDeferredClass = 'opacity-60 pointer-events-none select-none'
+
+interface OrgOrganization {
+  id: string
+  name: string
+  logo_url: string | null
+  description: string | null
+}
+
+interface OrgBillingDisplay {
+  planName: string
+  billingInterval: 'monthly' | 'annual' | null
+}
+
+function OrgDeferredMessage({
+  children,
+}: {
+  children: ReactNode
+}) {
+  return (
+    <p className="text-xs text-ink-3 mt-4 font-sans leading-relaxed pointer-events-auto">
+      {children}
+    </p>
+  )
+}
+
+function CompanySettingsLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="text-ink-2 underline hover:text-ink transition-colors">
+      {children}
+    </Link>
+  )
+}
 const inputClass =
   'w-full bg-white border border-[#D4D5D7] rounded-[10px] px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-3 font-sans focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors'
 const labelClass = 'block text-sm font-medium text-ink mb-1.5'
@@ -100,15 +143,6 @@ export default function SettingsPage() {
     firstName: '', lastName: '', phone: '', companyName: '', city: '', stateField: '', country: '',
   })
 
-  const isDirty =
-    firstName !== savedState.firstName ||
-    lastName !== savedState.lastName ||
-    phone !== savedState.phone ||
-    companyName !== savedState.companyName ||
-    city !== savedState.city ||
-    stateField !== savedState.stateField ||
-    country !== savedState.country
-
   // Membership state
   const [plan, setPlan] = useState<MembershipPlan>('free')
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual' | null>(null)
@@ -120,6 +154,31 @@ export default function SettingsPage() {
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
+
+  // Organization deferral (display-only — personal DB fields untouched)
+  const [orgMembership, setOrgMembership] = useState<OrgMembership | null>(null)
+  const [orgOrganization, setOrgOrganization] = useState<OrgOrganization | null>(null)
+  const [orgBillingDisplay, setOrgBillingDisplay] = useState<OrgBillingDisplay | null>(null)
+
+  const isOrgMember = Boolean(orgMembership && orgOrganization)
+  const canEditOrgProfile = orgMembership ? managerHasProfileEditAccess(orgMembership) : false
+  const canAccessOrgBilling = orgMembership ? managerHasBillingAccess(orgMembership) : false
+
+  const isDirty = isOrgMember
+    ? (
+      firstName !== savedState.firstName ||
+      lastName !== savedState.lastName ||
+      phone !== savedState.phone
+    )
+    : (
+      firstName !== savedState.firstName ||
+      lastName !== savedState.lastName ||
+      phone !== savedState.phone ||
+      companyName !== savedState.companyName ||
+      city !== savedState.city ||
+      stateField !== savedState.stateField ||
+      country !== savedState.country
+    )
 
   // Password fields
   const [currentPassword, setCurrentPassword] = useState('')
@@ -158,6 +217,20 @@ export default function SettingsPage() {
         setCountry(ct)
         setLogoUrl(u.company_logo_url ?? null)
         setSavedState({ firstName: fn, lastName: ln, phone: ph, companyName: co, city: ci, stateField: st, country: ct })
+
+        const orgRes = await fetch('/api/organizations/me')
+        if (orgRes.ok) {
+          const orgData = await orgRes.json() as {
+            membership?: OrgMembership | null
+            organization?: OrgOrganization | null
+            billingDisplay?: OrgBillingDisplay | null
+          }
+          if (orgData.membership && orgData.organization) {
+            setOrgMembership(orgData.membership)
+            setOrgOrganization(orgData.organization)
+            setOrgBillingDisplay(orgData.billingDisplay ?? null)
+          }
+        }
       } catch {
         setLoadError('Failed to load your profile. Please refresh the page.')
       } finally {
@@ -240,17 +313,20 @@ export default function SettingsPage() {
     setProfileError(null)
     try {
       const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
+      const payload: Record<string, string | null> = {
+        full_name: fullName || null,
+        phone: phone.trim() || null,
+      }
+      if (!isOrgMember) {
+        payload.company_name = companyName.trim() || null
+        payload.city = city.trim() || null
+        payload.state = stateField || null
+        payload.country = country.trim() || null
+      }
       const res = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: fullName || null,
-          phone: phone.trim() || null,
-          company_name: companyName.trim() || null,
-          city: city.trim() || null,
-          state: stateField || null,
-          country: country.trim() || null,
-        }),
+        body: JSON.stringify(payload),
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (!res.ok || json.error) {
@@ -262,10 +338,10 @@ export default function SettingsPage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
-        companyName: companyName.trim(),
-        city: city.trim(),
-        stateField,
-        country: country.trim(),
+        companyName: isOrgMember ? savedState.companyName : companyName.trim(),
+        city: isOrgMember ? savedState.city : city.trim(),
+        stateField: isOrgMember ? savedState.stateField : stateField,
+        country: isOrgMember ? savedState.country : country.trim(),
       })
       showToast('Settings saved')
     } catch {
@@ -318,27 +394,27 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-[680px] mx-auto px-6 py-8">
+      <DashboardSettingsShell>
         <div className="h-7 w-48 bg-[#F0F0F0] rounded-[10px] animate-pulse mb-8" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-11 bg-[#F0F0F0] rounded-[10px] animate-pulse" />
           ))}
         </div>
-      </div>
+      </DashboardSettingsShell>
     )
   }
 
   if (loadError) {
     return (
-      <div className="max-w-[680px] mx-auto px-6 py-8">
+      <DashboardSettingsShell>
         <ErrorBanner message={loadError} />
-      </div>
+      </DashboardSettingsShell>
     )
   }
 
   return (
-    <div className="max-w-[680px] mx-auto px-6 py-8">
+    <DashboardSettingsShell>
       <h1 className="font-sans font-bold text-ink mb-8" style={{ fontSize: '20px' }}>
         Account Settings
       </h1>
@@ -407,126 +483,186 @@ export default function SettingsPage() {
             Company Information
           </p>
 
-          {/* Logo upload */}
-          <div className="flex items-center gap-5 mb-6">
-            {/* Logo preview */}
-            <div className="relative shrink-0">
-              {logoUploading ? (
-                <div
-                  className="w-[72px] h-[72px] bg-[#F7F8F9] border border-[#E8E9EA] flex items-center justify-center"
-                  style={{ borderRadius: '12px' }}
-                >
-                  <svg className="w-5 h-5 animate-spin text-orange" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+          {isOrgMember && orgOrganization ? (
+            <>
+              <div className={orgDeferredClass}>
+                <div className="flex items-center gap-5 mb-6">
+                  <div className="relative shrink-0">
+                    {orgOrganization.logo_url ? (
+                      <Image
+                        src={orgOrganization.logo_url}
+                        alt=""
+                        width={72}
+                        height={72}
+                        className="rounded-[12px] object-cover"
+                      />
+                    ) : (
+                      <CompanyAvatar
+                        logoUrl={null}
+                        companyName={orgOrganization.name}
+                        size={72}
+                      />
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <CompanyAvatar
-                  logoUrl={logoUrl}
-                  companyName={companyName || null}
-                  size={72}
-                />
-              )}
 
-            </div>
+                <div className="mb-4">
+                  <label className={labelClass}>Organization name</label>
+                  <input
+                    type="text"
+                    value={orgOrganization.name}
+                    readOnly
+                    className={readOnlyInputClass}
+                    style={{ color: '#9A9DA2' }}
+                  />
+                </div>
 
-            {/* Upload / Remove button + hint */}
-            <div className="flex flex-col gap-1.5">
-              {logoUrl ? (
-                <button
-                  type="button"
-                  onClick={handleLogoRemove}
-                  disabled={logoUploading}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-pill transition-colors disabled:opacity-50"
-                  style={{ background: '#FFF0F0', color: '#CC0000', border: '1px solid #FFCCCC' }}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Remove Logo
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={logoUploading}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] transition-colors disabled:opacity-50"
-                >
-                  <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Upload Logo
-                </button>
-              )}
-              <p className="text-xs text-ink-3 font-sans">PNG or JPG · Max 5 MB</p>
-              {logoError && <p className="text-xs text-red-500 font-sans">{logoError}</p>}
-            </div>
-
-            {/* Hidden file input */}
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/png, image/jpeg"
-              className="hidden"
-              onChange={handleLogoUpload}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className={labelClass}>Company Name</label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={e => setCompanyName(e.target.value)}
-              placeholder="Your company name"
-              className={inputClass}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className={labelClass}>City</label>
-              <input
-                type="text"
-                value={city}
-                onChange={e => setCity(e.target.value)}
-                placeholder="City"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>State</label>
-              <div className="relative">
-                <select
-                  value={stateField}
-                  onChange={e => setStateField(e.target.value)}
-                  className={inputClass + ' appearance-none pr-8'}
-                >
-                  <option value="">Select state</option>
-                  {US_STATES.map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                  <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                <div>
+                  <label className={labelClass}>Description</label>
+                  <textarea
+                    value={orgOrganization.description ?? ''}
+                    readOnly
+                    rows={4}
+                    className={readOnlyInputClass + ' resize-none'}
+                    style={{ color: '#9A9DA2' }}
+                  />
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div>
-            <label className={labelClass}>Country</label>
-            <input
-              type="text"
-              value={country}
-              onChange={e => setCountry(e.target.value)}
-              placeholder="Country"
-              className={inputClass}
-            />
-          </div>
+              <OrgDeferredMessage>
+                {canEditOrgProfile ? (
+                  <>
+                    Your company information is managed under {orgOrganization.name} — edit it from{' '}
+                    <CompanySettingsLink href="/dashboard/organization?tab=profile">
+                      Company Settings
+                    </CompanySettingsLink>
+                    .
+                  </>
+                ) : (
+                  <>Your company information is managed by your organization.</>
+                )}
+              </OrgDeferredMessage>
+            </>
+          ) : (
+            <>
+              {/* Logo upload */}
+              <div className="flex items-center gap-5 mb-6">
+                <div className="relative shrink-0">
+                  {logoUploading ? (
+                    <div
+                      className="w-[72px] h-[72px] bg-[#F7F8F9] border border-[#E8E9EA] flex items-center justify-center"
+                      style={{ borderRadius: '12px' }}
+                    >
+                      <svg className="w-5 h-5 animate-spin text-orange" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <CompanyAvatar
+                      logoUrl={logoUrl}
+                      companyName={companyName || null}
+                      size={72}
+                    />
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  {logoUrl ? (
+                    <button
+                      type="button"
+                      onClick={handleLogoRemove}
+                      disabled={logoUploading}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-pill transition-colors disabled:opacity-50"
+                      style={{ background: '#FFF0F0', color: '#CC0000', border: '1px solid #FFCCCC' }}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Remove Logo
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoUploading}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] transition-colors disabled:opacity-50"
+                    >
+                      <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Upload Logo
+                    </button>
+                  )}
+                  <p className="text-xs text-ink-3 font-sans">PNG or JPG · Max 5 MB</p>
+                  {logoError && <p className="text-xs text-red-500 font-sans">{logoError}</p>}
+                </div>
+
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className={labelClass}>Company Name</label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  placeholder="Your company name"
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className={labelClass}>City</label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={e => setCity(e.target.value)}
+                    placeholder="City"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>State</label>
+                  <div className="relative">
+                    <select
+                      value={stateField}
+                      onChange={e => setStateField(e.target.value)}
+                      className={inputClass + ' appearance-none pr-8'}
+                    >
+                      <option value="">Select state</option>
+                      {US_STATES.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                      <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Country</label>
+                <input
+                  type="text"
+                  value={country}
+                  onChange={e => setCountry(e.target.value)}
+                  placeholder="Country"
+                  className={inputClass}
+                />
+              </div>
+            </>
+          )}
         </section>
 
         {profileError && <ErrorBanner message={profileError} />}
@@ -593,76 +729,114 @@ export default function SettingsPage() {
           Membership
         </p>
 
-        <div
-          className="p-4 rounded-[14px] border"
-          style={{ borderColor: '#E8E9EA', background: '#FAFAFA' }}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              {/* Plan badge */}
-              <PlanBadge plan={plan} />
-
-              {/* Plan name + listing cap */}
-              <div>
-                <p className="text-sm font-semibold text-ink">
-                  {plan === 'premium' ? 'Premium (Legacy)' : plan.charAt(0).toUpperCase() + plan.slice(1)} Plan
-                </p>
-                <p className="text-xs text-ink-3 font-sans">
-                  {plan === 'max' || plan === 'premium'
-                    ? 'Unlimited active listings'
-                    : plan === 'pro'
-                      ? '40 active listings'
-                      : plan === 'starter'
-                        ? '15 active listings'
-                        : '3 active listings'}
-                </p>
+        {isOrgMember && orgOrganization ? (
+          <>
+            <div
+              className={'p-4 rounded-[14px] border ' + orgDeferredClass}
+              style={{ borderColor: '#E8E9EA', background: '#FAFAFA' }}
+            >
+              <div className="flex items-center gap-3">
+                <EnterpriseBadge />
+                <div>
+                  <p className="text-sm font-semibold text-ink">Enterprise Plan</p>
+                  <p className="text-xs text-ink-3 font-sans">Unlimited active listings</p>
+                </div>
               </div>
+
+              {orgBillingDisplay?.billingInterval && (
+                <div className="mt-3 pt-3 border-t border-[#E8E9EA] flex items-center gap-2">
+                  <span className="text-xs text-ink-3 font-sans">Billing interval:</span>
+                  <span
+                    className="inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-bold rounded-pill border"
+                    style={{ background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }}
+                  >
+                    {orgBillingDisplay.billingInterval === 'annual' ? 'Annual' : 'Monthly'}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* CTA */}
-            {plan === 'free' ? (
-              <button
-                onClick={() => router.push('/dashboard/upgrade')}
-                className="px-4 py-2 text-sm font-bold text-white rounded-pill transition-colors"
-                style={{ background: '#FF6B35', boxShadow: '0 4px 14px rgba(255,107,53,0.28)' }}
-              >
-                Upgrade Plan
-              </button>
-            ) : (
-              <button
-                onClick={handleManageBilling}
-                disabled={portalLoading}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] hover:text-ink transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {portalLoading ? (
-                  <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                  </svg>
-                ) : null}
-                Manage Billing
-              </button>
+            <OrgDeferredMessage>
+              {canAccessOrgBilling ? (
+                <>
+                  Billing for your account is managed under {orgOrganization.name} — view it from{' '}
+                  <CompanySettingsLink href="/dashboard/organization?tab=billing">
+                    Company Settings
+                  </CompanySettingsLink>
+                  .
+                </>
+              ) : (
+                <>Billing for your account is managed by your organization.</>
+              )}
+            </OrgDeferredMessage>
+          </>
+        ) : (
+          <div
+            className="p-4 rounded-[14px] border"
+            style={{ borderColor: '#E8E9EA', background: '#FAFAFA' }}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <PlanBadge plan={plan} />
+
+                <div>
+                  <p className="text-sm font-semibold text-ink">
+                    {plan === 'premium' ? 'Premium (Legacy)' : plan.charAt(0).toUpperCase() + plan.slice(1)} Plan
+                  </p>
+                  <p className="text-xs text-ink-3 font-sans">
+                    {plan === 'max' || plan === 'premium'
+                      ? 'Unlimited active listings'
+                      : plan === 'pro'
+                        ? '40 active listings'
+                        : plan === 'starter'
+                          ? '15 active listings'
+                          : '3 active listings'}
+                  </p>
+                </div>
+              </div>
+
+              {plan === 'free' ? (
+                <button
+                  onClick={() => router.push('/dashboard/upgrade')}
+                  className="px-4 py-2 text-sm font-bold text-white rounded-pill transition-colors"
+                  style={{ background: '#FF6B35', boxShadow: '0 4px 14px rgba(255,107,53,0.28)' }}
+                >
+                  Upgrade Plan
+                </button>
+              ) : (
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink-2 border border-[#D4D5D7] rounded-pill hover:border-[#9A9DA2] hover:text-ink transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {portalLoading ? (
+                    <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                  ) : null}
+                  Manage Billing
+                </button>
+              )}
+            </div>
+
+            {plan !== 'free' && billingPeriod && (
+              <div className="mt-3 pt-3 border-t border-[#E8E9EA] flex items-center gap-2">
+                <span className="text-xs text-ink-3 font-sans">Billing period:</span>
+                <span
+                  className="inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-bold rounded-pill border"
+                  style={{ background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }}
+                >
+                  {billingPeriod === 'annual' ? 'Annual' : 'Monthly'}
+                </span>
+              </div>
+            )}
+
+            {portalError && (
+              <p className="mt-3 text-xs font-sans text-red-600">{portalError}</p>
             )}
           </div>
-
-          {/* Billing period row — shown for paid plans with a known billing period */}
-          {plan !== 'free' && billingPeriod && (
-            <div className="mt-3 pt-3 border-t border-[#E8E9EA] flex items-center gap-2">
-              <span className="text-xs text-ink-3 font-sans">Billing period:</span>
-              <span
-                className="inline-flex items-center px-2 py-0.5 text-[11px] font-mono font-bold rounded-pill border"
-                style={{ background: '#F4F4F5', color: '#52525B', borderColor: '#E4E4E7' }}
-              >
-                {billingPeriod === 'annual' ? 'Annual' : 'Monthly'}
-              </span>
-            </div>
-          )}
-
-          {/* Portal error */}
-          {portalError && (
-            <p className="mt-3 text-xs font-sans text-red-600">{portalError}</p>
-          )}
-        </div>
+        )}
       </section>
 
       {/* Toast */}
@@ -679,6 +853,6 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardSettingsShell>
   )
 }

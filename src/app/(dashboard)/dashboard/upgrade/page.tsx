@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
+import { PlanDiamondMark } from '@/components/ui/PlanBadge'
+import EnterpriseTierBlock from '@/components/pricing/EnterpriseTierBlock'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -203,6 +205,7 @@ function TierCard({
         <span className="font-sans font-bold text-ink" style={{ fontSize: '22px', letterSpacing: '-0.02em' }}>
           {tier.name}
         </span>
+        <PlanDiamondMark plan={tier.id} />
       </div>
 
       {/* Price */}
@@ -415,6 +418,7 @@ export default function UpgradePage() {
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
           gap: '20px',
+          marginBottom: '20px',
         }}
       >
         {TIERS.map(tier => (
@@ -430,6 +434,8 @@ export default function UpgradePage() {
           />
         ))}
       </div>
+
+      <EnterpriseTierBlock />
 
       {/* ── Footer note ── */}
       <div className="mt-10 flex items-center justify-center">

@@ -9,6 +9,9 @@ export type EmailTemplateType =
   | 'ListingRemoved'
   | 'NewInquirySeller'
   | 'InquiryReceivedBuyer'
+  | 'OrgInvite'
+  | 'PrimaryOwnerSetup'
+  | 'OwnershipTransferRequest'
 
 export interface SendTransactionalEmailParams {
   templateType: EmailTemplateType

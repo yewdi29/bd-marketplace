@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function GET(_request: NextRequest) {
+export async function GET(_request: Request) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +12,7 @@ export async function GET(_request: NextRequest) {
         getAll: () => cookieStore.getAll(),
         setAll: () => {},
       },
-    }
+    },
   )
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -20,8 +20,13 @@ export async function GET(_request: NextRequest) {
 
   const { data, error } = await supabase
     .from('listings')
-    .select('id, title, category, price, price_unit, price_visible, status, slug, created_at, updated_at, location_city, location_state, last_approved_at, specs, listing_images(url, is_primary, sort_order)')
-    .eq('seller_id', user.id)
+    .select(`
+      id, title, category, price, price_unit, price_visible, status, slug,
+      seller_id, organization_id, posted_by_user_id, created_at, updated_at,
+      location_city, location_state, last_approved_at, specs,
+      listing_images(url, is_primary, sort_order),
+      poster:posted_by_user_id(full_name, email)
+    `)
     .neq('status', 'removed')
     .order('created_at', { ascending: false })
 
@@ -31,6 +36,8 @@ export async function GET(_request: NextRequest) {
     const imgs = (listing.listing_images ?? []) as { url: string; is_primary: boolean; sort_order: number }[]
     const primary = imgs.find(i => i.is_primary) ?? imgs.sort((a, b) => a.sort_order - b.sort_order)[0] ?? null
     const specs = listing.specs as Record<string, string> | null
+    const poster = listing.poster as unknown as { full_name: string | null; email: string } | null
+
     return {
       id: listing.id,
       title: listing.title,
@@ -40,6 +47,9 @@ export async function GET(_request: NextRequest) {
       price_visible: listing.price_visible,
       status: listing.status,
       slug: listing.slug,
+      seller_id: listing.seller_id,
+      organization_id: listing.organization_id,
+      posted_by_user_id: listing.posted_by_user_id,
       created_at: listing.created_at,
       updated_at: listing.updated_at,
       location_city: listing.location_city ?? null,
@@ -47,6 +57,8 @@ export async function GET(_request: NextRequest) {
       last_approved_at: listing.last_approved_at ?? null,
       primary_image_url: primary?.url ?? null,
       seller_prompt: specs?.seller_prompt ?? null,
+      posted_by_name: poster?.full_name ?? null,
+      posted_by_email: poster?.email ?? null,
     }
   })
 

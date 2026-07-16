@@ -156,7 +156,7 @@ docs: update DESIGN_SYSTEM changelog
 NEXT_PUBLIC_SUPABASE_URL        — Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY   — Public anon key (browser safe)
 SUPABASE_SERVICE_ROLE_KEY       — Service role key (server only, never expose)
-NEXT_PUBLIC_APP_URL             — App URL (http://localhost:3000 in dev)
+NEXT_PUBLIC_APP_URL             — App URL (http://localhost:3000 in dev). Production: https://blackdiamondmkt.com (non-www). Must match Vercel primary domain and Stripe webhook URL.
 ```
 
 Never commit `.env.local`. Never log environment variables. Never expose `SUPABASE_SERVICE_ROLE_KEY` to the client.

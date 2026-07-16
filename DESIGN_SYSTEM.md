@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: July 2026 — v2.33
+> Last updated: July 2026 — v2.34
 
 ---
 
@@ -605,6 +605,8 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.34.1 | July 2026 | **Enterprise tier block.** Shared `EnterpriseTierBlock`: eyebrow "Teams & organizations" (science blue), "Enterprise" as 22px card title, feature checklist (no public pricing), wide row below tier grids on `/pricing` and `/dashboard/upgrade`. |
+| v2.34 | July 2026 | **Public pricing page + Enterprise intake.** New `/pricing` route: Free + Starter/Pro/Max tier cards (monthly/annual toggle, 2-months-free badge), wide Enterprise row beneath with science-blue accent border and "Contact us" modal intake form. Footer Pricing link points to `/pricing`. |
 | v2.33 | July 2026 | **Transactional email design system.** Shared `EmailLayout` now uses correct logo aspect ratio (244×29 SVG → 227×27 display), unified typography (22px heading, 15px body, 11px uppercase meta labels), spacing rhythm, and bordered content cards. `NewInquirySeller` merges buyer contact + message into one card with FROM/MESSAGE sections. |
 | v2.32 | June 2026 | **Careers page.** New static `/careers` route (footer link target): dark hero, open-positions block with mailto CTA (`careers@blackdiamondmkt.com`), 3-column culture cards on `#F7F8F9` — patterns match How It Works and Contact. Added to sitemap. |
 | v2.31 | June 2026 | **Global newsletter section.** Extracted homepage newsletter into shared `NewsletterSection` + `NewsletterFormLazy` (`src/components/`). Business/seller profile page now uses the same two-column card layout, copy, and form styling as the homepage — no one-off newsletter blocks. Documented canonical component in §6. |

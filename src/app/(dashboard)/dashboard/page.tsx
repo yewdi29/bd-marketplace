@@ -14,6 +14,12 @@ import NewListingModal from '@/components/listings/NewListingModal'
 import EditListingModal from '@/components/listings/EditListingModal'
 import type { MembershipPlan } from '@/lib/types/database'
 import { isStaleActiveListing } from '@/lib/listings/staleness'
+import { formatLocationsLabel } from '@/lib/organizations/teamLocations'
+import {
+  getAccountListingLimit,
+  hasUnlimitedListings,
+} from '@/lib/planLimits'
+import { DashboardUnderlineTabs } from '@/components/dashboard/DashboardUnderlineTabs'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +41,17 @@ interface MyListing {
   location_state: string | null
   primary_image_url: string | null
   seller_prompt: string | null
+  organization_id?: string | null
+  posted_by_user_id?: string | null
+  posted_by_name?: string | null
+  posted_by_email?: string | null
+}
+
+function formatPosterLabel(name: string | null | undefined): string | null {
+  if (!name) return null
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return `${parts[0]} ${parts[parts.length - 1][0]}.`
+  return parts[0]
 }
 
 interface SavedListingItem {
@@ -425,16 +442,6 @@ function HoldToDeleteButton({
   )
 }
 
-// ─── Plan limits ─────────────────────────────────────────────────────────────
-
-const PLAN_LIMITS: Record<MembershipPlan, number> = {
-  free: 3,
-  starter: 15,
-  pro: 40,
-  max: Infinity,
-  premium: Infinity, // legacy rows — treat as unlimited
-}
-
 // ─── Icon components ──────────────────────────────────────────────────────────
 
 function PencilIcon() {
@@ -495,6 +502,8 @@ function MyListingCard({
   onLimitReached,
   isDeleting,
   actionLoadingKey,
+  showPosterAttribution,
+  posterTeamTag,
 }: {
   listing: MyListing
   onManage: (l: MyListing) => void
@@ -508,6 +517,8 @@ function MyListingCard({
   onLimitReached: () => void
   isDeleting: boolean
   actionLoadingKey: string | null
+  showPosterAttribution?: boolean
+  posterTeamTag?: string | null
 }) {
   const badge = statusBadge(listing.status)
   const isNavigable = listing.status === 'active' && !!listing.slug
@@ -570,6 +581,12 @@ function MyListingCard({
           }
           footer={
             <div className="px-3 pb-3 pt-0">
+              {showPosterAttribution && listing.organization_id && listing.posted_by_name && (
+                <p className="text-[11px] text-ink-3 mb-2">
+                  Posted by {formatPosterLabel(listing.posted_by_name)}
+                  {posterTeamTag ? ` · ${posterTeamTag}` : ''}
+                </p>
+              )}
               {isStale && !isManaging && (
                 <StaleListingBanner
                   onRelist={() => void onRelist(listing.id)}
@@ -606,6 +623,7 @@ export default function DashboardPage() {
   const [listings, setListings] = useState<MyListing[]>([])
   const [savedListings, setSavedListings] = useState<SavedListingItem[]>([])
   const [plan, setPlan] = useState<MembershipPlan>('free')
+  const [hasOrganization, setHasOrganization] = useState(false)
   const [loading, setLoading] = useState(true)
   const [savedLoading, setSavedLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
@@ -618,8 +636,10 @@ export default function DashboardPage() {
   const [toast, setToast] = useState<string | null>(null)
   const [showLimitModal, setShowLimitModal] = useState(false)
   const [sellerId, setSellerId] = useState<string | null>(null)
+  const [posterTeamTagByUserId, setPosterTeamTagByUserId] = useState<Record<string, string | null>>({})
   const router = useRouter()
   const supabase = createClient()
+  const hasOrgListings = listings.some(l => l.organization_id)
 
   // Read initial tab + upgrade success from URL on mount
   useEffect(() => {
@@ -661,16 +681,53 @@ export default function DashboardPage() {
       if (!user) { router.push('/login'); return }
       setSellerId(user.id)
 
-      const [planRes, listingsRes] = await Promise.all([
+      const [planRes, listingsRes, orgMemberRes] = await Promise.all([
         supabase.from('users').select('plan').eq('id', user.id).single(),
         fetch('/api/listings/my'),
+        supabase
+          .from('org_members')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle(),
       ])
 
       if (planRes.data) setPlan(planRes.data.plan)
+      setHasOrganization(Boolean(orgMemberRes.data))
 
       if (listingsRes.ok) {
         const json = await listingsRes.json() as { listings: MyListing[] }
-        setListings(json.listings ?? [])
+        const nextListings = json.listings ?? []
+        setListings(nextListings)
+
+        const hasOrgListings = nextListings.some(l => l.organization_id)
+        if (hasOrgListings) {
+          const orgRes = await fetch('/api/organizations/me')
+          const orgData = await orgRes.json() as {
+            organization?: { id: string }
+          }
+          if (orgRes.ok && orgData.organization?.id) {
+            const membersRes = await fetch(`/api/organizations/${orgData.organization.id}/members`)
+            const membersData = await membersRes.json() as {
+              members?: Array<{ user_id: string | null; team_tag: string[] | null }>
+            }
+            if (membersRes.ok) {
+              const tagMap: Record<string, string | null> = {}
+              for (const member of membersData.members ?? []) {
+                if (member.user_id) {
+                  tagMap[member.user_id] = formatLocationsLabel(member.team_tag)
+                }
+              }
+              setPosterTeamTagByUserId(tagMap)
+            } else {
+              setPosterTeamTagByUserId({})
+            }
+          } else {
+            setPosterTeamTagByUserId({})
+          }
+        } else {
+          setPosterTeamTagByUserId({})
+        }
       }
     } finally {
       setLoading(false)
@@ -705,14 +762,14 @@ export default function DashboardPage() {
     window.history.replaceState({}, '', window.location.pathname + (remaining ? `?${remaining}` : ''))
 
     const activeCount = listings.filter(l => l.status === 'active').length
-    const limit = PLAN_LIMITS[plan]
+    const limit = getAccountListingLimit(plan, hasOrganization)
     if (activeCount >= limit) {
       router.push('/dashboard/upgrade')
       return
     }
     setResumeListingId(null)
     setShowNewListing(true)
-  }, [loading, listings, plan, router])
+  }, [loading, listings, plan, hasOrganization, router])
 
   useEffect(() => {
     if (!sellerId) return
@@ -852,7 +909,7 @@ export default function DashboardPage() {
 
   function handleNewListing() {
     const activeCount = listings.filter(l => l.status === 'active').length
-    const limit = PLAN_LIMITS[plan]
+    const limit = getAccountListingLimit(plan, hasOrganization)
     if (activeCount >= limit) {
       router.push('/dashboard/upgrade')
       return
@@ -879,6 +936,8 @@ export default function DashboardPage() {
   const activeCount = activeListings.length
   const draftCount  = unpublishedListings.length
   const soldCount   = soldListings.length
+  const listingLimit = getAccountListingLimit(plan, hasOrganization)
+  const unlimitedListings = hasUnlimitedListings(plan, hasOrganization)
 
   const filtered = activeFilter === 'all'
     ? [...activeListings, ...unpublishedListings, ...soldListings]
@@ -896,27 +955,15 @@ export default function DashboardPage() {
   return (
     <div className="page-shell py-8">
 
-      {/* Main tabs */}
-      <div className="flex items-center gap-1 mb-8 border-b border-[#E8E9EA]">
-        {(['listings', 'saved'] as MainTab[]).map(tab => {
-          const isActive = activeMainTab === tab
-          const label = tab === 'listings' ? 'My Listings' : 'Saved Equipment'
-          return (
-            <button
-              key={tab}
-              onClick={() => handleMainTabSwitch(tab)}
-              className="px-4 py-2.5 text-sm font-semibold transition-colors relative"
-              style={{
-                color: isActive ? '#1A1D20' : '#9A9DA2',
-                borderBottom: isActive ? '2px solid #1A1D20' : '2px solid transparent',
-                marginBottom: '-1px',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+      <DashboardUnderlineTabs
+        tabs={[
+          { value: 'listings', label: 'My Listings' },
+          { value: 'saved', label: 'Saved Equipment' },
+        ]}
+        activeTab={activeMainTab}
+        onChange={tab => handleMainTabSwitch(tab as MainTab)}
+        ariaLabel="Dashboard sections"
+      />
 
       {/* ── My Listings tab ── */}
       {activeMainTab === 'listings' && (
@@ -927,9 +974,9 @@ export default function DashboardPage() {
               <h1 className="font-sans font-bold text-2xl text-ink" style={{ letterSpacing: '-0.02em' }}>
                 My Listings
               </h1>
-              {!loading && PLAN_LIMITS[plan] !== Infinity && (
+              {!loading && !unlimitedListings && (
                 <p className="text-sm text-ink-3 mt-0.5">
-                  <span className="font-mono">{activeCount}/{PLAN_LIMITS[plan]}</span> active listings used
+                  <span className="font-mono">{activeCount}/{listingLimit}</span> active listings used
                 </p>
               )}
             </div>
@@ -964,8 +1011,8 @@ export default function DashboardPage() {
                     <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded-full ${
                       isActive ? 'bg-white/20 text-white' : 'bg-[#F0F0F0] text-ink-3'
                     }`}>
-                      {tab.key === 'active' && PLAN_LIMITS[plan] !== Infinity
-                        ? `${tab.count}/${PLAN_LIMITS[plan]}`
+                      {tab.key === 'active' && !unlimitedListings
+                        ? `${tab.count}/${listingLimit}`
                         : tab.count}
                     </span>
                   )}
@@ -1020,10 +1067,16 @@ export default function DashboardPage() {
                   onRelist={handleRelist}
                   onDelete={handleDelete}
                   onEdit={() => handleEditListing(listing)}
-                  atLimit={activeCount >= PLAN_LIMITS[plan]}
+                  atLimit={!unlimitedListings && activeCount >= listingLimit}
                   onLimitReached={() => setShowLimitModal(true)}
                   isDeleting={deletingIds.has(listing.id)}
                   actionLoadingKey={actionLoading}
+                  showPosterAttribution={hasOrgListings}
+                  posterTeamTag={
+                    listing.posted_by_user_id
+                      ? (posterTeamTagByUserId[listing.posted_by_user_id] ?? null)
+                      : null
+                  }
                 />
               ))}
             </ListingCardGrid>

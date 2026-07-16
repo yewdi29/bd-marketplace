@@ -33,18 +33,23 @@ export async function PATCH(
   const body = await req.json()
   const service = createServiceClient()
 
-  const { data: existing } = await service.from('deals').select('status, notes').eq('id', id).single()
+  const { data: existing } = await service
+    .from('deals')
+    .select('status, notes, deal_type')
+    .eq('id', id)
+    .single()
 
   const updates: Record<string, unknown> = {}
   const fields = [
     'deal_tier', 'buyer_name', 'buyer_email', 'buyer_phone', 'buyer_message', 'seller_name',
     'asking_price', 'final_sale_price', 'commission_rate', 'commission_earned', 'status', 'assigned_to',
+    'enterprise_metadata', 'organization_id',
   ]
   for (const f of fields) {
     if (body[f] !== undefined) updates[f] = body[f]
   }
 
-  if (body.status === 'closed_won') {
+  if (body.status === 'closed_won' && existing?.deal_type !== 'enterprise') {
     const finalPrice = body.final_sale_price ?? updates.final_sale_price
     const commissionEarned = body.commission_earned ?? updates.commission_earned
     if (finalPrice == null || finalPrice === '' || commissionEarned == null || commissionEarned === '') {

@@ -14,6 +14,13 @@ export type ArticleCategory =
   | 'industry'
 export type SubscriberStatus = 'active' | 'unsubscribed'
 
+export type OrgMemberRole = 'owner' | 'manager'
+export type OrgMemberStatus = 'invited' | 'active' | 'expired'
+export type OrgPreferredPaymentMethod = 'card' | 'ach'
+export type SeatChangeType = 'add' | 'remove'
+export type SeatChangeStatus = 'pending' | 'confirmed' | 'failed'
+export type DealType = 'equipment' | 'enterprise'
+
 export interface User {
   id: string
   email: string
@@ -35,9 +42,58 @@ export interface User {
   updated_at: string
 }
 
+export interface Organization {
+  id: string
+  name: string
+  logo_url: string | null
+  description: string | null
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  base_seat_count: number
+  preferred_payment_method: OrgPreferredPaymentMethod | null
+  last_billing_failure_at: string | null
+  last_billing_failure_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OrgMember {
+  id: string
+  organization_id: string
+  user_id: string | null
+  role: OrgMemberRole
+  team_tag: string[] | null
+  is_primary_owner: boolean
+  status: OrgMemberStatus
+  can_see_all_locations: boolean
+  can_access_billing: boolean
+  can_edit_company_info: boolean
+  can_manage_managers_org_wide: boolean
+  invited_email: string | null
+  invite_token: string | null
+  invite_expires_at: string | null
+  joined_at: string | null
+  created_at: string
+}
+
+export interface SeatChangeLog {
+  id: string
+  organization_id: string
+  change_type: SeatChangeType
+  seat_count_before: number
+  seat_count_after: number
+  prorated_amount: number | null
+  stripe_invoice_id: string | null
+  payment_method_used: OrgPreferredPaymentMethod | null
+  status: SeatChangeStatus
+  created_at: string
+}
+
 export interface Listing {
   id: string
   seller_id: string
+  organization_id: string | null
+  posted_by_user_id: string | null
   title: string
   description: string | null
   category: string

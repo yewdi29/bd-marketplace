@@ -1,5 +1,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getCanonicalHostRedirect } from '@/lib/config/canonicalHost'
+import {
+  ORG_BILLING_SETUP_ALLOWED_PATH,
+} from '@/lib/organizations/billingGate'
 
 const PROTECTED_ROUTES = ['/dashboard', '/listings/new', '/account']
 const RIGBURRITO_LOGIN = '/rigburrito/login'
@@ -12,6 +16,9 @@ function redirectHome(request: NextRequest): NextResponse {
 }
 
 export async function middleware(request: NextRequest) {
+  const canonicalRedirect = getCanonicalHostRedirect(request)
+  if (canonicalRedirect) return canonicalRedirect
+
   const pathname = request.nextUrl.pathname
   const isRigburrito = pathname.startsWith('/rigburrito')
   const isRigburritoLogin = pathname === RIGBURRITO_LOGIN
@@ -84,15 +91,70 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(homeUrl)
   }
 
+  // Org members without a payment method may only reach Company Settings → Billing.
+  if (user && pathname.startsWith('/dashboard')) {
+    const { data: orgMember } = await supabase
+      .from('org_members')
+      .select(`
+        is_primary_owner,
+        organizations!inner(preferred_payment_method)
+      `)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (orgMember) {
+      const org = orgMember.organizations as unknown as { preferred_payment_method: string | null } | null
+      const billingComplete = Boolean(org?.preferred_payment_method)
+
+      if (!billingComplete) {
+        const onBillingSetupPage =
+          pathname === ORG_BILLING_SETUP_ALLOWED_PATH
+          || pathname.startsWith(`${ORG_BILLING_SETUP_ALLOWED_PATH}/`)
+
+        if (!onBillingSetupPage) {
+          const redirectUrl = request.nextUrl.clone()
+          redirectUrl.pathname = ORG_BILLING_SETUP_ALLOWED_PATH
+          redirectUrl.searchParams.set('tab', 'billing')
+          if (orgMember.is_primary_owner) {
+            redirectUrl.searchParams.set('setup', 'billing')
+          } else {
+            redirectUrl.searchParams.delete('setup')
+          }
+          return NextResponse.redirect(redirectUrl)
+        }
+      }
+    }
+  }
+
+  if (user && pathname.startsWith('/listings/new')) {
+    const { data: orgMember } = await supabase
+      .from('org_members')
+      .select('is_primary_owner, organizations!inner(preferred_payment_method)')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (orgMember) {
+      const org = orgMember.organizations as unknown as { preferred_payment_method: string | null } | null
+      if (!org?.preferred_payment_method) {
+        const redirectUrl = request.nextUrl.clone()
+        redirectUrl.pathname = ORG_BILLING_SETUP_ALLOWED_PATH
+        redirectUrl.searchParams.set('tab', 'billing')
+        if (orgMember.is_primary_owner) {
+          redirectUrl.searchParams.set('setup', 'billing')
+        }
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+  }
+
   return supabaseResponse
 }
 
 export const config = {
   matcher: [
-    '/dashboard/:path*',
-    '/listings/new',
-    '/account/:path*',
-    '/auth/:path*',
-    '/rigburrito/:path*',
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
   ],
 }

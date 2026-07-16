@@ -30,6 +30,7 @@ const STATUS_COLORS: Record<string, BadgeColors> = {
   discarded: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
   commission_opportunity: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
   green: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  enterprise: { text: '#004499', bg: '#E6F0FF', border: '#B3D1FF' },
 }
 
 const NEUTRAL: BadgeColors = { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' }
@@ -38,6 +39,7 @@ const DEAL_LABELS: Record<string, string> = {
   negotiating: 'In Negotiation',
   closed_won: 'Closed Won',
   closed_lost: 'Closed Lost',
+  enterprise: 'Enterprise',
 }
 
 export default function StatusBadge({ status, variant = 'listing' }: StatusBadgeProps) {
