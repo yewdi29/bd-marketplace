@@ -1,6 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getCanonicalHostRedirect } from '@/lib/config/canonicalHost'
 import {
   ORG_BILLING_SETUP_ALLOWED_PATH,
 } from '@/lib/organizations/billingGate'
@@ -16,10 +15,14 @@ function redirectHome(request: NextRequest): NextResponse {
 }
 
 export async function middleware(request: NextRequest) {
-  const canonicalRedirect = getCanonicalHostRedirect(request)
-  if (canonicalRedirect) return canonicalRedirect
-
   const pathname = request.nextUrl.pathname
+
+  // API routes must never redirect — Stripe webhooks and other integrations
+  // require a direct 200/4xx response (Vercel edge handles www canonicalization).
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
   const isRigburrito = pathname.startsWith('/rigburrito')
   const isRigburritoLogin = pathname === RIGBURRITO_LOGIN
   const isProtected = PROTECTED_ROUTES.some(route => pathname.startsWith(route))
@@ -155,6 +158,10 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/api/:path*',
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)',
+    '/dashboard/:path*',
+    '/listings/new',
+    '/account/:path*',
+    '/auth/:path*',
+    '/rigburrito/:path*',
   ],
 }
