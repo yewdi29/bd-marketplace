@@ -39,14 +39,14 @@ export function dispatchPrimaryOwnerSetupEmail(opts: {
   organizationName: string
   inviteToken: string
 }): void {
-  const inviteUrl = `${getEmailAppUrl()}/invite/accept?token=${opts.inviteToken}&setup=billing`
+  const inviteUrl = `${getEmailAppUrl()}/invite/accept?token=${opts.inviteToken}`
 
   sendTransactionalEmailSafe({
     templateType: 'PrimaryOwnerSetup',
     recipientEmail: opts.recipientEmail,
     relatedEntityType: 'org_member',
     relatedEntityId: opts.memberId,
-    subject: `Set up ${opts.organizationName} on Black Diamond Enterprise`,
+    subject: `Welcome to Black Diamond Enterprise — ${opts.organizationName}`,
     react: createElement(PrimaryOwnerSetup, {
       organizationName: opts.organizationName,
       inviteUrl,

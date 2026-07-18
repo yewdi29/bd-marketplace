@@ -1,6 +1,11 @@
 /** Enterprise Stripe price IDs — set via env after running scripts/setup-enterprise-stripe.mjs */
 
-export type EnterpriseBillingInterval = 'monthly' | 'annual'
+import {
+  paymentMethodTypesForTier,
+  type CheckoutBillingInterval,
+} from '@/lib/stripe/paymentMethodTypes'
+
+export type EnterpriseBillingInterval = CheckoutBillingInterval
 
 export function getEnterpriseBasePriceId(
   interval: EnterpriseBillingInterval = 'monthly',
@@ -71,17 +76,11 @@ export function enterpriseIntervalFromStripeRecurring(
   return interval === 'year' ? 'annual' : 'monthly'
 }
 
-/**
- * Annual plans are ACH-only (same product rule as Max-tier annual billing).
- * Monthly plans accept card and ACH.
- */
+/** @deprecated Use paymentMethodTypesForTier('enterprise', interval) */
 export function paymentMethodTypesForBillingInterval(
   interval: EnterpriseBillingInterval,
 ): Array<'card' | 'us_bank_account'> {
-  if (interval === 'annual') {
-    return ['us_bank_account']
-  }
-  return ['card', 'us_bank_account']
+  return paymentMethodTypesForTier('enterprise', interval)
 }
 
 /** Billable extra seats beyond the included base_seat_count. */

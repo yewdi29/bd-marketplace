@@ -45,7 +45,7 @@ export async function GET(
     .eq('organization_id', params.id)
     .eq('status', 'invited')
 
-  let billingInterval: 'monthly' | 'annual' | null = null
+  let billingInterval: 'monthly' | 'annual' | null = org.billing_interval ?? null
   let additionalSeatsBilled = 0
   let reconciliation = null
 

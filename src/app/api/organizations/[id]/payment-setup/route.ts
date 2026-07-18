@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { requireOrgBillingAccess } from '@/lib/organizations/auth'
+import { ENTERPRISE_TERMS_VERSION } from '@/lib/organizations/enterpriseTerms'
+import type { EnterpriseBillingInterval } from '@/lib/stripe/enterpriseConfig'
 import {
-  createOrganizationPaymentSetupSession,
+  createOrganizationCheckoutSession,
   getOrganizationById,
 } from '@/lib/stripe/enterpriseSubscription'
 
@@ -15,9 +17,12 @@ function getService() {
 
 /**
  * POST /api/organizations/[id]/payment-setup
- * Creates a Stripe Checkout Session (setup mode).
- * Monthly orgs: card + ACH. Annual orgs: ACH-only (same rule as Max-tier annual).
- * Returns { url } for redirect.
+ * Creates a Stripe Checkout Session (subscription mode) for initial Enterprise billing.
+ * Terms acceptance is collected on Stripe Checkout via consent_collection.terms_of_service.
+ * Returns { url } for redirect — generated fresh each call.
+ *
+ * Requires Stripe Dashboard → Settings → Business → Public details → Terms of service URL
+ * when consent_collection.terms_of_service is enabled.
  */
 export async function POST(
   req: NextRequest,
@@ -36,11 +41,25 @@ export async function POST(
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
     }
 
-    const body = await req.json().catch(() => ({})) as { returnUrl?: string }
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    const returnUrl = body.returnUrl ?? `${appUrl}/dashboard/settings`
+    const body = await req.json().catch(() => ({})) as {
+      returnUrl?: string
+      couponId?: string
+      promotionCodeId?: string
+    }
 
-    const url = await createOrganizationPaymentSetupSession(org, returnUrl)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    const returnUrl = body.returnUrl ?? `${appUrl}/dashboard/organization?tab=billing`
+
+    const billingInterval: EnterpriseBillingInterval =
+      org.billing_interval === 'annual' ? 'annual' : 'monthly'
+
+    const url = await createOrganizationCheckoutSession(org, {
+      returnUrl,
+      billingInterval,
+      termsVersion: ENTERPRISE_TERMS_VERSION,
+      couponId: body.couponId,
+      promotionCodeId: body.promotionCodeId,
+    })
 
     return NextResponse.json({ success: true, url })
   } catch (err) {

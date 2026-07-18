@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgMembership } from '@/lib/organizations/auth'
 import { getOrgBillingGateState } from '@/lib/organizations/billingGate'
 import { getEnterpriseBillingInterval } from '@/lib/stripe/enterpriseSubscription'
+import type { EnterpriseBillingInterval } from '@/lib/stripe/enterpriseConfig'
 
 export async function GET() {
   const supabase = await createClient()
@@ -27,7 +28,7 @@ export async function GET() {
 
   const { data: organization, error } = await supabase
     .from('organizations')
-    .select('id, name, logo_url, description, base_seat_count, preferred_payment_method, stripe_customer_id, stripe_subscription_id, last_billing_failure_at, last_billing_failure_message')
+    .select('id, name, logo_url, description, base_seat_count, preferred_payment_method, stripe_customer_id, stripe_subscription_id, billing_interval, last_billing_failure_at, last_billing_failure_message')
     .eq('id', membership.organization_id)
     .single()
 
@@ -35,12 +36,16 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  let billingInterval: 'monthly' | 'annual' | null = null
+  let billingInterval: EnterpriseBillingInterval | null =
+    organization?.billing_interval === 'annual' || organization?.billing_interval === 'monthly'
+      ? organization.billing_interval
+      : null
+
   if (organization?.stripe_subscription_id) {
     try {
       billingInterval = await getEnterpriseBillingInterval(organization.stripe_subscription_id)
     } catch {
-      billingInterval = null
+      // keep org.billing_interval fallback
     }
   }
 

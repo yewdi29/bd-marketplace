@@ -9,10 +9,10 @@ import {
   isEnterpriseBasePriceId,
   isEnterprisePerSeatPriceId,
   paymentMethodFromStripeType,
-  paymentMethodTypesForBillingInterval,
   seatChangeStatusForPaymentMethod,
   type EnterpriseBillingInterval,
 } from '@/lib/stripe/enterpriseConfig'
+import { paymentMethodTypesForTier } from '@/lib/stripe/paymentMethodTypes'
 import type { OrgPreferredPaymentMethod } from '@/lib/types/database'
 
 export interface OrganizationRow {
@@ -22,6 +22,9 @@ export interface OrganizationRow {
   stripe_subscription_id: string | null
   base_seat_count: number
   preferred_payment_method: OrgPreferredPaymentMethod | null
+  billing_interval: EnterpriseBillingInterval | null
+  enterprise_terms_accepted_at: string | null
+  enterprise_terms_version: string | null
 }
 
 export interface SubscriptionItemIds {
@@ -36,7 +39,7 @@ export async function getOrganizationById(
 ): Promise<OrganizationRow | null> {
   const { data, error } = await service
     .from('organizations')
-    .select('id, name, stripe_customer_id, stripe_subscription_id, base_seat_count, preferred_payment_method')
+    .select('id, name, stripe_customer_id, stripe_subscription_id, base_seat_count, preferred_payment_method, billing_interval, enterprise_terms_accepted_at, enterprise_terms_version')
     .eq('id', organizationId)
     .single()
 
@@ -50,7 +53,7 @@ export async function getOrganizationByStripeSubscriptionId(
 ): Promise<OrganizationRow | null> {
   const { data, error } = await service
     .from('organizations')
-    .select('id, name, stripe_customer_id, stripe_subscription_id, base_seat_count, preferred_payment_method')
+    .select('id, name, stripe_customer_id, stripe_subscription_id, base_seat_count, preferred_payment_method, billing_interval, enterprise_terms_accepted_at, enterprise_terms_version')
     .eq('stripe_subscription_id', subscriptionId)
     .maybeSingle()
 
@@ -113,6 +116,48 @@ export async function getSubscriptionItemIds(
   }
 }
 
+export async function createOrganizationStripeCustomer(
+  service: SupabaseClient,
+  organizationId: string,
+  primaryOwnerEmail: string,
+  billingInterval: EnterpriseBillingInterval = 'monthly',
+): Promise<{ customerId: string; billingInterval: EnterpriseBillingInterval }> {
+  const org = await getOrganizationById(service, organizationId)
+  if (!org) {
+    throw new Error('Organization not found')
+  }
+  if (org.stripe_customer_id) {
+    throw new Error('Organization already has a Stripe customer')
+  }
+
+  const customer = await stripe.customers.create({
+    email: primaryOwnerEmail,
+    name: org.name,
+    metadata: {
+      organization_id: organizationId,
+      subscription_type: 'enterprise',
+    },
+  })
+
+  const { error: updateError } = await service
+    .from('organizations')
+    .update({
+      stripe_customer_id: customer.id,
+      billing_interval: billingInterval,
+    })
+    .eq('id', organizationId)
+
+  if (updateError) {
+    throw new Error(`Failed to persist Stripe customer: ${updateError.message}`)
+  }
+
+  return { customerId: customer.id, billingInterval }
+}
+
+/**
+ * @deprecated Initial subscriptions are created via Stripe Checkout at invite acceptance.
+ * Kept for manual recovery of legacy orgs created before the Checkout migration.
+ */
 export async function createOrganizationSubscription(
   service: SupabaseClient,
   organizationId: string,
@@ -181,6 +226,78 @@ export async function createOrganizationSubscription(
   return { customerId, subscriptionId: subscription.id, billingInterval }
 }
 
+export interface CreateOrganizationCheckoutOptions {
+  returnUrl: string
+  billingInterval: EnterpriseBillingInterval
+  termsVersion: string
+  couponId?: string
+  promotionCodeId?: string
+}
+
+export async function createOrganizationCheckoutSession(
+  org: OrganizationRow,
+  options: CreateOrganizationCheckoutOptions,
+): Promise<string> {
+  if (!org.stripe_customer_id) {
+    throw new Error('Organization does not have a Stripe customer yet')
+  }
+  if (org.stripe_subscription_id) {
+    throw new Error('Organization already has an active subscription')
+  }
+
+  const { billingInterval, returnUrl, termsVersion, couponId, promotionCodeId } = options
+  const basePriceId = getEnterpriseBasePriceId(billingInterval)
+  const paymentMethodTypes = paymentMethodTypesForTier('enterprise', billingInterval)
+
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    customer: org.stripe_customer_id,
+    mode: 'subscription',
+    line_items: [{ price: basePriceId, quantity: 1 }],
+    payment_method_types: paymentMethodTypes,
+    payment_method_options: {
+      us_bank_account: {
+        financial_connections: {
+          permissions: ['payment_method'],
+        },
+        verification_method: 'instant',
+      },
+    },
+    subscription_data: {
+      metadata: {
+        organization_id: org.id,
+        subscription_type: 'enterprise',
+        billing_interval: billingInterval,
+      },
+    },
+    consent_collection: {
+      terms_of_service: 'required',
+    },
+    success_url: `${returnUrl}?checkout=success`,
+    cancel_url: `${returnUrl}?checkout=cancelled`,
+    metadata: {
+      organization_id: org.id,
+      setup_type: 'enterprise_subscription',
+      billing_interval: billingInterval,
+      enterprise_terms_version: termsVersion,
+    },
+  }
+
+  if (couponId) {
+    sessionParams.discounts = [{ coupon: couponId }]
+  } else if (promotionCodeId) {
+    sessionParams.discounts = [{ promotion_code: promotionCodeId }]
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionParams)
+
+  if (!session.url) {
+    throw new Error('Stripe did not return a Checkout Session URL')
+  }
+
+  return session.url
+}
+
+/** @deprecated Use createOrganizationCheckoutSession — setup mode replaced by subscription Checkout. */
 export async function createOrganizationPaymentSetupSession(
   org: OrganizationRow,
   returnUrl: string,
@@ -193,7 +310,7 @@ export async function createOrganizationPaymentSetupSession(
   }
 
   const billingInterval = await getEnterpriseBillingInterval(org.stripe_subscription_id)
-  const paymentMethodTypes = paymentMethodTypesForBillingInterval(billingInterval)
+  const paymentMethodTypes = paymentMethodTypesForTier('enterprise', billingInterval)
 
   const session = await stripe.checkout.sessions.create({
     customer: org.stripe_customer_id,
@@ -235,13 +352,6 @@ export async function applyOrganizationPaymentMethod(
 
   const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
   const preferred = paymentMethodFromStripeType(paymentMethod.type)
-
-  if (org.stripe_subscription_id) {
-    const billingInterval = await getEnterpriseBillingInterval(org.stripe_subscription_id)
-    if (billingInterval === 'annual' && preferred === 'card') {
-      throw new Error('Annual Enterprise billing requires ACH bank debit')
-    }
-  }
 
   await stripe.paymentMethods.attach(paymentMethodId, {
     customer: org.stripe_customer_id,
@@ -382,7 +492,7 @@ export async function confirmSeatQuantityChange(
     const items = await getSubscriptionItemIds(org.stripe_subscription_id)
     await stripe.subscriptions.update(org.stripe_subscription_id, {
       items: [{ id: items.perSeatItemId, quantity: preview.extraSeatsAfter }],
-      proration_behavior: 'create_prorations',
+      proration_behavior: 'always_invoice',
     })
   }
 
@@ -513,6 +623,81 @@ export async function handleEnterpriseCheckoutSetupCompleted(
   }
 
   await applyOrganizationPaymentMethod(service, organizationId, paymentMethodId)
+}
+
+async function ensureEnterprisePerSeatLineItem(
+  subscriptionId: string,
+  billingInterval: EnterpriseBillingInterval,
+): Promise<void> {
+  const sub = await stripe.subscriptions.retrieve(subscriptionId)
+  if (findEnterprisePerSeatItem(sub)) {
+    return
+  }
+
+  const perSeatPriceId = getEnterprisePerSeatPriceId(billingInterval)
+  await stripe.subscriptions.update(subscriptionId, {
+    items: [
+      ...sub.items.data.map(item => ({ id: item.id })),
+      { price: perSeatPriceId, quantity: 0 },
+    ],
+  })
+}
+
+export async function handleEnterpriseCheckoutSubscriptionCompleted(
+  service: SupabaseClient,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const organizationId = session.metadata?.organization_id
+  if (!organizationId) return
+
+  const subscriptionId = typeof session.subscription === 'string'
+    ? session.subscription
+    : session.subscription?.id
+
+  if (!subscriptionId) {
+    throw new Error('Enterprise Checkout session missing subscription')
+  }
+
+  const billingIntervalRaw = session.metadata?.billing_interval
+  const billingInterval: EnterpriseBillingInterval =
+    billingIntervalRaw === 'annual' ? 'annual' : 'monthly'
+
+  await ensureEnterprisePerSeatLineItem(subscriptionId, billingInterval)
+
+  const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ['default_payment_method'],
+  })
+
+  const defaultPm = sub.default_payment_method
+  const paymentMethodId = typeof defaultPm === 'string'
+    ? defaultPm
+    : defaultPm?.id
+
+  const orgUpdate: Record<string, unknown> = {
+    stripe_subscription_id: subscriptionId,
+    billing_interval: billingInterval,
+  }
+
+  const termsVersion = session.metadata?.enterprise_terms_version
+  if (session.consent?.terms_of_service === 'accepted') {
+    orgUpdate.enterprise_terms_accepted_at = new Date().toISOString()
+    if (termsVersion) {
+      orgUpdate.enterprise_terms_version = termsVersion
+    }
+  }
+
+  const { error: orgError } = await service
+    .from('organizations')
+    .update(orgUpdate)
+    .eq('id', organizationId)
+
+  if (orgError) {
+    throw new Error(`Failed to persist subscription: ${orgError.message}`)
+  }
+
+  if (paymentMethodId) {
+    await applyOrganizationPaymentMethod(service, organizationId, paymentMethodId)
+  }
 }
 
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {

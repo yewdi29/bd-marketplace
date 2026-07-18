@@ -629,7 +629,7 @@ export default function DealsPage() {
                   checked={closeEnterpriseBilling === 'annual'}
                   onChange={() => setCloseEnterpriseBilling('annual')}
                 />
-                Annual (ACH only)
+                Annual (card or ACH)
               </label>
             </div>
             {closeEnterpriseError && <p className="mb-3 text-sm text-red-600">{closeEnterpriseError}</p>}

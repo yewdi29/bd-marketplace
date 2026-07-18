@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import type { MembershipPlan } from '@/lib/types/database'
+import { dispatchPlanDowngradeListingOverflowEmail } from '@/lib/email/transactionalEmails'
 import {
   getOrganizationByStripeSubscriptionId,
   handleEnterpriseCheckoutSetupCompleted,
+  handleEnterpriseCheckoutSubscriptionCompleted,
   handleEnterpriseInvoicePaymentFailed,
   handleEnterpriseInvoicePaymentSucceeded,
   isEnterpriseSubscriptionMetadata,
 } from '@/lib/stripe/enterpriseSubscription'
 import { isEnterprisePriceId } from '@/lib/stripe/enterpriseConfig'
+import { enforceListingOverflowForUser } from '@/lib/stripe/planListingOverflow'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-05-27.dahlia',
@@ -46,6 +49,33 @@ async function isOrganizationSubscription(
   return Boolean(org)
 }
 
+async function applyPlanChangeWithListingOverflow(
+  service: ReturnType<typeof getService>,
+  userId: string,
+  newPlan: MembershipPlan,
+  userUpdate: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await service
+    .from('users')
+    .update(userUpdate)
+    .eq('id', userId)
+
+  if (error) {
+    throw new Error(`Failed to update user plan: ${error.message}`)
+  }
+
+  const overflow = await enforceListingOverflowForUser(service, userId, newPlan)
+  if (overflow && overflow.unpublishedCount > 0) {
+    dispatchPlanDowngradeListingOverflowEmail({
+      sellerEmail: overflow.email,
+      userId: overflow.userId,
+      newPlanLabel: overflow.newPlanLabel,
+      unpublishedCount: overflow.unpublishedCount,
+      keptActiveCount: overflow.keptActiveCount,
+    })
+  }
+}
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
   const sig = req.headers.get('stripe-signature') ?? ''
@@ -67,7 +97,16 @@ export async function POST(req: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
 
-        // Enterprise payment method setup (setup mode)
+        // Enterprise initial subscription (Checkout subscription mode)
+        if (
+          session.mode === 'subscription' &&
+          session.metadata?.setup_type === 'enterprise_subscription'
+        ) {
+          await handleEnterpriseCheckoutSubscriptionCompleted(service, session)
+          break
+        }
+
+        // Legacy Enterprise payment method setup (setup mode — pre-Checkout migration)
         if (
           session.mode === 'setup' &&
           session.metadata?.setup_type === 'enterprise_payment_method'
@@ -101,13 +140,15 @@ export async function POST(req: NextRequest) {
         const userId: string | undefined =
           sub.metadata?.supabase_user_id ?? session.metadata?.supabase_user_id
 
+        const userUpdate = {
+          plan,
+          stripe_subscription_id: sub.id,
+          stripe_price_id: priceId,
+          billing_period: period,
+        }
+
         if (userId) {
-          await service.from('users').update({
-            plan,
-            stripe_subscription_id: sub.id,
-            stripe_price_id: priceId,
-            billing_period: period,
-          }).eq('id', userId)
+          await applyPlanChangeWithListingOverflow(service, userId, plan, userUpdate)
         } else {
           const customerId = session.customer as string
           const { data: dbUser } = await service
@@ -117,12 +158,7 @@ export async function POST(req: NextRequest) {
             .single()
 
           if (dbUser) {
-            await service.from('users').update({
-              plan,
-              stripe_subscription_id: sub.id,
-              stripe_price_id: priceId,
-              billing_period: period,
-            }).eq('id', dbUser.id)
+            await applyPlanChangeWithListingOverflow(service, dbUser.id, plan, userUpdate)
           }
         }
         break
@@ -145,11 +181,19 @@ export async function POST(req: NextRequest) {
         const plan = tierFromPriceId(item.price.id)
         const period = billingPeriodFromInterval(item.price.recurring?.interval)
 
-        await service.from('users').update({
+        const { data: dbUser } = await service
+          .from('users')
+          .select('id')
+          .eq('stripe_subscription_id', sub.id)
+          .maybeSingle()
+
+        if (!dbUser) break
+
+        await applyPlanChangeWithListingOverflow(service, dbUser.id, plan, {
           plan,
           stripe_price_id: item.price.id,
           billing_period: period,
-        }).eq('stripe_subscription_id', sub.id)
+        })
         break
       }
 
@@ -164,12 +208,20 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        await service.from('users').update({
+        const { data: dbUser } = await service
+          .from('users')
+          .select('id')
+          .eq('stripe_subscription_id', sub.id)
+          .maybeSingle()
+
+        if (!dbUser) break
+
+        await applyPlanChangeWithListingOverflow(service, dbUser.id, 'free', {
           plan: 'free',
           stripe_subscription_id: null,
           stripe_price_id: null,
           billing_period: null,
-        }).eq('stripe_subscription_id', sub.id)
+        })
         break
       }
 

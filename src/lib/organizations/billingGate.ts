@@ -49,10 +49,8 @@ export async function getOrgBillingGateState(
 }
 
 /** Dashboard redirect target while billing setup is pending. */
-export function orgBillingSetupPath(isPrimaryOwner: boolean): string {
-  return isPrimaryOwner
-    ? '/dashboard/organization?tab=billing&setup=billing'
-    : '/dashboard/organization?tab=billing'
+export function orgBillingSetupPath(_isPrimaryOwner?: boolean): string {
+  return '/dashboard/organization?tab=billing'
 }
 
 export const ORG_BILLING_SETUP_ALLOWED_PATH = '/dashboard/organization'

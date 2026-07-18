@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import {
+  ENTERPRISE_TERMS_SECTION_ID,
+  ENTERPRISE_TERMS_VERSION,
+} from '@/lib/organizations/enterpriseTerms'
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Black Diamond Marketplace',
@@ -139,13 +143,54 @@ export default function TermsPage() {
             <li>You may cancel your subscription at any time through your account settings</li>
             <li>Cancellation takes effect at the end of the current billing period — you retain access through the period you have paid for</li>
             <li>Refunds are not provided for partial subscription periods or unused listing capacity</li>
+            <li>If your plan is downgraded or cancelled and your active listing count exceeds your new plan&apos;s limit, we unpublish the excess listings automatically, keeping your most recently created listings active. Unpublished listings remain saved as drafts and may be republished when you have available slots</li>
+            <li>Payment methods: Starter accepts card only (monthly and annual). Pro and Max accept card on monthly billing; annual billing accepts card or ACH bank debit</li>
             <li>Black Diamond Marketplace reserves the right to modify subscription pricing with 30 days notice to existing subscribers</li>
           </ul>
         </section>
 
+        <section id={ENTERPRISE_TERMS_SECTION_ID}>
+          <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
+            10. Enterprise Organizations
+          </h2>
+          <p className="text-xs font-mono text-ink-3 mb-4">Enterprise terms version {ENTERPRISE_TERMS_VERSION}</p>
+          <p className="mb-4">
+            Enterprise organization accounts are sales-assisted and governed by this Section 10 in
+            addition to the Terms of Service above. Organization Owners (and Managers explicitly
+            granted billing access) are authorized billing contacts for the organization and must
+            agree to these terms before completing Enterprise billing checkout.
+          </p>
+          <ul className="list-disc pl-5 space-y-2">
+            <li>Enterprise monthly billing accepts card only; annual billing accepts card or ACH bank debit</li>
+            <li>
+              Subscriptions include a base seat allocation with per-seat pricing for additional
+              members. Seat additions and removals may generate immediate prorated invoices through
+              Stripe
+            </li>
+            <li>
+              Primary ownership transfer requires the incoming Owner&apos;s explicit acceptance via a
+              secure link — transfer is not effective until accepted
+            </li>
+            <li>
+              First-time Enterprise annual subscribers may request a full refund within 30 days of
+              the initial annual subscription charge by contacting{' '}
+              <a href="mailto:support@blackdiamondmkt.com" className="text-orange hover:text-orange-lt transition-colors">
+                support@blackdiamondmkt.com
+              </a>
+              . This window applies only to the first annual payment and does not extend to seat
+              additions, plan changes, or renewal charges
+            </li>
+          </ul>
+          <p className="mt-4 text-ink-3 text-xs">
+            Additional Enterprise-specific provisions (scope of service, acceptable use, data
+            handling, support, termination, and limitation of liability) are subject to legal
+            review and will be incorporated into this section as they are finalized.
+          </p>
+        </section>
+
         <section>
           <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-            10. Intellectual Property
+            11. Intellectual Property
           </h2>
           <p>
             All platform content, design, technology, branding, and functionality including the Black Diamond Marketplace name, logo, and software are the property of Black Diamond Marketplace and are protected by applicable intellectual property laws. Sellers retain ownership of their listing content but grant Black Diamond Marketplace a non-exclusive, royalty-free license to display, reproduce, and distribute that content on the platform and in marketing materials for the purpose of operating the marketplace.
@@ -154,7 +199,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-            11. Limitation of Liability
+            12. Limitation of Liability
           </h2>
           <p className="mb-4">
             To the maximum extent permitted by applicable law Black Diamond Marketplace shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from:
@@ -172,7 +217,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-            12. Indemnification
+            13. Indemnification
           </h2>
           <p>
             You agree to indemnify and hold harmless Black Diamond Marketplace and its officers, employees, and agents from any claims, damages, losses, or expenses including reasonable legal fees arising from your use of the platform, your listings, your transactions, or your violation of these terms.
@@ -181,7 +226,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-            13. Governing Law and Dispute Resolution
+            14. Governing Law and Dispute Resolution
           </h2>
           <p>
             These Terms of Service are governed by the laws of the State of Texas without regard to conflict of law principles. Any dispute arising from these terms or use of the platform shall be resolved exclusively in the state or federal courts located in Ector County, Texas. You consent to the personal jurisdiction of such courts.
@@ -190,7 +235,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-            14. Changes to Terms
+            15. Changes to Terms
           </h2>
           <p>
             Black Diamond Marketplace reserves the right to modify these Terms of Service at any time. We will notify registered users of material changes via email at least 14 days before they take effect. Continued use of the platform after updated terms take effect constitutes acceptance of the revised terms.
@@ -199,7 +244,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
-            15. Contact
+            16. Contact
           </h2>
           <p>For questions about these Terms of Service contact us at:</p>
           <div

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { paymentMethodTypesForTier } from '@/lib/stripe/paymentMethodTypes'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-05-27.dahlia',
@@ -76,10 +77,27 @@ export async function POST(req: NextRequest) {
     // ── Create Checkout session ────────────────────────────────────────────────
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
+    const checkoutTier = tierId as 'starter' | 'pro' | 'max'
+    if (!['starter', 'pro', 'max'].includes(checkoutTier)) {
+      return NextResponse.json({ error: 'Invalid tier or billing period' }, { status: 400 })
+    }
+
+    const billingInterval = billingPeriod === 'annual' ? 'annual' : 'monthly'
+    const paymentMethodTypes = paymentMethodTypesForTier(checkoutTier, billingInterval)
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
+      payment_method_types: paymentMethodTypes,
+      payment_method_options: {
+        us_bank_account: {
+          financial_connections: {
+            permissions: ['payment_method'],
+          },
+          verification_method: 'instant',
+        },
+      },
       success_url: `${appUrl}/dashboard?upgrade=success`,
       cancel_url:  `${appUrl}/dashboard`,
       subscription_data: {

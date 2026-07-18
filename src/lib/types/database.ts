@@ -51,6 +51,9 @@ export interface Organization {
   stripe_subscription_id: string | null
   base_seat_count: number
   preferred_payment_method: OrgPreferredPaymentMethod | null
+  billing_interval: 'monthly' | 'annual' | null
+  enterprise_terms_accepted_at: string | null
+  enterprise_terms_version: string | null
   last_billing_failure_at: string | null
   last_billing_failure_message: string | null
   created_at: string

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { DashboardSettingsShell } from '@/components/dashboard/DashboardSettingsShell'
@@ -21,6 +21,7 @@ import {
   locationsOverlap,
   normalizeTeamLocations,
 } from '@/lib/organizations/teamLocations'
+import { EnterpriseBadge } from '@/components/ui/PlanBadge'
 
 interface Membership {
   id: string
@@ -494,6 +495,7 @@ export default function OrganizationPageClient() {
   const [transferAcceptToken, setTransferAcceptToken] = useState<string | null>(null)
   const [editLocationsMember, setEditLocationsMember] = useState<MemberRow | null>(null)
   const [editPermissionsMember, setEditPermissionsMember] = useState<MemberRow | null>(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 
   const isOwner = membership?.role === 'owner'
   const canAccessBilling = membership ? managerHasBillingAccess(membership) : false
@@ -503,8 +505,10 @@ export default function OrganizationPageClient() {
   const activeTab = billingPending
     ? 'billing'
     : (searchParams.get('tab') ?? (isOwner || canEditProfile ? 'profile' : 'team'))
-  const paymentSetupCancelled = searchParams.get('payment_setup') === 'cancelled'
-  const paymentSetupSuccess = searchParams.get('payment_setup') === 'success'
+  const checkoutCancelled = searchParams.get('checkout') === 'cancelled'
+    || searchParams.get('payment_setup') === 'cancelled'
+  const checkoutSuccess = searchParams.get('checkout') === 'success'
+    || searchParams.get('payment_setup') === 'success'
   const managerLocations = normalizeTeamLocations(membership?.team_tag)
 
   const existingLocations = useMemo(
@@ -555,33 +559,21 @@ export default function OrganizationPageClient() {
     if (!billingPending || !membership) return
     if (searchParams.get('tab') === 'billing') return
     const params = new URLSearchParams({ tab: 'billing' })
-    if (membership.is_primary_owner) params.set('setup', 'billing')
     router.replace(`/dashboard/organization?${params.toString()}`)
   }, [billingPending, membership, router, searchParams])
 
   useEffect(() => {
-    if (!paymentSetupSuccess) return
+    if (!checkoutSuccess) return
     void load().then(() => {
       router.replace('/dashboard/organization?tab=billing')
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentSetupSuccess])
+  }, [checkoutSuccess])
 
   useEffect(() => {
     const token = searchParams.get('transfer')
     if (token) setTransferAcceptToken(token)
   }, [searchParams])
-
-  const paymentSetupTriggered = useRef(false)
-  useEffect(() => {
-    if (paymentSetupTriggered.current) return
-    if (searchParams.get('setup') !== 'billing') return
-    if (!organization || organization.preferred_payment_method) return
-    if (!membership?.is_primary_owner) return
-    paymentSetupTriggered.current = true
-    void handlePaymentSetup()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, organization, billing, membership])
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault()
@@ -618,17 +610,25 @@ export default function OrganizationPageClient() {
 
   async function handlePaymentSetup() {
     if (!organization) return
-    const res = await fetch(`/api/organizations/${organization.id}/payment-setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ returnUrl: `${window.location.origin}/dashboard/organization?tab=billing` }),
-    })
-    const data = await res.json() as { url?: string; error?: string }
-    if (!res.ok || !data.url) {
-      setError(data.error ?? 'Failed to start payment setup')
-      return
+    setCheckoutLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/organizations/${organization.id}/payment-setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          returnUrl: `${window.location.origin}/dashboard/organization?tab=billing`,
+        }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? 'Failed to start checkout')
+      }
+      window.location.href = data.url
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start checkout')
+      setCheckoutLoading(false)
     }
-    window.location.href = data.url
   }
 
   async function handleBillingPortal() {
@@ -788,16 +788,16 @@ export default function OrganizationPageClient() {
           style={{ borderColor: '#FFD4C2', background: '#FFF2ED' }}
         >
           <p className="text-sm font-semibold text-ink mb-1">Billing setup required</p>
-          {paymentSetupCancelled && membership.is_primary_owner && canAccessBilling && (
+          {checkoutCancelled && membership.is_primary_owner && canAccessBilling && (
             <p className="text-sm text-ink-2 mb-2">
-              Billing setup was cancelled. Add a payment method to unlock your dashboard.
+              Checkout was cancelled. Continue to Stripe Checkout when you&apos;re ready.
             </p>
           )}
           {canAccessBilling ? (
             <p className="text-sm text-ink-2">
               {membership.is_primary_owner
-                ? 'Complete billing setup below to access your dashboard and Enterprise features.'
-                : 'Complete billing setup below to unlock dashboard access for your organization.'}
+                ? 'Complete secure checkout to access your dashboard and Enterprise features.'
+                : 'Billing setup is in progress. Contact your primary Owner if checkout is not complete.'}
             </p>
           ) : (
             <p className="text-sm text-ink-2">
@@ -983,6 +983,9 @@ export default function OrganizationPageClient() {
             style={{ borderColor: '#E8E9EA', background: '#FAFAFA' }}
           >
             <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <EnterpriseBadge />
+              </div>
               <div>
                 <p className="text-xs text-ink-3 font-sans mb-1">Plan</p>
                 <p className="text-sm font-semibold text-ink">{billing?.planName ?? 'Enterprise'}</p>
@@ -1006,10 +1009,11 @@ export default function OrganizationPageClient() {
                 <button
                   type="button"
                   onClick={handlePaymentSetup}
-                  className="w-full px-4 py-2.5 text-sm font-bold text-white bg-orange rounded-pill"
+                  disabled={checkoutLoading}
+                  className="w-full px-4 py-2.5 text-sm font-bold text-white bg-orange rounded-pill disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.25)' }}
                 >
-                  Set up billing
+                  {checkoutLoading ? 'Redirecting to Stripe…' : 'Continue to Checkout'}
                 </button>
               ) : canAccessBilling && (billing?.hasPaymentMethod || organization.preferred_payment_method) ? (
                 <button

@@ -12,6 +12,7 @@ export type EmailTemplateType =
   | 'OrgInvite'
   | 'PrimaryOwnerSetup'
   | 'OwnershipTransferRequest'
+  | 'PlanDowngradeListingOverflow'
 
 export interface SendTransactionalEmailParams {
   templateType: EmailTemplateType

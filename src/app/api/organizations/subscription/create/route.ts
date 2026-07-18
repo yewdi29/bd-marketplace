@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
-import { createOrganizationSubscription } from '@/lib/stripe/enterpriseSubscription'
+import { createOrganizationStripeCustomer } from '@/lib/stripe/enterpriseSubscription'
 
 function getService() {
   return createServiceClient(
@@ -12,13 +12,12 @@ function getService() {
 
 /**
  * POST /api/organizations/subscription/create
- * Creates Stripe Customer + Subscription for an organization.
- * Called by Phase 4 "Close as Enterprise" (admin-only for now).
+ * Creates a Stripe Customer for an organization (no subscription — that happens at Checkout).
  *
  * Body: {
  *   organizationId: string
  *   primaryOwnerEmail: string
- *   billingInterval?: 'monthly' | 'annual'  // defaults to 'monthly'
+ *   billingInterval?: 'monthly' | 'annual'
  * }
  */
 export async function POST(req: NextRequest) {
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
     const billingInterval = body.billingInterval === 'annual' ? 'annual' : 'monthly'
 
     const service = getService()
-    const result = await createOrganizationSubscription(
+    const result = await createOrganizationStripeCustomer(
       service,
       body.organizationId,
       body.primaryOwnerEmail,

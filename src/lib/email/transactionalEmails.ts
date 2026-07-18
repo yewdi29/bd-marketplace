@@ -4,6 +4,7 @@ import ListingNeedsChanges from '../../../emails/templates/ListingNeedsChanges'
 import ListingRemoved from '../../../emails/templates/ListingRemoved'
 import NewInquirySeller from '../../../emails/templates/NewInquirySeller'
 import InquiryReceivedBuyer from '../../../emails/templates/InquiryReceivedBuyer'
+import PlanDowngradeListingOverflow from '../../../emails/templates/PlanDowngradeListingOverflow'
 import { getEmailAppUrl } from './resendClient'
 import { sendTransactionalEmailSafe } from './sendTransactionalEmail'
 
@@ -118,6 +119,28 @@ export async function dispatchInquiryReceivedBuyerEmail(opts: {
     subject: "We've received your inquiry — Black Diamond Marketplace",
     react: createElement(InquiryReceivedBuyer, {
       listingTitle: opts.listingTitle,
+    }),
+  })
+}
+
+export function dispatchPlanDowngradeListingOverflowEmail(opts: {
+  sellerEmail: string
+  userId: string
+  newPlanLabel: string
+  unpublishedCount: number
+  keptActiveCount: number
+}): void {
+  sendTransactionalEmailSafe({
+    templateType: 'PlanDowngradeListingOverflow',
+    recipientEmail: opts.sellerEmail,
+    relatedEntityType: 'user',
+    relatedEntityId: opts.userId,
+    subject: `${opts.unpublishedCount} listing${opts.unpublishedCount === 1 ? '' : 's'} unpublished — ${opts.newPlanLabel} plan`,
+    react: createElement(PlanDowngradeListingOverflow, {
+      newPlanLabel: opts.newPlanLabel,
+      unpublishedCount: opts.unpublishedCount,
+      keptActiveCount: opts.keptActiveCount,
+      dashboardUrl: `${getEmailAppUrl()}/dashboard`,
     }),
   })
 }

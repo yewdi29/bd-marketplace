@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
-import { createOrganizationSubscription } from '@/lib/stripe/enterpriseSubscription'
+import { createOrganizationStripeCustomer } from '@/lib/stripe/enterpriseSubscription'
 import { createPrimaryOwnerInvite } from '@/lib/organizations/createPrimaryOwnerInvite'
 import { parseEnterpriseMetadata } from '@/lib/organizations/enterpriseDealMetadata'
 
@@ -85,7 +85,7 @@ export async function POST(
   }
 
   try {
-    await createOrganizationSubscription(
+    await createOrganizationStripeCustomer(
       service,
       orgRow.id,
       primaryOwnerEmail,
@@ -93,7 +93,7 @@ export async function POST(
     )
   } catch (err) {
     await service.from('organizations').delete().eq('id', orgRow.id)
-    const message = err instanceof Error ? err.message : 'Stripe subscription creation failed'
+    const message = err instanceof Error ? err.message : 'Stripe customer creation failed'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
@@ -108,7 +108,7 @@ export async function POST(
     const message = err instanceof Error ? err.message : 'Failed to create primary owner invite'
     return NextResponse.json(
       {
-        error: `${message}. Organization and Stripe subscription were created (id: ${orgRow.id}) but the owner invite was not sent — retry manually.`,
+        error: `${message}. Organization and Stripe customer were created (id: ${orgRow.id}) but the owner invite was not sent — retry manually.`,
         organizationId: orgRow.id,
       },
       { status: 500 },

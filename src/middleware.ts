@@ -119,11 +119,7 @@ export async function middleware(request: NextRequest) {
           const redirectUrl = request.nextUrl.clone()
           redirectUrl.pathname = ORG_BILLING_SETUP_ALLOWED_PATH
           redirectUrl.searchParams.set('tab', 'billing')
-          if (orgMember.is_primary_owner) {
-            redirectUrl.searchParams.set('setup', 'billing')
-          } else {
-            redirectUrl.searchParams.delete('setup')
-          }
+          redirectUrl.searchParams.delete('setup')
           return NextResponse.redirect(redirectUrl)
         }
       }
@@ -144,9 +140,7 @@ export async function middleware(request: NextRequest) {
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = ORG_BILLING_SETUP_ALLOWED_PATH
         redirectUrl.searchParams.set('tab', 'billing')
-        if (orgMember.is_primary_owner) {
-          redirectUrl.searchParams.set('setup', 'billing')
-        }
+        redirectUrl.searchParams.delete('setup')
         return NextResponse.redirect(redirectUrl)
       }
     }

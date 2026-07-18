@@ -10,8 +10,8 @@ function InviteAcceptContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
-  const setupBilling = searchParams.get('setup') === 'billing'
   const [loading, setLoading] = useState(true)
+  const [redirectingToCheckout, setRedirectingToCheckout] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expired, setExpired] = useState(false)
   const [invite, setInvite] = useState<{
@@ -22,9 +22,31 @@ function InviteAcceptContent() {
     isPrimaryOwner?: boolean
   } | null>(null)
 
-  function orgRedirect(isPrimaryOwner?: boolean) {
-    if (isPrimaryOwner || setupBilling) {
-      router.replace('/dashboard/organization?tab=billing&setup=billing')
+  async function startCheckoutRedirect(organizationId: string) {
+    setRedirectingToCheckout(true)
+    setError(null)
+    try {
+      const returnUrl = `${window.location.origin}/dashboard/organization?tab=billing`
+      const res = await fetch(`/api/organizations/${organizationId}/payment-setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnUrl }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? 'Failed to start checkout')
+      }
+      window.location.href = data.url
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start checkout')
+      setRedirectingToCheckout(false)
+      setLoading(false)
+    }
+  }
+
+  function orgRedirect(organizationId?: string, isPrimaryOwner?: boolean) {
+    if (isPrimaryOwner && organizationId) {
+      void startCheckoutRedirect(organizationId)
       return
     }
     router.replace('/dashboard/organization')
@@ -79,9 +101,13 @@ function InviteAcceptContent() {
           error?: string
           requiresAuth?: boolean
           isPrimaryOwner?: boolean
+          organizationId?: string
         }
         if (acceptRes.ok && acceptData.success) {
-          orgRedirect(acceptData.isPrimaryOwner ?? data.invite.isPrimaryOwner)
+          orgRedirect(
+            acceptData.organizationId,
+            acceptData.isPrimaryOwner ?? data.invite.isPrimaryOwner,
+          )
           return
         }
         if (!acceptData.requiresAuth) {
@@ -93,15 +119,19 @@ function InviteAcceptContent() {
     }
 
     void loadInvite()
-  }, [token, router, setupBilling])
+  }, [token, router])
 
   async function handleLoginRedirect() {
-    const returnUrl = `/invite/accept?token=${encodeURIComponent(token ?? '')}${setupBilling ? '&setup=billing' : ''}`
+    const returnUrl = `/invite/accept?token=${encodeURIComponent(token ?? '')}`
     router.push(`/auth/login?redirect=${encodeURIComponent(returnUrl)}`)
   }
 
-  if (loading) {
-    return <p className="text-sm text-ink-3">Verifying invitation…</p>
+  if (loading || redirectingToCheckout) {
+    return (
+      <p className="text-sm text-ink-3">
+        {redirectingToCheckout ? 'Redirecting to secure checkout…' : 'Verifying invitation…'}
+      </p>
+    )
   }
 
   if (expired) {
@@ -134,7 +164,7 @@ function InviteAcceptContent() {
         </h1>
         <p className="text-sm text-ink-2">
           {invite.isPrimaryOwner
-            ? 'You\'ve been designated as the primary Owner. Sign in to accept and set up billing.'
+            ? 'You\'ve been designated as the primary Owner. Sign in to accept your invite and continue to secure checkout.'
             : `You've been invited as ${invite.role}${invite.teamTag?.length ? ` for ${formatLocationsLabel(invite.teamTag)}` : ''}.`}
         </p>
         <p className="text-xs text-ink-3 mt-2">Sign in as {invite.invitedEmail} to accept.</p>
