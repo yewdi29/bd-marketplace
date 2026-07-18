@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/rigburrito/stripe'
 import {
+  assertEnterprisePriceEnvConfigured,
   billableExtraSeats,
   enterpriseIntervalFromStripeRecurring,
   getEnterpriseBasePriceId,
@@ -625,16 +626,56 @@ export async function handleEnterpriseCheckoutSetupCompleted(
   await applyOrganizationPaymentMethod(service, organizationId, paymentMethodId)
 }
 
-async function ensureEnterprisePerSeatLineItem(
-  subscriptionId: string,
-  billingInterval: EnterpriseBillingInterval,
-): Promise<void> {
+function resolveEnterpriseBillingIntervalFromSubscription(
+  sub: Stripe.Subscription,
+  metadataIntervalRaw: string | null | undefined,
+  logContext: { organizationId: string; subscriptionId: string },
+): EnterpriseBillingInterval {
+  const baseItem = findEnterpriseBaseItem(sub)
+  if (!baseItem) {
+    throw new Error('Enterprise subscription is missing a base line item')
+  }
+
+  const fromSubscription = enterpriseIntervalFromStripeRecurring(
+    baseItem.price.recurring?.interval,
+  )
+
+  const fromMetadata: EnterpriseBillingInterval =
+    metadataIntervalRaw === 'annual' ? 'annual' : 'monthly'
+
+  if (metadataIntervalRaw && fromMetadata !== fromSubscription) {
+    console.warn(
+      '[enterprise checkout] billing_interval metadata mismatch — using subscription interval',
+      {
+        organizationId: logContext.organizationId,
+        subscriptionId: logContext.subscriptionId,
+        metadataInterval: fromMetadata,
+        subscriptionInterval: fromSubscription,
+      },
+    )
+  }
+
+  return fromSubscription
+}
+
+async function ensureEnterprisePerSeatLineItem(subscriptionId: string): Promise<void> {
+  assertEnterprisePriceEnvConfigured()
+
   const sub = await stripe.subscriptions.retrieve(subscriptionId)
   if (findEnterprisePerSeatItem(sub)) {
     return
   }
 
+  const baseItem = findEnterpriseBaseItem(sub)
+  if (!baseItem) {
+    throw new Error('Enterprise subscription is missing a base line item')
+  }
+
+  const billingInterval = enterpriseIntervalFromStripeRecurring(
+    baseItem.price.recurring?.interval,
+  )
   const perSeatPriceId = getEnterprisePerSeatPriceId(billingInterval)
+
   await stripe.subscriptions.update(subscriptionId, {
     items: [
       ...sub.items.data.map(item => ({ id: item.id })),
@@ -647,6 +688,8 @@ export async function handleEnterpriseCheckoutSubscriptionCompleted(
   service: SupabaseClient,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  assertEnterprisePriceEnvConfigured()
+
   const organizationId = session.metadata?.organization_id
   if (!organizationId) return
 
@@ -658,20 +701,15 @@ export async function handleEnterpriseCheckoutSubscriptionCompleted(
     throw new Error('Enterprise Checkout session missing subscription')
   }
 
-  const billingIntervalRaw = session.metadata?.billing_interval
-  const billingInterval: EnterpriseBillingInterval =
-    billingIntervalRaw === 'annual' ? 'annual' : 'monthly'
-
-  await ensureEnterprisePerSeatLineItem(subscriptionId, billingInterval)
-
   const sub = await stripe.subscriptions.retrieve(subscriptionId, {
     expand: ['default_payment_method'],
   })
 
-  const defaultPm = sub.default_payment_method
-  const paymentMethodId = typeof defaultPm === 'string'
-    ? defaultPm
-    : defaultPm?.id
+  const billingInterval = resolveEnterpriseBillingIntervalFromSubscription(
+    sub,
+    session.metadata?.billing_interval,
+    { organizationId, subscriptionId },
+  )
 
   const orgUpdate: Record<string, unknown> = {
     stripe_subscription_id: subscriptionId,
@@ -694,6 +732,13 @@ export async function handleEnterpriseCheckoutSubscriptionCompleted(
   if (orgError) {
     throw new Error(`Failed to persist subscription: ${orgError.message}`)
   }
+
+  await ensureEnterprisePerSeatLineItem(subscriptionId)
+
+  const defaultPm = sub.default_payment_method
+  const paymentMethodId = typeof defaultPm === 'string'
+    ? defaultPm
+    : defaultPm?.id
 
   if (paymentMethodId) {
     await applyOrganizationPaymentMethod(service, organizationId, paymentMethodId)

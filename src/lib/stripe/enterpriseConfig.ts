@@ -7,6 +7,22 @@ import {
 
 export type EnterpriseBillingInterval = CheckoutBillingInterval
 
+const ENTERPRISE_PRICE_ENV_KEYS = [
+  'STRIPE_ENTERPRISE_BASE_MONTHLY_PRICE_ID',
+  'STRIPE_ENTERPRISE_BASE_ANNUAL_PRICE_ID',
+  'STRIPE_ENTERPRISE_PER_SEAT_MONTHLY_PRICE_ID',
+  'STRIPE_ENTERPRISE_PER_SEAT_ANNUAL_PRICE_ID',
+] as const
+
+/** Fail fast with a clear message if any Enterprise price ID env var is missing. */
+export function assertEnterprisePriceEnvConfigured(): void {
+  for (const key of ENTERPRISE_PRICE_ENV_KEYS) {
+    if (!process.env[key]) {
+      throw new Error(`${key} is not configured`)
+    }
+  }
+}
+
 export function getEnterpriseBasePriceId(
   interval: EnterpriseBillingInterval = 'monthly',
 ): string {

@@ -49,6 +49,45 @@ async function isOrganizationSubscription(
   return Boolean(org)
 }
 
+function webhookErrorContext(event: Stripe.Event): Record<string, unknown> {
+  const ctx: Record<string, unknown> = {
+    eventId: event.id,
+    eventType: event.type,
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session
+    ctx.organizationId = session.metadata?.organization_id ?? null
+    const subscription = session.subscription
+    ctx.subscriptionId =
+      typeof subscription === 'string' ? subscription : subscription?.id ?? null
+    ctx.setupType = session.metadata?.setup_type ?? null
+  }
+
+  if (
+    event.type === 'customer.subscription.updated' ||
+    event.type === 'customer.subscription.deleted'
+  ) {
+    const sub = event.data.object as Stripe.Subscription
+    ctx.subscriptionId = sub.id
+    ctx.organizationId = sub.metadata?.organization_id ?? null
+  }
+
+  if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice
+    const legacy = (invoice as Stripe.Invoice & {
+      subscription?: string | Stripe.Subscription | null
+    }).subscription
+    if (typeof legacy === 'string') {
+      ctx.subscriptionId = legacy
+    } else if (legacy && typeof legacy === 'object') {
+      ctx.subscriptionId = legacy.id
+    }
+  }
+
+  return ctx
+}
+
 async function applyPlanChangeWithListingOverflow(
   service: ReturnType<typeof getService>,
   userId: string,
@@ -241,7 +280,14 @@ export async function POST(req: NextRequest) {
         break
     }
   } catch (err) {
-    console.error(`[stripe/webhook] error handling ${event.type}:`, err)
+    const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack : undefined
+    console.error('[stripe/webhook] handler failed', {
+      ...webhookErrorContext(event),
+      message,
+      stack,
+      err,
+    })
     return NextResponse.json({ error: 'Handler error' }, { status: 500 })
   }
 
