@@ -6,7 +6,9 @@ const QUERY = '(max-width: 1023px)'
 
 /** True below the lg breakpoint (1024px) — mobile/tablet layouts. */
 export function useIsBelowLg(): boolean {
-  const [isBelow, setIsBelow] = useState(false)
+  const [isBelow, setIsBelow] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(QUERY).matches : false,
+  )
 
   useEffect(() => {
     const mq = window.matchMedia(QUERY)

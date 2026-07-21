@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: July 2026 — v2.34
+> Last updated: July 2026 — v2.34.3
 
 ---
 
@@ -606,6 +606,8 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.34.3 | July 2026 | **Hero globe refresh.** Arcs use shader-based GL lines with facing fade and 5-pass screen-space thickness (replaces Line2 addon). Faster arc timing (4.2s grow/hold, 1.5s spawn). Initial globe rotation `y: -1.92`. Labels expanded to 8 items with updated card shadow/border styling. |
+| v2.34.2 | July 2026 | **Hero globe arc color.** Homepage WebGL globe connection arcs switched from orange HSL (~38°) to purple HSL (~274–292°) in `heroGlobeArcs.ts`. Globe labels and map dots unchanged. |
 | v2.34.1 | July 2026 | **Enterprise tier block.** Shared `EnterpriseTierBlock`: eyebrow "Teams & organizations" (science blue), "Enterprise" as 22px card title, feature checklist (no public pricing), wide row below tier grids on `/pricing` and `/dashboard/upgrade`. |
 | v2.34 | July 2026 | **Public pricing page + Enterprise intake.** New `/pricing` route: Free + Starter/Pro/Max tier cards (monthly/annual toggle, 2-months-free badge), wide Enterprise row beneath with science-blue accent border and "Contact us" modal intake form. Footer Pricing link points to `/pricing`. |
 | v2.33 | July 2026 | **Transactional email design system.** Shared `EmailLayout` now uses correct logo aspect ratio (244×29 SVG → 227×27 display), unified typography (22px heading, 15px body, 11px uppercase meta labels), spacing rhythm, and bordered content cards. `NewInquirySeller` merges buyer contact + message into one card with FROM/MESSAGE sections. |

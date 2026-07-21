@@ -85,6 +85,7 @@ export default function HeroGlobeThree({ active }: HeroGlobeThreeProps) {
 
       const group = new THREE.Group()
       group.rotation.x = 0.32
+      group.rotation.y = -1.92
       scene.add(group)
 
       const positions = new Float32Array(dots.length * 3)

@@ -79,13 +79,17 @@ export default function SearchBar({
       setGlowMounted(true)
       return
     }
-    if (focus) glowHandleRef.current?.focus()
-    else glowHandleRef.current?.blur()
+    if (focus) {
+      if (glowHandleRef.current) glowHandleRef.current.focus()
+      else pendingGlowFocusRef.current = true
+    } else {
+      glowHandleRef.current?.blur()
+    }
   }
 
   function handleGlowReady(handle: GlowBorderHandle) {
     glowHandleRef.current = handle
-    if (pendingGlowFocusRef.current) {
+    if (pendingGlowFocusRef.current || focused) {
       pendingGlowFocusRef.current = false
       handle.focus()
     }
@@ -204,7 +208,9 @@ export default function SearchBar({
           ref={containerRef}
           className="flex items-center overflow-hidden"
           style={pillStyle}
-          onPointerDown={() => armGlow(false)}
+          onPointerDown={() => {
+            if (!glowMounted) setGlowMounted(true)
+          }}
         >
 
           {/* Search icon */}

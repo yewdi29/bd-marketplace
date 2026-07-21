@@ -3,8 +3,13 @@
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { Inbox, Mail } from 'lucide-react'
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { useFlagIconsCss } from '@/hooks/useFlagIconsCss'
+import { useIsBelowLg } from '@/hooks/useIsBelowLg'
+import { useSectionScrollProgress } from '@/hooks/useSectionScrollProgress'
+import { computeMobileHiwScrub } from '@/components/home/hiwScrollTimeline'
+import type { Phase } from '@/components/home/hiwScrollTypes'
+import type { HiWMobileScrub } from '@/components/home/hiwScrollTimeline'
 import { HIW_RIPPLE_DURATION_MS, HIW_RIPPLE_START_DELAY_MS, STEP2_POST_LIVE_MS } from '@/components/home/hiwGeoMapConstants'
 
 const HiwGeoDotMap = dynamic(
@@ -15,16 +20,7 @@ const HiwGeoDotMap = dynamic(
   },
 )
 
-// ─── Timeline phases ──────────────────────────────────────────────────────────
-
-type Phase =
-  | 'idle'
-  | 's1_border' | 's1_type' | 's1_button' | 's1_loading' | 's1_listing'
-  | 'c1'
-  | 's2_border' | 's2_pending' | 's2_live'
-  | 'c2'
-  | 's3_border' | 's3_inquiry1' | 's3_inquiry2' | 's3_inquiry3' | 's3_inquiry4'
-  | 'hold'
+// ─── Timeline phases (desktop timer) ─────────────────────────────────────────
 
 const TYPEWRITER_TEXT =
   'Selling a 2013 cat d8t, good condition, Houston TX, asking $185,000.'
@@ -61,27 +57,34 @@ function Connector({
   filling,
   filled,
   onFillComplete,
+  scrollFillPercent,
 }: {
   vertical?: boolean
   filling: boolean
   filled: boolean
   onFillComplete?: () => void
+  scrollFillPercent?: number
 }) {
+  const scrollMode = scrollFillPercent !== undefined
   const [fillAmount, setFillAmount] = useState(0)
 
   useEffect(() => {
+    if (scrollMode) {
+      setFillAmount(scrollFillPercent)
+      return
+    }
     if (filling || filled) {
       const id = requestAnimationFrame(() => setFillAmount(100))
       return () => cancelAnimationFrame(id)
     }
     setFillAmount(0)
-  }, [filling, filled])
+  }, [scrollMode, scrollFillPercent, filling, filled])
 
   useEffect(() => {
-    if (!filling || !onFillComplete) return
+    if (scrollMode || !filling || !onFillComplete) return
     const id = setTimeout(onFillComplete, CONNECTOR_FILL_MS)
     return () => clearTimeout(id)
-  }, [filling, onFillComplete])
+  }, [scrollMode, filling, onFillComplete])
 
   const showFill = fillAmount > 0
 
@@ -99,7 +102,7 @@ function Connector({
             className="absolute top-0 left-0 w-full bg-orange origin-top rounded-full"
             style={{
               height: `${fillAmount}%`,
-              transition: 'height 1s ease-in-out',
+              transition: scrollMode ? 'none' : 'height 1s ease-in-out',
               boxShadow: showFill
                 ? '0 0 6px rgba(255,107,53,0.8), 0 0 14px rgba(255,107,53,0.45), 0 0 24px rgba(255,107,53,0.2)'
                 : undefined,
@@ -126,7 +129,7 @@ function Connector({
           className="absolute top-0 left-0 h-full bg-orange rounded-full"
           style={{
             width: `${fillAmount}%`,
-            transition: 'width 1s ease-in-out',
+            transition: scrollMode ? 'none' : 'width 1s ease-in-out',
             boxShadow: showFill
               ? '0 0 6px rgba(255,107,53,0.8), 0 0 14px rgba(255,107,53,0.45), 0 0 24px rgba(255,107,53,0.2)'
               : undefined,
@@ -142,9 +145,11 @@ function Connector({
 function Step1Mockup({
   phase,
   onListingFadeInStart,
+  mobileScrub,
 }: {
   phase: Phase
   onListingFadeInStart?: () => void
+  mobileScrub?: HiWMobileScrub['step1']
 }) {
   const [typed, setTyped] = useState('')
   const [buttonPressed, setButtonPressed] = useState(false)
@@ -153,24 +158,36 @@ function Step1Mockup({
   const [fadeForm, setFadeForm] = useState(false)
   const textBoxRef = useRef<HTMLDivElement>(null)
 
-  const showForm = !showListing
+  const scrubTyped = mobileScrub
+    ? TYPEWRITER_TEXT.slice(0, Math.round(mobileScrub.typedRatio * TYPEWRITER_TEXT.length))
+    : typed
+  const scrubShowListing = mobileScrub?.showListing ?? showListing
+  const scrubFadeForm = mobileScrub?.fadeForm ?? fadeForm
+  const scrubProgressWidth = mobileScrub?.progressWidth ?? progressWidth
+  const scrubButtonPressed = mobileScrub?.buttonPressed ?? buttonPressed
+  const scrubShowProgress = mobileScrub?.showProgress ?? (phase === 's1_loading')
+
+  const showForm = !scrubShowListing
   const isTypingPhase = phase === 's1_border' || phase === 's1_type'
-  const showCursor = isTypingPhase && !showListing && typed.length < TYPEWRITER_TEXT.length
-  const buttonMuted = isTypingPhase
-  const showProgress = phase === 's1_loading'
+  const showCursor = mobileScrub
+    ? mobileScrub.typedRatio > 0 && mobileScrub.typedRatio < 1
+    : isTypingPhase && !showListing && typed.length < TYPEWRITER_TEXT.length
+  const buttonMuted = mobileScrub ? mobileScrub.typedRatio < 1 : isTypingPhase
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase !== 'idle') return
     setTyped('')
     setButtonPressed(false)
     setProgressWidth(0)
     setShowListing(false)
     setFadeForm(false)
-  }, [phase])
+  }, [phase, mobileScrub])
 
-  const formVisible = showForm && !fadeForm
+  const formVisible = showForm && !scrubFadeForm
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase !== 's1_type') return
     setTyped('')
     let i = 0
@@ -181,9 +198,10 @@ function Step1Mockup({
       if (i >= TYPEWRITER_TEXT.length) clearInterval(interval)
     }, msPerChar)
     return () => clearInterval(interval)
-  }, [phase])
+  }, [phase, mobileScrub])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase === 's1_button' || phase === 's1_loading' || phase === 's1_listing') {
       setTyped(TYPEWRITER_TEXT)
     }
@@ -193,9 +211,10 @@ function Step1Mockup({
     const el = textBoxRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
-  }, [typed])
+  }, [typed, mobileScrub])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase !== 's1_button') return
     let releaseTimer: ReturnType<typeof setTimeout>
     const pressTimer = setTimeout(() => {
@@ -206,18 +225,20 @@ function Step1Mockup({
       clearTimeout(pressTimer)
       clearTimeout(releaseTimer)
     }
-  }, [phase])
+  }, [phase, mobileScrub])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase !== 's1_loading') return
     setProgressWidth(0)
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => setProgressWidth(100))
     })
     return () => cancelAnimationFrame(id)
-  }, [phase])
+  }, [phase, mobileScrub])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase !== 's1_listing') return
     setFadeForm(true)
     const t = setTimeout(() => {
@@ -225,9 +246,10 @@ function Step1Mockup({
       onListingFadeInStart?.()
     }, S1_LISTING_FADE_DELAY_MS)
     return () => clearTimeout(t)
-  }, [phase, onListingFadeInStart])
+  }, [phase, onListingFadeInStart, mobileScrub])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase === 'c1' || phase.startsWith('s2') || phase.startsWith('c2') || phase.startsWith('s3') || phase === 'hold') {
       // keep listing visible until reset
     }
@@ -252,7 +274,7 @@ function Step1Mockup({
               style={{ fontSize: 11, lineHeight: 1.5, color: '#4A4D52', height: 88 }}
             >
               <span className="whitespace-pre-wrap break-words">
-                {typed}
+                {scrubTyped}
                 {showCursor && (
                   <span
                     className="inline-block w-px h-3.5 bg-orange ml-px align-text-bottom"
@@ -267,7 +289,7 @@ function Step1Mockup({
                 type="button"
                 className="inline-flex items-center self-start px-3 py-1.5 text-[10px] font-bold text-white bg-orange rounded-pill"
                 style={{
-                  transform: buttonPressed ? 'scale(0.94)' : 'scale(1)',
+                  transform: scrubButtonPressed ? 'scale(0.94)' : 'scale(1)',
                   boxShadow: '0 2px 8px rgba(255,107,53,0.25)',
                   opacity: buttonMuted ? 0.5 : 1,
                   transition: 'transform 150ms ease, opacity 300ms ease',
@@ -279,7 +301,7 @@ function Step1Mockup({
               <div
                 className="mt-1.5 w-full"
                 style={{
-                  opacity: showProgress ? 1 : 0,
+                  opacity: scrubShowProgress ? 1 : 0,
                   height: 28,
                 }}
               >
@@ -287,7 +309,10 @@ function Step1Mockup({
                 <div className="h-1.5 rounded-pill bg-[#F0F0F0] overflow-hidden">
                   <div
                     className="h-full bg-orange rounded-pill"
-                    style={{ width: `${progressWidth}%`, transition: 'width 1500ms linear' }}
+                    style={{
+                      width: `${scrubProgressWidth}%`,
+                      transition: mobileScrub ? 'none' : 'width 1500ms linear',
+                    }}
                   />
                 </div>
               </div>
@@ -298,7 +323,7 @@ function Step1Mockup({
         {/* Listing layer — centered in gray box */}
         <div
           className="absolute inset-0 flex items-center justify-center transition-opacity duration-500"
-          style={{ opacity: showListing ? 1 : 0, pointerEvents: showListing ? 'auto' : 'none' }}
+          style={{ opacity: scrubShowListing ? 1 : 0, pointerEvents: scrubShowListing ? 'auto' : 'none' }}
         >
           <div className="w-[76%] max-w-full mx-auto">
             <MiniListingCard />
@@ -359,20 +384,30 @@ function MiniListingCard() {
 
 // ─── Step 2 mockup ────────────────────────────────────────────────────────────
 
-function Step2Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
+function Step2Mockup({
+  phase,
+  loopId,
+  mobileScrub,
+}: {
+  phase: Phase
+  loopId: number
+  mobileScrub?: HiWMobileScrub['step2']
+}) {
   const [rippleProgress, setRippleProgress] = useState(0)
   const [isActive, setIsActive] = useState(false)
   const rippleRafRef = useRef<number>(0)
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase === 'idle') {
       setRippleProgress(0)
       setIsActive(false)
       cancelAnimationFrame(rippleRafRef.current)
     }
-  }, [phase])
+  }, [phase, mobileScrub])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase !== 's2_live') return
 
     setIsActive(true)
@@ -392,10 +427,10 @@ function Step2Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
     rippleRafRef.current = requestAnimationFrame(tick)
 
     return () => cancelAnimationFrame(rippleRafRef.current)
-  }, [phase, loopId])
+  }, [phase, loopId, mobileScrub])
 
-  const showPill = phase !== 'idle'
-  const isLive = [
+  const showPill = mobileScrub?.showPill ?? phase !== 'idle'
+  const isLive = mobileScrub?.isLive ?? [
     's2_live',
     'c2',
     's3_border',
@@ -406,10 +441,13 @@ function Step2Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
     'hold',
   ].includes(phase)
 
+  const mapRipple = mobileScrub?.rippleProgress ?? rippleProgress
+  const mapActive = mobileScrub?.isActive ?? isActive
+
   return (
     <div className={HIW_MOCKUP_BOX}>
       <div className="relative w-full" style={{ height: HIW_MOCKUP_INNER_H }}>
-        <HiwGeoDotMap rippleProgress={rippleProgress} isActive={isActive} />
+        <HiwGeoDotMap rippleProgress={mapRipple} isActive={mapActive} />
         {showPill && (
           <span
             className="absolute top-0 right-0 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-pill font-mono font-bold text-[9px] border transition-colors duration-500"
@@ -470,14 +508,20 @@ function InquiryCard({
   data,
   stackIndex,
   visible,
+  scrubMode = false,
 }: {
   data: (typeof INQUIRY_NOTIFICATIONS)[number]
   stackIndex: number
   visible: boolean
+  scrubMode?: boolean
 }) {
   const [entered, setEntered] = useState(false)
 
   useEffect(() => {
+    if (scrubMode) {
+      setEntered(visible)
+      return
+    }
     if (!visible) {
       setEntered(false)
       return
@@ -486,7 +530,7 @@ function InquiryCard({
       requestAnimationFrame(() => setEntered(true))
     })
     return () => cancelAnimationFrame(id)
-  }, [visible])
+  }, [visible, scrubMode])
 
   return (
     <div
@@ -516,19 +560,31 @@ function InquiryCard({
   )
 }
 
-function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
+function Step3Mockup({
+  phase,
+  loopId,
+  mobileScrub,
+}: {
+  phase: Phase
+  loopId: number
+  mobileScrub?: HiWMobileScrub['step3']
+}) {
   const [cardsShown, setCardsShown] = useState<boolean[]>([false, false, false, false])
   const [stackOpacity, setStackOpacity] = useState(1)
   const [inboxIdleVisible, setInboxIdleVisible] = useState(true)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
-  const step3Active = [
+  const step3Active = mobileScrub?.step3Active ?? [
     's3_inquiry1',
     's3_inquiry2',
     's3_inquiry3',
     's3_inquiry4',
     'hold',
   ].includes(phase)
+
+  const displayCards = mobileScrub?.cardsShown ?? cardsShown
+  const displayStackOpacity = mobileScrub?.stackOpacity ?? stackOpacity
+  const displayInboxIdle = mobileScrub?.inboxIdleVisible ?? inboxIdleVisible
 
   const clearLocalTimers = useCallback(() => {
     timersRef.current.forEach(clearTimeout)
@@ -541,15 +597,17 @@ function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
   }, [])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase === 'idle') {
       clearLocalTimers()
       setCardsShown([false, false, false, false])
       setStackOpacity(1)
       setInboxIdleVisible(true)
     }
-  }, [phase, clearLocalTimers])
+  }, [phase, clearLocalTimers, mobileScrub])
 
   useEffect(() => {
+    if (mobileScrub) return
     if (phase !== 's3_inquiry1') return
 
     clearLocalTimers()
@@ -571,7 +629,7 @@ function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
     schedule(() => setStackOpacity(0), 6000)
 
     return clearLocalTimers
-  }, [phase, loopId, clearLocalTimers, schedule])
+  }, [phase, loopId, clearLocalTimers, schedule, mobileScrub])
 
   return (
     <div className={`${HIW_MOCKUP_BOX} transition-opacity duration-500`}>
@@ -580,8 +638,8 @@ function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
         <div
           className="absolute inset-0 z-[1] flex flex-col items-center justify-center transition-opacity duration-300"
           style={{
-            opacity: inboxIdleVisible && !step3Active ? 1 : 0,
-            pointerEvents: inboxIdleVisible && !step3Active ? 'auto' : 'none',
+            opacity: displayInboxIdle && !step3Active ? 1 : 0,
+            pointerEvents: displayInboxIdle && !step3Active ? 'auto' : 'none',
           }}
         >
           <Inbox size={32} color="#9CA3AF" strokeWidth={1.5} aria-hidden />
@@ -593,7 +651,7 @@ function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
         {/* Notification stack */}
         <div
           className="relative w-full flex flex-col justify-center transition-opacity duration-500"
-          style={{ height: HIW_MOCKUP_INNER_H, opacity: stackOpacity }}
+          style={{ height: HIW_MOCKUP_INNER_H, opacity: displayStackOpacity }}
         >
           <div className="relative w-full shrink-0" style={{ height: INQUIRY_STACK_HEIGHT }}>
             {INQUIRY_NOTIFICATIONS.map((data, i) => (
@@ -601,7 +659,8 @@ function Step3Mockup({ phase, loopId }: { phase: Phase; loopId: number }) {
                 key={data.name}
                 data={data}
                 stackIndex={i}
-                visible={cardsShown[i]}
+                visible={displayCards[i]}
+                scrubMode={!!mobileScrub}
               />
             ))}
           </div>
@@ -658,6 +717,13 @@ function StepCard({
 export default function HowItWorksSection() {
   useFlagIconsCss()
   const sectionRef = useRef<HTMLElement>(null)
+  const isMobileScroll = useIsBelowLg()
+  const scrollProgress = useSectionScrollProgress(sectionRef, isMobileScroll)
+  const mobileScrub = useMemo(
+    () => (isMobileScroll ? computeMobileHiwScrub(scrollProgress) : null),
+    [isMobileScroll, scrollProgress],
+  )
+
   const [inView, setInView] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [loopId, setLoopId] = useState(0)
@@ -717,6 +783,7 @@ export default function HowItWorksSection() {
   }, [clearTimers])
 
   useEffect(() => {
+    if (isMobileScroll) return
     if (!inView) {
       clearTimers()
       setPhase('idle')
@@ -724,13 +791,16 @@ export default function HowItWorksSection() {
     }
     startSequence()
     return clearTimers
-  }, [inView, loopId, startSequence, clearTimers])
+  }, [isMobileScroll, inView, loopId, startSequence, clearTimers])
 
-  const c1Filling = phase === 'c1'
-  const c1Filled = !['idle', 's1_border', 's1_type', 's1_button', 's1_loading', 's1_listing', 'c1'].includes(phase)
+  const activePhase = mobileScrub?.phase ?? phase
+  const desktopPhase = phase
 
-  const c2Filling = phase === 'c2'
-  const c2Filled = ['s3_border', 's3_inquiry1', 'hold'].includes(phase)
+  const c1Filling = desktopPhase === 'c1'
+  const c1Filled = !['idle', 's1_border', 's1_type', 's1_button', 's1_loading', 's1_listing', 'c1'].includes(desktopPhase)
+
+  const c2Filling = desktopPhase === 'c2'
+  const c2Filled = ['s3_border', 's3_inquiry1', 'hold'].includes(desktopPhase)
 
   return (
     <>
@@ -788,22 +858,25 @@ export default function HowItWorksSection() {
             </StepCard>
           </div>
 
-          {/* Mobile / tablet: vertical stack */}
+          {/* Mobile / tablet: vertical stack — scroll-scrubbed below lg */}
           <div className="flex lg:hidden flex-col">
             <StepCard
               num="01"
               title="Describe Your Equipment"
               subtext="Tell our AI what you have in plain language. It builds a complete listing in seconds."
             >
-              <Step1Mockup phase={phase} onListingFadeInStart={handleListingFadeInStart} />
+              <Step1Mockup
+                phase={activePhase}
+                mobileScrub={mobileScrub?.step1}
+              />
             </StepCard>
 
             <Connector
-              key={`c1m-${loopId}`}
+              key="c1m-scroll"
               vertical
-              filling={c1Filling}
-              filled={c1Filled}
-              onFillComplete={handleC1FillComplete}
+              filling={false}
+              filled={false}
+              scrollFillPercent={mobileScrub?.connectors.c1Fill}
             />
 
             <StepCard
@@ -811,15 +884,19 @@ export default function HowItWorksSection() {
               title="Go Live Worldwide"
               subtext="Your listing reaches serious buyers across the globe the moment you hit publish."
             >
-              <Step2Mockup phase={phase} loopId={loopId} />
+              <Step2Mockup
+                phase={activePhase}
+                loopId={loopId}
+                mobileScrub={mobileScrub?.step2}
+              />
             </StepCard>
 
             <Connector
-              key={`c2m-${loopId}`}
+              key="c2m-scroll"
               vertical
-              filling={c2Filling}
-              filled={c2Filled}
-              onFillComplete={handleC2FillComplete}
+              filling={false}
+              filled={false}
+              scrollFillPercent={mobileScrub?.connectors.c2Fill}
             />
 
             <StepCard
@@ -827,7 +904,11 @@ export default function HowItWorksSection() {
               title="Connect and Close"
               subtext="Verified buyers reach you directly through your secure email. No phone number exposure. Just real interest."
             >
-              <Step3Mockup phase={phase} loopId={loopId} />
+              <Step3Mockup
+                phase={activePhase}
+                loopId={loopId}
+                mobileScrub={mobileScrub?.step3}
+              />
             </StepCard>
           </div>
         </div>

@@ -37,13 +37,17 @@ export default function HeroSearchForm() {
       setGlowMounted(true)
       return
     }
-    if (focus) glowHandleRef.current?.focus()
-    else glowHandleRef.current?.blur()
+    if (focus) {
+      if (glowHandleRef.current) glowHandleRef.current.focus()
+      else pendingGlowFocusRef.current = true
+    } else {
+      glowHandleRef.current?.blur()
+    }
   }
 
   function handleGlowReady(handle: GlowBorderHandle) {
     glowHandleRef.current = handle
-    if (pendingGlowFocusRef.current) {
+    if (pendingGlowFocusRef.current || focused) {
       pendingGlowFocusRef.current = false
       handle.focus()
     }
@@ -80,7 +84,9 @@ export default function HeroSearchForm() {
         <form
           ref={containerRef}
           onSubmit={handleSubmit}
-          onPointerDown={() => armGlow(false)}
+          onPointerDown={() => {
+            if (!glowMounted) setGlowMounted(true)
+          }}
           className="relative flex items-center bg-white rounded-pill px-2 py-2"
           style={{ ...pillStyle, zIndex: 1, boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}
         >

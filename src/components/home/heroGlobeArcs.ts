@@ -1,28 +1,27 @@
 import * as THREE from 'three'
-import { Line2 } from 'three/addons/lines/Line2.js'
-import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
-import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
-import { createGlobeLabel, HERO_GLOBE_LABEL_ITEMS, pickGlobeLabelIndex } from '@/components/home/heroGlobeLabels'
+import { createGlobeLabel, pickGlobeLabelIndex } from '@/components/home/heroGlobeLabels'
+import {
+  HERO_GLOBE_ARC_FRAGMENT_SHADER,
+  HERO_GLOBE_ARC_LINE_OFFSETS,
+  HERO_GLOBE_ARC_VERTEX_SHADER,
+} from '@/components/home/heroGlobeShaders'
 
-/** One unique label per concurrent arc (matches HERO_GLOBE_LABEL_ITEMS length). */
-const MAX_CONCURRENT_ARCS = HERO_GLOBE_LABEL_ITEMS.length
-
-/** Arc timing — slowed 40% vs Claude Design defaults (duration × 1.4, rates ÷ 1.4). */
-const ARC_GROW_SEC = 5.88
-const ARC_HOLD_AGE_SEC = 5.88
-const ARC_OPACITY_RAMP = 1 / 1.4
-const ARC_FADE_RATE = 0.6 / 1.4
-const ARC_SPAWN_INTERVAL_SEC = 2.1
-/** Screen-space arc thickness (default WebGL lines are ~1px). */
-const ARC_LINE_WIDTH_PX = 2
+const MAX_CONCURRENT_ARCS = 5
+const ARC_GROW_SEC = 4.2
+const ARC_HOLD_AGE_SEC = 4.2
+const ARC_OPACITY_RAMP = 1.0
+const ARC_MAX_OPACITY = 0.6
+const ARC_FADE_RATE = 0.6
+const ARC_SPAWN_INTERVAL_SEC = 1.5
+const ARC_SEGMENTS = 70
 
 export type ArcPhase = 'grow' | 'hold' | 'fade'
 
 export interface ArcState {
   verts: THREE.Vector3[]
-  line: Line2
-  geo: LineGeometry
-  mat: LineMaterial
+  lines: THREE.Line[]
+  geo: THREE.BufferGeometry
+  mats: THREE.ShaderMaterial[]
   SEG: number
   prog: number
   draw: number
@@ -31,6 +30,23 @@ export interface ArcState {
   el: HTMLDivElement
   labelIndex: number
   R: number
+}
+
+function createArcMaterials(col: THREE.Color): THREE.ShaderMaterial[] {
+  return HERO_GLOBE_ARC_LINE_OFFSETS.map(([x, y]) =>
+    new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: col.clone() },
+        uOpacity: { value: 0 },
+        uPxOffset: { value: new THREE.Vector2(x, y) },
+        uResolution: { value: new THREE.Vector2(1, 1) },
+      },
+      transparent: true,
+      depthWrite: false,
+      vertexShader: HERO_GLOBE_ARC_VERTEX_SHADER,
+      fragmentShader: HERO_GLOBE_ARC_FRAGMENT_SHADER,
+    }),
+  )
 }
 
 export function spawnArc(
@@ -54,12 +70,11 @@ export function spawnArc(
 
   const omega = Math.acos(Math.max(-1, Math.min(1, a.dot(b))))
   const so = Math.sin(omega) || 1e-4
-  const SEG = 70
   const verts: THREE.Vector3[] = []
   const h = 0.16 + Math.random() * 0.12
 
-  for (let i = 0; i <= SEG; i++) {
-    const t = i / SEG
+  for (let i = 0; i <= ARC_SEGMENTS; i++) {
+    const t = i / ARC_SEGMENTS
     const s0 = Math.sin((1 - t) * omega) / so
     const s1 = Math.sin(t * omega) / so
     const v = new THREE.Vector3(a.x * s0 + b.x * s1, a.y * s0 + b.y * s1, a.z * s0 + b.z * s1)
@@ -68,31 +83,45 @@ export function spawnArc(
     verts.push(v)
   }
 
-  const positions: number[] = []
-  for (let i = 0; i <= SEG; i++) {
-    positions.push(verts[i].x, verts[i].y, verts[i].z)
+  const posArr = new Float32Array((ARC_SEGMENTS + 1) * 3)
+  const radArr = new Float32Array((ARC_SEGMENTS + 1) * 3)
+  for (let i = 0; i <= ARC_SEGMENTS; i++) {
+    const radial = verts[i].clone().normalize()
+    const o = i * 3
+    posArr[o] = verts[i].x
+    posArr[o + 1] = verts[i].y
+    posArr[o + 2] = verts[i].z
+    radArr[o] = radial.x
+    radArr[o + 1] = radial.y
+    radArr[o + 2] = radial.z
   }
 
-  const geo = new LineGeometry()
-  geo.setPositions(positions)
-  geo.setDrawRange(0, 2)
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3))
+  geo.setAttribute('aRadial', new THREE.BufferAttribute(radArr, 3))
+  geo.setDrawRange(0, 1)
 
-  const tMid = (verts[Math.floor(SEG / 2)].x / R + 1) * 0.5
-  const col = new THREE.Color().setHSL(0.105 + tMid * 0.02, 0.95, 0.55)
-  const mat = new LineMaterial({
-    color: col.getHex(),
-    linewidth: ARC_LINE_WIDTH_PX,
-    transparent: true,
-    opacity: 0,
-    depthTest: false,
-    depthWrite: false,
-  })
-  const line = new Line2(geo, mat)
-  line.computeLineDistances()
-  group.add(line)
+  const tMid = (verts[Math.floor(ARC_SEGMENTS / 2)].x / R + 1) * 0.5
+  const col = new THREE.Color().setHSL(0.05 + tMid * 0.05, 0.85, 0.68)
+  const mats = createArcMaterials(col)
+  const lines = mats.map(m => new THREE.Line(geo, m))
+  lines.forEach(line => group.add(line))
 
   const el = createGlobeLabel(labelRoot, labelIndex)
-  return { verts, line, geo, mat, SEG, prog: 0, draw: 0, age: 0, phase: 'grow', el, labelIndex, R }
+  return {
+    verts,
+    lines,
+    geo,
+    mats,
+    SEG: ARC_SEGMENTS,
+    prog: 0,
+    draw: 0,
+    age: 0,
+    phase: 'grow',
+    el,
+    labelIndex,
+    R,
+  }
 }
 
 export function updateArcs(
@@ -120,10 +149,6 @@ export function updateArcs(
 
   group.updateMatrixWorld()
 
-  for (let i = 0; i < arcs.length; i++) {
-    arcs[i].mat.resolution.set(W, H)
-  }
-
   for (let i = arcs.length - 1; i >= 0; i--) {
     const A = arcs[i]
     A.age += dt
@@ -133,20 +158,29 @@ export function updateArcs(
       const e = A.prog * A.prog * (3.0 - 2.0 * A.prog)
       A.draw = e
       A.geo.setDrawRange(0, Math.max(1, Math.round(e * A.SEG) + 1))
-      A.mat.opacity = Math.min(0.5, A.mat.opacity + dt * ARC_OPACITY_RAMP)
+      const opG = Math.min(ARC_MAX_OPACITY, A.mats[0].uniforms.uOpacity.value + dt * ARC_OPACITY_RAMP)
+      A.mats.forEach(m => {
+        m.uniforms.uOpacity.value = opG
+        m.uniforms.uResolution.value.set(W, H)
+      })
       if (A.prog >= 1) {
         A.phase = 'hold'
         A.draw = 1
       }
     } else if (A.phase === 'hold') {
+      A.mats.forEach(m => m.uniforms.uResolution.value.set(W, H))
       if (A.age > ARC_HOLD_AGE_SEC) A.phase = 'fade'
     } else {
-      A.mat.opacity = Math.max(0, A.mat.opacity - dt * ARC_FADE_RATE)
+      const opF = Math.max(0, A.mats[0].uniforms.uOpacity.value - dt * ARC_FADE_RATE)
+      A.mats.forEach(m => {
+        m.uniforms.uOpacity.value = opF
+        m.uniforms.uResolution.value.set(W, H)
+      })
       A.el.style.opacity = '0'
-      if (A.mat.opacity <= 0) {
-        group.remove(A.line)
+      if (opF <= 0) {
+        A.lines.forEach(line => group.remove(line))
         A.geo.dispose()
-        A.mat.dispose()
+        A.mats.forEach(m => m.dispose())
         A.el.remove()
         arcs.splice(i, 1)
         continue
@@ -176,9 +210,9 @@ export function updateArcs(
 
 export function disposeArcs(arcs: ArcState[], group: THREE.Group) {
   for (const A of arcs) {
-    group.remove(A.line)
+    A.lines.forEach(line => group.remove(line))
     A.geo.dispose()
-    A.mat.dispose()
+    A.mats.forEach(m => m.dispose())
     A.el.remove()
   }
   arcs.length = 0

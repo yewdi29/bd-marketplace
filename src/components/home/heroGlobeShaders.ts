@@ -54,3 +54,36 @@ export const HERO_GLOBE_FRAGMENT_SHADER = `
     if(a<0.015) discard;
     gl_FragColor = vec4(grad(vT), a);
   }`
+
+/** Screen-space offsets for multi-pass arc thickness (px). */
+export const HERO_GLOBE_ARC_LINE_OFFSETS: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [0.6, 0],
+  [-0.6, 0],
+  [0, 0.6],
+  [0, -0.6],
+]
+
+export const HERO_GLOBE_ARC_VERTEX_SHADER = `
+  attribute vec3 aRadial;
+  uniform vec2 uPxOffset;
+  uniform vec2 uResolution;
+  varying float vFace;
+  void main(){
+    vec4 wp = modelMatrix * vec4(position,1.0);
+    vec3 wn = normalize(mat3(modelMatrix) * aRadial);
+    vec3 vd = normalize(cameraPosition - wp.xyz);
+    vFace = dot(wn, vd);
+    vec4 clip = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    clip.xy += uPxOffset * (2.0 / uResolution) * clip.w;
+    gl_Position = clip;
+  }`
+
+export const HERO_GLOBE_ARC_FRAGMENT_SHADER = `
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  varying float vFace;
+  void main(){
+    float face = mix(0.12, 1.0, smoothstep(-0.6, 0.45, vFace));
+    gl_FragColor = vec4(uColor, uOpacity * face);
+  }`
