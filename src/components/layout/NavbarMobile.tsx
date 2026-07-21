@@ -27,6 +27,7 @@ export default function NavbarMobile({
   const [searchTakeoverOpen, setSearchTakeoverOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const searchTakeoverRef = useRef<MobileSearchTakeoverHandle>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
 
   function openSearchTakeover() {
     setMobileMenuOpen(false)
@@ -61,10 +62,15 @@ export default function NavbarMobile({
             <SearchBarTrigger onClick={openSearchTakeover} />
           </>
         )}
-        <MobileNavTrigger user={authUser} onClick={openMobileMenu} />
+        <MobileNavTrigger ref={menuTriggerRef} user={authUser} onClick={openMobileMenu} />
       </div>
 
-      <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={authUser} />
+      <MobileMenu
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        user={authUser}
+        triggerRef={menuTriggerRef}
+      />
       <MobileSearchTakeover
         ref={searchTakeoverRef}
         open={searchTakeoverOpen}

@@ -174,6 +174,7 @@ export default function Footer() {
                   Language
                 </label>
                 <select
+                  aria-label="Language"
                   defaultValue="English"
                   className="w-full font-sans text-sm rounded-[10px] px-3 py-2 focus:outline-none"
                   style={{
@@ -193,6 +194,7 @@ export default function Footer() {
                   Currency
                 </label>
                 <select
+                  aria-label="Currency"
                   defaultValue="USD"
                   className="w-full font-sans text-sm rounded-[10px] px-3 py-2 focus:outline-none"
                   style={{

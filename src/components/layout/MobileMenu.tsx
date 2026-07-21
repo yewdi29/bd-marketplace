@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { getInitials, PROFILE_MENU_LINKS, type ProfileUser } from '@/components/ui/ProfileDropdown'
 import { navLinkPrefetch } from '@/lib/navLink'
 import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
+import { trapFocus } from '@/lib/focusTrap'
 
 // Primary navigation links — always shown, regardless of auth state
 const NAV_LINKS = [
@@ -31,26 +32,48 @@ interface MobileMenuProps {
   open: boolean
   onClose: () => void
   user: ProfileUser | null
+  /** Hamburger / avatar trigger — focus returns here when the menu closes. */
+  triggerRef?: RefObject<HTMLElement | null>
 }
 
-export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
+export default function MobileMenu({ open, onClose, user, triggerRef }: MobileMenuProps) {
   const router = useRouter()
   const [toast, setToast] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Lock background scroll and handle Escape while the menu is open
+  // When closed: inert removes panel + descendants from tab order and assistive tech.
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!panel) return
+
+    if (open) {
+      panel.removeAttribute('inert')
+    } else {
+      panel.setAttribute('inert', '')
+    }
+  }, [open])
+
+  // Lock background scroll, Escape to close, focus trap while open
   useEffect(() => {
     if (!open) return
 
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
+    closeButtonRef.current?.focus()
+
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (panelRef.current) trapFocus(panelRef.current, e)
     }
     document.addEventListener('keydown', handleKeyDown)
 
@@ -59,6 +82,15 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [open, onClose])
+
+  // Return focus to the menu trigger when the drawer closes
+  const wasOpenRef = useRef(open)
+  useEffect(() => {
+    if (wasOpenRef.current && !open) {
+      triggerRef?.current?.focus()
+    }
+    wasOpenRef.current = open
+  }, [open, triggerRef])
 
   async function handleSignOut() {
     onClose()
@@ -90,8 +122,10 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
 
       {/* Slide-in panel — min(75%, 400px) wide at every size below 1024px */}
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
+        aria-label="Menu"
         aria-hidden={!open}
         className={[
           'fixed inset-y-0 right-0 bg-white flex flex-col z-[110] transition-transform duration-300',
@@ -103,6 +137,7 @@ export default function MobileMenu({ open, onClose, user }: MobileMenuProps) {
         {/* Close button */}
         <div className="flex justify-end shrink-0 px-2 pt-2">
           <button
+            ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close menu"
             className="flex items-center justify-center text-ink-2 hover:text-ink transition-colors"

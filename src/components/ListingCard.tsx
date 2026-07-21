@@ -1,10 +1,18 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import dynamic from 'next/dynamic'
 import ListingCardContent, { getListingCardMeta } from '@/components/listings/ListingCardContent'
 import ListingCardFlagStyles from '@/components/listings/ListingCardFlagStyles'
-import ListingCardSaveButton from '@/components/listings/ListingCardSaveButton'
-import ListingCardShareButton from '@/components/listings/ListingCardShareButton'
 import type { ListingCardListing } from '@/components/listings/listingCardTypes'
+
+const ListingCardSaveButton = dynamic(
+  () => import('@/components/listings/ListingCardSaveButton'),
+  { ssr: false },
+)
+const ListingCardShareButton = dynamic(
+  () => import('@/components/listings/ListingCardShareButton'),
+  { ssr: false },
+)
 
 export type { ListingCardListing } from '@/components/listings/listingCardTypes'
 export { toListingCardListing } from '@/components/listings/listingCardTypes'

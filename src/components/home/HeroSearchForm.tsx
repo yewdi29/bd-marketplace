@@ -1,8 +1,13 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useGlowBorder } from '@/hooks/useGlowBorder'
+import type { GlowBorderHandle } from '@/components/ui/GlowBorderCanvas'
+
+const GlowBorderCanvas = dynamic(() => import('@/components/ui/GlowBorderCanvas'), {
+  ssr: false,
+})
 
 const CATEGORIES = [
   { label: 'Drill Pipe',          slug: 'drill_pipe' },
@@ -21,14 +26,28 @@ export default function HeroSearchForm() {
   const [focused, setFocused] = useState(false)
   const router = useRouter()
 
-  // Canvas glow — hero variant uses slightly stronger burst/settle
-  const canvasRef    = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLFormElement>(null)
-  const { onFocus: glowFocus, onBlur: glowBlur } = useGlowBorder(
-    canvasRef,
-    containerRef,
-    { burstSpeed: 1.5, settleSpeed: 0.15, arcLen: 78, glowIntensity: 1.4 },
-  )
+  const glowHandleRef = useRef<GlowBorderHandle | null>(null)
+  const [glowMounted, setGlowMounted] = useState(false)
+  const pendingGlowFocusRef = useRef(false)
+
+  function armGlow(focus: boolean) {
+    if (!glowMounted) {
+      if (focus) pendingGlowFocusRef.current = true
+      setGlowMounted(true)
+      return
+    }
+    if (focus) glowHandleRef.current?.focus()
+    else glowHandleRef.current?.blur()
+  }
+
+  function handleGlowReady(handle: GlowBorderHandle) {
+    glowHandleRef.current = handle
+    if (pendingGlowFocusRef.current) {
+      pendingGlowFocusRef.current = false
+      handle.focus()
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,16 +68,19 @@ export default function HeroSearchForm() {
       {/* Outer wrapper — canvas is positioned relative to this */}
       <div className="relative">
 
-        {/* Canvas glow layer behind the pill */}
-        <canvas
-          ref={canvasRef}
-          style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
-        />
+        {glowMounted && (
+          <GlowBorderCanvas
+            containerRef={containerRef}
+            options={{ burstSpeed: 1.5, settleSpeed: 0.15, arcLen: 78, glowIntensity: 1.4 }}
+            onReady={handleGlowReady}
+          />
+        )}
 
         {/* Pill form — z-index 1 */}
         <form
           ref={containerRef}
           onSubmit={handleSubmit}
+          onPointerDown={() => armGlow(false)}
           className="relative flex items-center bg-white rounded-pill px-2 py-2"
           style={{ ...pillStyle, zIndex: 1, boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}
         >
@@ -79,8 +101,8 @@ export default function HeroSearchForm() {
             type="text"
             value={q}
             onChange={e => setQ(e.target.value)}
-            onFocus={() => { setFocused(true); glowFocus() }}
-            onBlur={() => { setFocused(false); glowBlur() }}
+            onFocus={() => { setFocused(true); armGlow(true) }}
+            onBlur={() => { setFocused(false); armGlow(false) }}
             placeholder="Search equipment..."
             className="flex-1 bg-transparent text-sm font-sans text-ink placeholder:text-ink-3 focus:outline-none px-3 min-w-0"
           />

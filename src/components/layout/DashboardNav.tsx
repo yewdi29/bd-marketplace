@@ -18,6 +18,7 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
   const [searchTakeoverOpen, setSearchTakeoverOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const searchTakeoverRef = useRef<MobileSearchTakeoverHandle>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
 
   // Mutually exclusive — opening one always closes the other first.
   function openSearchTakeover() {
@@ -81,10 +82,15 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
       <div className="flex lg:hidden items-center h-full px-3 gap-2">
         <LogoIcon />
         <SearchBarTrigger onClick={openSearchTakeover} />
-        <MobileNavTrigger user={user} onClick={openMobileMenu} />
+        <MobileNavTrigger ref={menuTriggerRef} user={user} onClick={openMobileMenu} />
       </div>
 
-      <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} user={user} />
+      <MobileMenu
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        user={user}
+        triggerRef={menuTriggerRef}
+      />
       <MobileSearchTakeover
         ref={searchTakeoverRef}
         open={searchTakeoverOpen}

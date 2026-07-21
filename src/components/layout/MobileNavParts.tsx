@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { forwardRef } from 'react'
 import { getInitials, type ProfileUser } from '@/components/ui/ProfileDropdown'
 
 // ─── Shared pieces for every <1024px navbar (public Navbar + DashboardNav) ───
@@ -74,16 +75,16 @@ export function SearchBarTrigger({ onClick }: { onClick: () => void }) {
 // hamburger. Logged in: circular avatar alone (no name/chevron pill).
 // Pages that require authentication (dashboard, settings, etc.) always
 // pass a real user, so the hamburger branch simply never applies there.
-export function MobileNavTrigger({
-  user,
-  onClick,
-}: {
-  user: ProfileUser | null
-  onClick: () => void
-}) {
+export const MobileNavTrigger = forwardRef<
+  HTMLButtonElement,
+  {
+    user: ProfileUser | null
+    onClick: () => void
+  }
+>(function MobileNavTrigger({ user, onClick }, ref) {
   if (user) {
     return (
-      <button onClick={onClick} aria-label="Open menu" className={TAP_TARGET} style={TAP_SIZE}>
+      <button ref={ref} onClick={onClick} aria-label="Open menu" className={TAP_TARGET} style={TAP_SIZE}>
         <div className="w-9 h-9 rounded-full bg-orange flex items-center justify-center">
           <span className="text-white text-sm font-bold leading-none">
             {getInitials(user.full_name, user.email)}
@@ -95,6 +96,7 @@ export function MobileNavTrigger({
 
   return (
     <button
+      ref={ref}
       onClick={onClick}
       aria-label="Open menu"
       className={`${TAP_TARGET} text-ink-2 hover:text-ink transition-colors`}
@@ -103,4 +105,4 @@ export function MobileNavTrigger({
       <HamburgerIcon />
     </button>
   )
-}
+})

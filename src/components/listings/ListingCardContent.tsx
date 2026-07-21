@@ -71,7 +71,7 @@ export default function ListingCardContent({
               alt={primaryImage.alt_text ?? listing.title}
               fill
               className={imageCoverClass}
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 420px"
               priority={imagePriority}
             />
           )

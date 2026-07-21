@@ -222,6 +222,7 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Close button: top-right, 44×44px tap target
 - Scrollable content: `pb-[max(1.5rem,env(safe-area-inset-bottom))]` for notched phones
 - Body scroll locked while open
+- **Accessibility:** when closed, panel uses the `inert` attribute (removes all descendants from tab order and assistive tech); when open, focus traps inside the panel (`src/lib/focusTrap.ts`) and returns to the hamburger/avatar trigger on close
 - Logged-in: profile header (avatar, name, plan badge) + `PROFILE_MENU_LINKS` + upgrade/billing + sign out + primary nav links
 - Logged-out: Sell With Us + Sign In + primary nav links
 - Mutually exclusive with `MobileSearchTakeover` — opening either always closes the other first

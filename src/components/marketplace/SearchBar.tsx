@@ -1,9 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useGlowBorder } from '@/hooks/useGlowBorder'
+import type { GlowBorderHandle } from '@/components/ui/GlowBorderCanvas'
 import { useSearchSuggestions, logSearch } from '@/hooks/useSearchSuggestions'
+
+const GlowBorderCanvas = dynamic(() => import('@/components/ui/GlowBorderCanvas'), {
+  ssr: false,
+})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,10 +67,29 @@ export default function SearchBar({
   const inputRef     = useRef<HTMLInputElement>(null)
   const wrapperRef   = useRef<HTMLFormElement>(null)
 
-  // Canvas glow refs
-  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  // Canvas glow — lazy-mounted on first focus/click so animation code stays off the critical path
   const containerRef = useRef<HTMLDivElement>(null)
-  const { onFocus: glowFocus, onBlur: glowBlur } = useGlowBorder(canvasRef, containerRef)
+  const glowHandleRef = useRef<GlowBorderHandle | null>(null)
+  const [glowMounted, setGlowMounted] = useState(false)
+  const pendingGlowFocusRef = useRef(false)
+
+  function armGlow(focus: boolean) {
+    if (!glowMounted) {
+      if (focus) pendingGlowFocusRef.current = true
+      setGlowMounted(true)
+      return
+    }
+    if (focus) glowHandleRef.current?.focus()
+    else glowHandleRef.current?.blur()
+  }
+
+  function handleGlowReady(handle: GlowBorderHandle) {
+    glowHandleRef.current = handle
+    if (pendingGlowFocusRef.current) {
+      pendingGlowFocusRef.current = false
+      handle.focus()
+    }
+  }
 
   // Are we currently on the search/browse page?
   const isSearchPage = pathname === '/search'
@@ -167,14 +191,21 @@ export default function SearchBar({
       {/* Outer wrapper — canvas is positioned relative to this */}
       <div className="relative">
 
-        {/* Canvas glow layer — behind the pill, z-index 0 */}
-        <canvas
-          ref={canvasRef}
-          style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
-        />
+        {/* Canvas glow layer — mounted on first interaction */}
+        {glowMounted && (
+          <GlowBorderCanvas
+            containerRef={containerRef}
+            onReady={handleGlowReady}
+          />
+        )}
 
         {/* Input pill — z-index 1, above canvas */}
-        <div ref={containerRef} className="flex items-center overflow-hidden" style={pillStyle}>
+        <div
+          ref={containerRef}
+          className="flex items-center overflow-hidden"
+          style={pillStyle}
+          onPointerDown={() => armGlow(false)}
+        >
 
           {/* Search icon */}
           <span className="pl-3.5 text-ink-3 shrink-0">
@@ -187,8 +218,8 @@ export default function SearchBar({
             type="text"
             value={value}
             onChange={e => { setValue(e.target.value); setDropdownOpen(true) }}
-            onFocus={() => { setFocused(true); glowFocus(); if (variant === 'nav') setDropdownOpen(true) }}
-            onBlur={() => { setFocused(false); glowBlur() }}
+            onFocus={() => { setFocused(true); armGlow(true); if (variant === 'nav') setDropdownOpen(true) }}
+            onBlur={() => { setFocused(false); armGlow(false) }}
             onKeyDown={handleKeyDown}
             placeholder={resolvedPlaceholder}
             className="flex-1 bg-transparent text-sm font-sans text-ink placeholder:text-ink-3 focus:outline-none px-2.5 h-full"
