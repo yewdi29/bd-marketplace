@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { sellerPortalHref } from '@/lib/sellerPortal'
+import { HERO_CTA_PRIMARY } from '@/components/home/heroCtaClasses'
 
 export default function HeroListEquipmentLink() {
   const { authUser } = useAuth()
@@ -11,7 +12,7 @@ export default function HeroListEquipmentLink() {
   return (
     <Link
       href={href}
-      className="inline-flex items-center px-[18px] py-2 bg-orange text-white rounded-pill font-bold text-[13px] no-underline whitespace-nowrap font-sans transition-all duration-200 hover:bg-orange-lt"
+      className={HERO_CTA_PRIMARY}
       style={{ boxShadow: '0 6px 20px rgba(255,107,53,0.3)' }}
     >
       List Your Equipment

@@ -3,6 +3,7 @@ import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
 import { dispatchNewInquirySellerEmail } from '@/lib/email/transactionalEmails'
 import type { InquiryEmailContext } from '@/lib/email/inquiryEmails'
+import { loadInquiryVerification } from '@/lib/inquiryVerification/load'
 
 export async function GET(
   _req: NextRequest,
@@ -114,6 +115,7 @@ export async function PATCH(
 
     const sellerEmail = listing?.users?.email
     if (sellerEmail) {
+      const verification = await loadInquiryVerification(service, id)
       await dispatchNewInquirySellerEmail({
         sellerEmail,
         leadId: id,
@@ -124,6 +126,7 @@ export async function PATCH(
         buyerCompany: emailCtx.buyerCompany,
         buyerPhone: emailCtx.buyerPhone,
         buyerMessage: emailCtx.message,
+        verification,
       })
     }
 

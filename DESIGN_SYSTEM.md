@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: July 2026 — v2.34.3
+> Last updated: July 2026 — v2.34.5
 
 ---
 
@@ -352,7 +352,7 @@ Canonical newsletter signup block for all public pages. Do not build one-off new
 - **Label:** `STAY INFORMED` — `font-mono text-[11px] font-bold text-orange uppercase tracking-[0.12em] mb-3`
 - **Headline:** shared homepage section H2 (`clamp(28px, 4vw, 40px)`, `-0.03em` tracking) — "Stay Ahead of the Market."
 - **Subtext:** `mt-4 font-sans text-ink-3 text-base leading-relaxed`
-- **Form:** `NewsletterForm` via deferred `NewsletterFormLazy` — pill input (`40px` height, `100px` radius, `1.5px #E8E9EA` border) + orange Subscribe button (`shadow-orange-glow`)
+- **Form:** `NewsletterForm` via deferred `NewsletterFormLazy` — pill input + orange Subscribe button (`shadow-orange-glow`); side-by-side on tablet/desktop (`730px+`, `40px` height); stacked full-width on mobile (`<730px`, `48px` min-height)
 - **Used on:** homepage (`source="homepage"`), business/seller profile (`source="seller_profile"`)
 
 ### New Listing Modal (`src/components/listings/NewListingModal.tsx`)
@@ -470,6 +470,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - Hero on frosted glass card surface inside hero grid (see §8 glassmorphism exception)
 - Orange word in hero headline for emphasis — one word only (currently "Equipment")
 - Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot
+- **Hero CTAs:** below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, compact `py-2` / `text-[13px]` pills (`heroCtaClasses.ts`)
 - **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
 - **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
 - **How It Works:** centered header with `HOW IT WORKS` orange label; step cards in 3-column desktop row
@@ -606,6 +607,8 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.34.5 | July 2026 | **Newsletter form mobile layout.** Shared `NewsletterForm` stacks email input + Subscribe button below 730px (full-width, 48px min-height); tablet/desktop keep inline 40px row. Applies globally via `NewsletterSection`. |
+| v2.34.4 | July 2026 | **Hero CTA mobile tap targets.** Homepage hero buttons stack vertically below 730px only with full-width 48px-min-height pills; tablet and desktop keep compact side-by-side layout. Shared classes in `heroCtaClasses.ts`. |
 | v2.34.3 | July 2026 | **Hero globe refresh.** Arcs use shader-based GL lines with facing fade and 5-pass screen-space thickness (replaces Line2 addon). Faster arc timing (4.2s grow/hold, 1.5s spawn). Initial globe rotation `y: -1.92`. Labels expanded to 8 items with updated card shadow/border styling. |
 | v2.34.2 | July 2026 | **Hero globe arc color.** Homepage WebGL globe connection arcs switched from orange HSL (~38°) to purple HSL (~274–292°) in `heroGlobeArcs.ts`. Globe labels and map dots unchanged. |
 | v2.34.1 | July 2026 | **Enterprise tier block.** Shared `EnterpriseTierBlock`: eyebrow "Teams & organizations" (science blue), "Enterprise" as 22px card title, feature checklist (no public pricing), wide row below tier grids on `/pricing` and `/dashboard/upgrade`. |

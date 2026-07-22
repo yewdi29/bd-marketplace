@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'The terms and conditions governing your use of Black Diamond Marketplace.',
 }
 
-const LAST_UPDATED = 'June 2026'
+const LAST_UPDATED = 'July 2026'
 
 export default function TermsPage() {
   return (
@@ -103,6 +103,21 @@ export default function TermsPage() {
           </ul>
           <p className="mt-4">
             All equipment is listed and sold as-is between buyer and seller. Black Diamond Marketplace is not a party to any transaction between buyers and sellers.
+          </p>
+          <p className="mt-4">
+            Black Diamond Marketplace may display a membership status indicator (for example,
+            &ldquo;Verified Member&rdquo;) on buyer inquiries, reflecting the buyer&rsquo;s current
+            paid membership tier at the time of inquiry. This indicator confirms membership status
+            only — it is not a verification of the buyer&rsquo;s identity, intent,
+            creditworthiness, or legitimacy as a purchaser, and does not constitute a guarantee of
+            any kind. Similarly, any automated risk warnings shown alongside an inquiry (for example,
+            flagging language patterns commonly associated with fraudulent transactions) are provided
+            as an informational aid only. Black Diamond Marketplace does not guarantee the
+            detection of fraudulent inquiries, and sellers are solely responsible for exercising
+            their own judgment and due diligence before proceeding with any transaction.
+          </p>
+          <p className="mt-4 text-ink-3 text-xs">
+            [Draft — inquiry verification and risk-indicator disclaimers subject to attorney review.]
           </p>
         </section>
 

@@ -1,5 +1,6 @@
 import HeroGlobeLazy from '@/components/home/HeroGlobeLazy'
 import HeroListEquipmentLink from '@/components/home/HeroListEquipmentLink'
+import { HERO_CTA_OUTLINE, HERO_CTA_ROW } from '@/components/home/heroCtaClasses'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
@@ -163,11 +164,8 @@ export default function HomePage() {
                 From oil fields to construction sites — find what your operation needs, fast.
               </p>
 
-              <div className="flex justify-center gap-3 min-[1000px]:justify-start" style={{ alignItems: 'center' }}>
-                <Link
-                  href="/search"
-                  className="inline-flex items-center px-[18px] py-2 bg-white text-ink border border-[#E8E9EA] rounded-pill font-bold text-[13px] no-underline whitespace-nowrap font-sans transition-all duration-200 hover:text-orange hover:border-orange"
-                >
+              <div className={HERO_CTA_ROW}>
+                <Link href="/search" className={HERO_CTA_OUTLINE}>
                   Browse Equipment
                 </Link>
                 <HeroListEquipmentLink />

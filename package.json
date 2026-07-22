@@ -31,6 +31,7 @@
     "@tiptap/extension-placeholder": "^3.27.1",
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
+    "@vercel/functions": "^2.2.13",
     "d3-geo": "^3.1.1",
     "flag-icons": "^7.5.0",
     "lucide-react": "^1.17.0",

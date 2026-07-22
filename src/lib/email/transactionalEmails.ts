@@ -5,6 +5,8 @@ import ListingRemoved from '../../../emails/templates/ListingRemoved'
 import NewInquirySeller from '../../../emails/templates/NewInquirySeller'
 import InquiryReceivedBuyer from '../../../emails/templates/InquiryReceivedBuyer'
 import PlanDowngradeListingOverflow from '../../../emails/templates/PlanDowngradeListingOverflow'
+import type { InquiryVerificationRecord } from '@/lib/inquiryVerification'
+import { formatRiskFlagsForDisplay } from '@/lib/inquiryVerification'
 import { getEmailAppUrl } from './resendClient'
 import { sendTransactionalEmailSafe } from './sendTransactionalEmail'
 
@@ -82,6 +84,7 @@ export async function dispatchNewInquirySellerEmail(opts: {
   buyerMessage: string
   buyerCompany?: string | null
   buyerPhone?: string | null
+  verification: InquiryVerificationRecord
 }): Promise<void> {
   const listingUrl = opts.listingSlug
     ? `${getEmailAppUrl()}/listings/${opts.listingSlug}`
@@ -102,6 +105,12 @@ export async function dispatchNewInquirySellerEmail(opts: {
       buyerPhone: opts.buyerPhone,
       buyerMessage: opts.buyerMessage,
       listingUrl,
+      showVerification: true,
+      trustLabel: opts.verification.trust_label,
+      buyerTierAtSubmission: opts.verification.buyer_tier_at_submission,
+      contentRiskScore: opts.verification.content_risk_score,
+      contentRiskFlagSummary: formatRiskFlagsForDisplay(opts.verification.content_risk_flags),
+      agentReasoning: opts.verification.agent_reasoning,
     }),
   })
 }

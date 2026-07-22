@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/expire-org-invites",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/inquiry-seller-fallback",
+      "schedule": "* * * * *"
     }
   ]
 }

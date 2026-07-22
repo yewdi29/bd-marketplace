@@ -1,20 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
+import {
+  consumeAuthRedirect,
+  isSafeRedirectPath,
+  resolveAuthRedirect,
+  storeAuthRedirect,
+} from '@/lib/authRedirect'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const redirectTo = searchParams.get('redirectTo')
+  const signupHref = redirectTo && isSafeRedirectPath(redirectTo)
+    ? `/auth/signup?redirectTo=${encodeURIComponent(redirectTo)}`
+    : '/auth/signup'
+
+  useEffect(() => {
+    if (isSafeRedirectPath(redirectTo)) {
+      storeAuthRedirect(redirectTo)
+    }
+  }, [redirectTo])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -29,15 +47,14 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
+    const destination = resolveAuthRedirect(redirectTo, consumeAuthRedirect())
+    router.push(destination)
     router.refresh()
   }
 
   return (
     <div className="min-h-[calc(100vh-82px)] flex items-center justify-center px-4 py-12 bg-bg">
       <div className="w-full max-w-md">
-
-        {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex mb-6">
             <Image src="/bd_logo-black.svg" alt="Black Diamond" width={140} height={40} priority style={{ height: '27px', width: 'auto' }} />
@@ -50,7 +67,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Card */}
         <div className="bg-white rounded-[20px] p-8" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
           <form onSubmit={handleLogin} className="space-y-5">
             <Input
@@ -98,7 +114,7 @@ export default function LoginPage() {
             </Link>
             <p className="text-sm font-sans text-ink-3">
               No account?{' '}
-              <Link href="/auth/signup" className="font-semibold text-orange hover:text-orange-lt transition-colors">
+              <Link href={signupHref} className="font-semibold text-orange hover:text-orange-lt transition-colors">
                 Create one free
               </Link>
             </p>
@@ -106,5 +122,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-82px)] bg-bg" />}>
+      <LoginForm />
+    </Suspense>
   )
 }

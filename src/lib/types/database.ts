@@ -200,8 +200,25 @@ export interface Lead {
   message: string
   status: LeadStatus
   tier: ListingTier | null
+  quality_score?: number | null
+  quality_classification?: string | null
+  quality_reasoning?: string | null
+  seller_inquiry_email_sent_at?: string | null
   created_at: string
   updated_at: string
+}
+
+export type InquiryTrustLabel = 'verified_member' | 'unverified_free'
+
+export interface InquiryVerification {
+  id: string
+  inquiry_id: string
+  buyer_tier_at_submission: string
+  trust_label: InquiryTrustLabel
+  content_risk_score: number
+  content_risk_flags: string[]
+  agent_reasoning: string
+  created_at: string
 }
 
 export interface Article {

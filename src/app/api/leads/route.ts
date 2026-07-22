@@ -6,41 +6,10 @@ import {
   sendAdminInquiryAlert,
   type InquiryEmailContext,
 } from '@/lib/email/inquiryEmails'
-import {
-  dispatchInquiryReceivedBuyerEmail,
-  dispatchNewInquirySellerEmail,
-} from '@/lib/email/transactionalEmails'
+import { dispatchInquiryReceivedBuyerEmail } from '@/lib/email/transactionalEmails'
+import { scheduleInquiryVerification } from '@/lib/inquiryVerification/scheduleVerification'
 
 type DealTier = 'green' | 'yellow' | 'red'
-
-async function processInquiryNotifications(
-  dealTier: DealTier,
-  sellerEmail: string,
-  ctx: InquiryEmailContext,
-  leadId: string,
-): Promise<void> {
-  await dispatchInquiryReceivedBuyerEmail({
-    buyerEmail: ctx.buyerEmail,
-    leadId,
-    listingTitle: ctx.listingTitle,
-  })
-
-  if (dealTier === 'green') {
-    await dispatchNewInquirySellerEmail({
-      sellerEmail,
-      leadId,
-      listingTitle: ctx.listingTitle,
-      listingSlug: ctx.listingSlug,
-      buyerName: ctx.buyerName,
-      buyerEmail: ctx.buyerEmail,
-      buyerCompany: ctx.buyerCompany,
-      buyerPhone: ctx.buyerPhone,
-      buyerMessage: ctx.message,
-    })
-  } else {
-    await sendAdminInquiryAlert(dealTier, ctx)
-  }
-}
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
@@ -82,6 +51,14 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: { user } } = await supabase.auth.getUser()
+
+  if (listing_id && !user) {
+    return NextResponse.json(
+      { error: 'Sign in to submit an inquiry on a listing.' },
+      { status: 401 }
+    )
+  }
+
   const service = createServiceClient()
 
   // ── Path A: listing-specific inquiry ──────────────────────────────────────
@@ -111,7 +88,7 @@ export async function POST(request: NextRequest) {
       .insert({
         listing_id,
         seller_id: listing.seller_id,
-        buyer_id: user?.id ?? null,
+        buyer_id: user!.id,
         buyer_name,
         buyer_email,
         buyer_phone: buyer_phone ?? null,
@@ -127,21 +104,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const seller = listing.users as unknown as { email: string } | null
-    const sellerEmail = seller?.email
-    if (sellerEmail) {
-      const emailCtx: InquiryEmailContext = {
-        listingTitle: listing.title,
-        listingPrice: Number(listing.price),
-        priceUnit: listing.price_unit ?? 'total',
-        listingSlug: listing.slug,
-        buyerName: buyer_name,
-        buyerEmail: buyer_email,
-        buyerPhone: buyer_phone,
-        buyerCompany: buyer_company,
-        message,
-      }
-      await processInquiryNotifications(dealTier, sellerEmail, emailCtx, data.id)
+    const emailCtx: InquiryEmailContext = {
+      listingTitle: listing.title,
+      listingPrice: Number(listing.price),
+      priceUnit: listing.price_unit ?? 'total',
+      listingSlug: listing.slug,
+      buyerName: buyer_name,
+      buyerEmail: buyer_email,
+      buyerPhone: buyer_phone,
+      buyerCompany: buyer_company,
+      message,
+    }
+
+    // Buyer confirmation immediately — never waits on verification.
+    void dispatchInquiryReceivedBuyerEmail({
+      buyerEmail: buyer_email,
+      leadId: data.id,
+      listingTitle: listing.title,
+    })
+
+    if (dealTier === 'green') {
+      // Seller email is sent async after Paperclip verification (or 30s fallback cron).
+      scheduleInquiryVerification(data.id)
+    } else {
+      void sendAdminInquiryAlert(dealTier, emailCtx)
+      // Still run verification async so admin approve can load trust/risk data later.
+      scheduleInquiryVerification(data.id)
     }
 
     return NextResponse.json({ lead: data }, { status: 201 })

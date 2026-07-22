@@ -38,6 +38,7 @@ export const CONFIDENCE_COLORS = {
 export const AGENT_PILL_COLORS: Record<string, PillColors> = {
   'Listing Verifier': { text: '#0E7490', bg: '#ECFEFF', border: '#A5F3FC' },
   'Lead Scorer': { text: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  'Inquiry Verification Agent': { text: '#0E7490', bg: '#ECFEFF', border: '#A5F3FC' },
   'Red Alert': { text: '#E85D4A', bg: '#FFF1EE', border: '#FACFC7' },
 }
 

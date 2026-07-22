@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Input from '@/components/ui/Input'
+import { isSafeRedirectPath, storeAuthRedirect } from '@/lib/authRedirect'
 
 const COUNTRIES = [
   'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Colombia', 'Venezuela', 'Ecuador', 'Peru', 'Trinidad and Tobago',
@@ -17,7 +18,27 @@ const COUNTRIES = [
 ]
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-82px)] bg-bg" />}>
+      <SignupForm />
+    </Suspense>
+  )
+}
+
+function SignupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo')
+
+  useEffect(() => {
+    if (isSafeRedirectPath(redirectTo)) {
+      storeAuthRedirect(redirectTo)
+    }
+  }, [redirectTo])
+
+  const loginHref = redirectTo && isSafeRedirectPath(redirectTo)
+    ? `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`
+    : '/auth/login'
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -218,7 +239,7 @@ export default function SignupPage() {
           <div className="mt-6 text-center">
             <p className="text-sm font-sans text-ink-3">
               Already have an account?{' '}
-              <Link href="/auth/login" className="font-semibold text-orange hover:text-orange-lt transition-colors">
+              <Link href={loginHref} className="font-semibold text-orange hover:text-orange-lt transition-colors">
                 Sign in
               </Link>
             </p>
