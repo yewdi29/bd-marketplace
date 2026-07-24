@@ -2,6 +2,7 @@ import Image from 'next/image'
 import type { ReactNode } from 'react'
 import { formatPrice } from '@/lib/formatPrice'
 import { countryFlagClass, isNewListing } from '@/lib/listingUtils'
+import ListingLocationPill from '@/components/listings/ListingLocationPill'
 import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 
 export interface ListingCardContentProps {
@@ -45,7 +46,6 @@ export default function ListingCardContent({
     listing.countries?.name,
   ].filter(Boolean)
   const locationText = locationParts.length > 0 ? locationParts.join(', ') : null
-  const flagClass = countryFlagClass(listing.countries?.iso_code)
 
   const imageCoverClass = ['absolute inset-0 w-full h-full object-cover', imageClassName]
     .filter(Boolean)
@@ -132,32 +132,12 @@ export default function ListingCardContent({
         </p>
 
         {locationText && (
-          <span
-            className="inline-flex items-center font-sans"
-            style={{
-              background: '#F7F8F9',
-              border: '1px solid #E8E9EA',
-              color: '#4A4D52',
-              fontSize: '11px',
-              borderRadius: '100px',
-              padding: '3px 10px',
-              gap: flagClass ? '7px' : undefined,
-            }}
-          >
-            {flagClass && (
-              <span
-                className="inline-flex shrink-0 overflow-hidden border border-[#E8E9EA]"
-                style={{ width: 17, height: 17, borderRadius: '50%' }}
-                aria-hidden="true"
-              >
-                <span
-                  className={flagClass}
-                  style={{ width: 17, height: 17, objectFit: 'cover', backgroundSize: 'cover' }}
-                />
-              </span>
-            )}
-            {locationText}
-          </span>
+          <ListingLocationPill
+            locationCity={listing.location_city}
+            locationState={listing.location_state}
+            countryName={listing.countries?.name}
+            countryIsoCode={listing.countries?.iso_code}
+          />
         )}
       </div>
 

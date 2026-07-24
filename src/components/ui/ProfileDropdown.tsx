@@ -3,6 +3,16 @@
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  Bookmark,
+  Building2,
+  CreditCard,
+  LayoutList,
+  LogOut,
+  Settings,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
 import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
@@ -23,12 +33,29 @@ export interface ProfileUser {
   has_organization?: boolean
 }
 
+export interface ProfileMenuLink {
+  label: string
+  href: string
+  icon: LucideIcon
+}
+
 // Shared with the mobile slide-in menu so both surfaces link to the same places
-export const PROFILE_MENU_LINKS = [
-  { label: 'My Listings', href: '/dashboard' },
-  { label: 'Saved Equipment', href: '/dashboard?tab=saved' },
-  { label: 'Account Settings', href: '/dashboard/settings' },
+export const PROFILE_MENU_LINKS: ProfileMenuLink[] = [
+  { label: 'My Listings', href: '/dashboard', icon: LayoutList },
+  { label: 'Saved Equipment', href: '/dashboard?tab=saved', icon: Bookmark },
+  { label: 'Account Settings', href: '/dashboard/settings', icon: Settings },
 ]
+
+export const PROFILE_COMPANY_SETTINGS_LINK: ProfileMenuLink = {
+  label: 'Company Settings',
+  href: '/dashboard/organization',
+  icon: Building2,
+}
+
+/** Small Lucide icon for profile menu rows — desktop dropdown + mobile drawer. */
+export function ProfileMenuIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return <Icon size={16} strokeWidth={2} className="shrink-0" aria-hidden />
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // Exported so the mobile slide-in menu (same logged-in identity, different
@@ -162,20 +189,22 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                   href={item.href}
                   prefetch={navLinkPrefetch(item.href)}
                   onClick={() => setDropdownOpen(false)}
-                  className="flex items-center px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
                 >
+                  <ProfileMenuIcon icon={item.icon} />
                   {item.label}
                 </Link>
               ))}
 
               {user.has_organization && (
                 <Link
-                  href="/dashboard/organization"
-                  prefetch={navLinkPrefetch('/dashboard/organization')}
+                  href={PROFILE_COMPANY_SETTINGS_LINK.href}
+                  prefetch={navLinkPrefetch(PROFILE_COMPANY_SETTINGS_LINK.href)}
                   onClick={() => setDropdownOpen(false)}
-                  className="flex items-center px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
+                  className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
                 >
-                  Company Settings
+                  <ProfileMenuIcon icon={PROFILE_COMPANY_SETTINGS_LINK.icon} />
+                  {PROFILE_COMPANY_SETTINGS_LINK.label}
                 </Link>
               )}
 
@@ -184,7 +213,10 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                 className="w-full flex items-center justify-between px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
                 onClick={handleManageSubscription}
               >
-                <span>{user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}</span>
+                <span className="flex items-center gap-2.5">
+                  <ProfileMenuIcon icon={user.plan === 'max' ? CreditCard : Sparkles} />
+                  <span>{user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}</span>
+                </span>
                 {user.plan === 'free' && (
                   <span
                     className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-pill border"
@@ -199,8 +231,9 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
             <div className="border-t border-[#E8E9EA] py-1.5">
               <button
                 onClick={handleSignOut}
-                className="w-full px-4 py-2 text-sm text-left text-ink-3 hover:text-ink hover:bg-bg transition-colors"
+                className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left text-ink-3 hover:text-ink hover:bg-bg transition-colors"
               >
+                <ProfileMenuIcon icon={LogOut} />
                 Sign Out
               </button>
             </div>

@@ -28,7 +28,7 @@ export default function OwnershipTransferRequest({
       <EmailButton href={acceptUrl}>Review and accept</EmailButton>
       <EmailParagraph>
         Or copy this link:{' '}
-        <Link href={acceptUrl} style={emailInlineLinkStyle}>
+        <Link href={acceptUrl} style={emailInlineLinkStyle} className="email-orange-link">
           {acceptUrl}
         </Link>
       </EmailParagraph>

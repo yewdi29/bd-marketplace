@@ -38,8 +38,18 @@ export const EMAIL_LOGO_URL = 'https://blackdiamondmkt.com/bd_logo-black.svg'
 export const emailFontFamily =
   'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
 
+/** Matches container max-width — standard email mobile breakpoint for this system. */
+export const EMAIL_MOBILE_BREAKPOINT = '600px'
+
 export const emailInlineLinkStyle = {
   color: emailColors.orange,
+  textDecoration: 'underline',
+} as const
+
+/** Orange inline text link with bold weight (e.g. listing title in summary lines). */
+export const emailOrangeLinkBoldStyle = {
+  color: emailColors.orange,
+  fontWeight: 700,
   textDecoration: 'underline',
 } as const
 
@@ -55,10 +65,33 @@ interface EmailLayoutProps {
 export default function EmailLayout({ preview, title, children }: EmailLayoutProps) {
   return (
     <Html>
-      <Head />
+      <Head>
+        <style>
+          {`
+            @media only screen and (max-width: ${EMAIL_MOBILE_BREAKPOINT}) {
+              .email-body {
+                background-color: ${emailColors.white} !important;
+                padding: 0 !important;
+              }
+              .email-container {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+              }
+            }
+            a.email-orange-link {
+              text-decoration: underline !important;
+            }
+            a.email-button {
+              text-decoration: none !important;
+            }
+          `}
+        </style>
+      </Head>
       <Preview>{preview}</Preview>
-      <Body style={bodyStyle}>
-        <Container style={containerStyle}>
+      <Body style={bodyStyle} className="email-body">
+        <Container style={containerStyle} className="email-container">
           <Section style={logoSectionStyle}>
             <Img
               src={EMAIL_LOGO_URL}
@@ -77,11 +110,11 @@ export default function EmailLayout({ preview, title, children }: EmailLayoutPro
           <Text style={footerStyle}>
             Black Diamond Marketplace
             <br />
-            <Link href="https://blackdiamondmkt.com" style={footerLinkStyle}>
+            <Link href="https://blackdiamondmkt.com" style={footerLinkStyle} className="email-orange-link">
               blackdiamondmkt.com
             </Link>
             <br />
-            <Link href={`mailto:${EMAIL_SUPPORT_ADDRESS}`} style={footerLinkStyle}>
+            <Link href={`mailto:${EMAIL_SUPPORT_ADDRESS}`} style={footerLinkStyle} className="email-orange-link">
               {EMAIL_SUPPORT_ADDRESS}
             </Link>
           </Text>
@@ -97,7 +130,7 @@ export function EmailParagraph({ children }: { children: ReactNode }) {
 
 export function EmailButton({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} style={buttonStyle}>
+    <Link href={href} style={buttonStyle} className="email-button">
       {children}
     </Link>
   )
@@ -136,13 +169,13 @@ export function EmailInquiryCard({
       <Text style={cardRowStyle}>{buyerName}</Text>
       {company && <Text style={cardRowStyle}>{company}</Text>}
       <Text style={phone ? cardRowStyle : cardRowLastStyle}>
-        <Link href={`mailto:${buyerEmail}`} style={emailInlineLinkStyle}>
+        <Link href={`mailto:${buyerEmail}`} style={emailInlineLinkStyle} className="email-orange-link">
           {buyerEmail}
         </Link>
       </Text>
       {phone && telHref && (
         <Text style={cardRowLastStyle}>
-          <Link href={telHref} style={emailInlineLinkStyle}>
+          <Link href={telHref} style={emailInlineLinkStyle} className="email-orange-link">
             {phone}
           </Link>
         </Text>
@@ -165,7 +198,6 @@ const bodyStyle = {
 
 const containerStyle = {
   backgroundColor: emailColors.white,
-  border: `1px solid ${emailColors.border}`,
   borderRadius: '12px',
   margin: '0 auto',
   maxWidth: '600px',
@@ -292,5 +324,5 @@ const footerStyle = {
 
 const footerLinkStyle = {
   color: emailColors.orange,
-  textDecoration: 'none',
+  textDecoration: 'underline',
 }

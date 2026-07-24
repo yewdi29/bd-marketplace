@@ -69,7 +69,7 @@ export default function PrimaryOwnerSetup({
       <EmailButton href={inviteUrl}>Accept &amp; Continue to Checkout</EmailButton>
       <EmailParagraph>
         Or copy this link:{' '}
-        <Link href={inviteUrl} style={emailInlineLinkStyle}>
+        <Link href={inviteUrl} style={emailInlineLinkStyle} className="email-orange-link">
           {inviteUrl}
         </Link>
       </EmailParagraph>

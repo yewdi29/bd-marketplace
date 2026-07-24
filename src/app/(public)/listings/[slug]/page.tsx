@@ -11,6 +11,7 @@ import InquiryForm from './InquiryForm'
 import ListingBreadcrumb from './ListingBreadcrumb'
 import ListingCard from '@/components/ListingCard'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
+import ListingLocationPill from '@/components/listings/ListingLocationPill'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -49,6 +50,16 @@ const CONDITION_LABELS: Record<string, string> = {
 
 function catLabel(val: string) {
   return CATEGORY_LABELS[val] ?? val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function listingCategorySearchHref(listing: {
+  category: string
+  categories?: { slug: string } | null
+}): string {
+  if (listing.categories?.slug) {
+    return `/search?cat=${encodeURIComponent(listing.categories.slug)}`
+  }
+  return `/search?category=${encodeURIComponent(listing.category)}`
 }
 
 function condLabel(val: string) {
@@ -112,13 +123,17 @@ export default async function ListingDetailPage({ params }: Props) {
   // Fetch listing + images
   const { data: listing } = await supabase
     .from('listings')
-    .select('*, listing_images(*)')
+    .select('*, listing_images(*), countries(name, iso_code), categories(slug, name)')
     .eq('slug', slug)
     .single()
 
   if (!listing || listing.status !== 'active') notFound()
 
-  const l = listing as Listing & { price_visible?: boolean }
+  const l = listing as Listing & {
+    price_visible?: boolean
+    countries?: { name: string; iso_code: string } | null
+    categories?: { slug: string; name: string } | null
+  }
 
   // Fetch seller profile — service role for users table access.
   // Only safe, non-PII fields selected.
@@ -209,7 +224,11 @@ export default async function ListingDetailPage({ params }: Props) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const listingUrl = `${appUrl}/listings/${slug}`
-  const listingLocation = [l.location_city, l.location_state].filter(Boolean).join(', ') || null
+  const listingLocation = [l.location_city, l.location_state, l.countries?.name].filter(Boolean).join(', ') || null
+  const hasLocationPill = Boolean(l.location_city || l.location_state || l.countries?.name)
+
+  const categoryDisplayLabel = l.categories?.name ?? catLabel(l.category)
+  const categorySearchHref = listingCategorySearchHref(l)
 
   // Build specs array — structured fields first, then dynamic AI specs
   const aiSpecs: { label: string; value: string | number }[] = l.specs
@@ -224,9 +243,6 @@ export default async function ListingDetailPage({ params }: Props) {
     l.model       ? { label: 'Model',        value: l.model }                                                  : null,
     l.condition   ? { label: 'Condition',    value: condLabel(l.condition) }                                   : null,
     { label: 'Category', value: catLabel(l.category) },
-    (l.location_city || l.location_state)
-      ? { label: 'Location', value: [l.location_city, l.location_state].filter(Boolean).join(', ') }
-      : null,
     ...aiSpecs,
   ].filter((s): s is { label: string; value: string | number } => s !== null)
 
@@ -296,12 +312,15 @@ export default async function ListingDetailPage({ params }: Props) {
           >
 
             {/* Category label */}
-            <p
-              className="font-mono uppercase text-ink-3 mb-2"
+            <Link
+              href={categorySearchHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block font-mono uppercase text-ink-3 hover:text-orange transition-colors mb-2 underline-offset-2 hover:underline"
               style={{ fontSize: '11px', letterSpacing: '0.08em' }}
             >
-              {catLabel(l.category)}
-            </p>
+              {categoryDisplayLabel}
+            </Link>
 
             {/* Title */}
             <h1
@@ -313,11 +332,22 @@ export default async function ListingDetailPage({ params }: Props) {
 
             {/* Price */}
             <p
-              className="font-mono font-medium mb-5"
+              className={`font-mono font-medium ${hasLocationPill ? 'mb-2' : 'mb-5'}`}
               style={{ fontSize: '24px', color: '#FF6B35', letterSpacing: '-0.02em' }}
             >
               {formatPrice(l.price, l.price_unit ?? 'total', priceVisible)}
             </p>
+
+            {hasLocationPill && (
+              <div className="mb-5">
+                <ListingLocationPill
+                  locationCity={l.location_city}
+                  locationState={l.location_state}
+                  countryName={l.countries?.name}
+                  countryIsoCode={l.countries?.iso_code}
+                />
+              </div>
+            )}
 
             {/* Divider */}
             <div className="mb-5" style={{ borderTop: '1px solid #F0F1F2' }} />
@@ -353,13 +383,13 @@ export default async function ListingDetailPage({ params }: Props) {
                       >
                         <span
                           className="block font-mono uppercase"
-                          style={{ fontSize: '11px', letterSpacing: '0.08em', color: '#B0B0B8', marginBottom: '4px' }}
+                          style={{ fontSize: '12px', letterSpacing: '0.08em', color: '#B0B0B8', marginBottom: '4px' }}
                         >
                           {spec.label}
                         </span>
                         <span
                           className="block font-mono font-semibold text-ink"
-                          style={{ fontSize: '13px' }}
+                          style={{ fontSize: '15px' }}
                         >
                           {spec.value}
                         </span>

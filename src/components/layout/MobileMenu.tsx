@@ -4,8 +4,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { CreditCard, LogOut, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { getInitials, PROFILE_MENU_LINKS, type ProfileUser } from '@/components/ui/ProfileDropdown'
+import {
+  getInitials,
+  PROFILE_COMPANY_SETTINGS_LINK,
+  PROFILE_MENU_LINKS,
+  ProfileMenuIcon,
+  type ProfileUser,
+} from '@/components/ui/ProfileDropdown'
 import { navLinkPrefetch } from '@/lib/navLink'
 import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
 import { trapFocus } from '@/lib/focusTrap'
@@ -177,39 +184,43 @@ export default function MobileMenu({ open, onClose, user, triggerRef }: MobileMe
                     href={item.href}
                     prefetch={navLinkPrefetch(item.href)}
                     onClick={onClose}
-                    className={`${ROW} border-b border-[#F0F0F0]`}
+                    className={`${ROW} gap-2.5 border-b border-[#F0F0F0]`}
                     style={{ minHeight: 44 }}
                   >
+                    <ProfileMenuIcon icon={item.icon} />
                     {item.label}
                   </Link>
                 ))}
 
                 {user.has_organization && (
                   <Link
-                    href="/dashboard/organization"
-                    prefetch={navLinkPrefetch('/dashboard/organization')}
+                    href={PROFILE_COMPANY_SETTINGS_LINK.href}
+                    prefetch={navLinkPrefetch(PROFILE_COMPANY_SETTINGS_LINK.href)}
                     onClick={onClose}
-                    className={`${ROW} border-b border-[#F0F0F0]`}
+                    className={`${ROW} gap-2.5 border-b border-[#F0F0F0]`}
                     style={{ minHeight: 44 }}
                   >
-                    Company Settings
+                    <ProfileMenuIcon icon={PROFILE_COMPANY_SETTINGS_LINK.icon} />
+                    {PROFILE_COMPANY_SETTINGS_LINK.label}
                   </Link>
                 )}
 
                 <button
                   type="button"
                   onClick={handleManageSubscription}
-                  className={`${ROW} justify-between border-b border-[#F0F0F0] w-full`}
+                  className={`${ROW} gap-2.5 border-b border-[#F0F0F0] w-full`}
                   style={{ minHeight: 44 }}
                 >
+                  <ProfileMenuIcon icon={user.plan === 'max' ? CreditCard : Sparkles} />
                   {user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}
                 </button>
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className={`${ROW} text-ink-3 w-full`}
+                  className={`${ROW} gap-2.5 text-ink-3 w-full`}
                   style={{ minHeight: 44 }}
                 >
+                  <ProfileMenuIcon icon={LogOut} />
                   Sign Out
                 </button>
               </div>

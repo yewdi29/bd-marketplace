@@ -6,7 +6,9 @@ import EmailLayout, {
   emailColors,
   emailFontFamily,
   emailInlineLinkStyle,
+  emailOrangeLinkBoldStyle,
 } from '../components/EmailLayout'
+import { buildInquiryReplyMailto, buyerFirstName } from '../lib/inquiryReplyMailto'
 
 type InquiryTrustLabel = 'verified_member' | 'unverified_free'
 
@@ -49,12 +51,6 @@ const fieldValueStyle = {
   margin: 0,
   whiteSpace: 'pre-wrap' as const,
 }
-
-const listingLinkStyle = {
-  color: emailColors.orange,
-  fontWeight: 700,
-  textDecoration: 'none',
-} as const
 
 interface NewInquirySellerProps {
   listingTitle: string
@@ -276,7 +272,7 @@ export default function NewInquirySeller({
     {
       label: 'EMAIL',
       content: (
-        <Link href={`mailto:${buyerEmail}`} style={emailInlineLinkStyle}>
+        <Link href={`mailto:${buyerEmail}`} style={emailInlineLinkStyle} className="email-orange-link">
           {buyerEmail}
         </Link>
       ),
@@ -287,7 +283,7 @@ export default function NewInquirySeller({
     fieldRows.push({
       label: 'PHONE',
       content: (
-        <Link href={telHref} style={emailInlineLinkStyle}>
+        <Link href={telHref} style={emailInlineLinkStyle} className="email-orange-link">
           {phone}
         </Link>
       ),
@@ -300,14 +296,19 @@ export default function NewInquirySeller({
 
   fieldRows.push({ label: 'MESSAGE', content: buyerMessage })
 
+  const replyMailto = buildInquiryReplyMailto({ buyerEmail, buyerName, listingTitle })
+  const reassuranceLine = phone
+    ? `Reply to this email directly or give them a call to reach ${buyerName}.`
+    : `Reply to this email directly to reach ${buyerName}.`
+
   return (
     <EmailLayout
-      preview={`New inquiry on "${listingTitle}"`}
+      preview={`${buyerName} sent a message about ${listingTitle}`}
       title="New inquiry on your listing"
     >
       <EmailParagraph>
-        You have a new inquiry from <strong>{buyerName}</strong> on{' '}
-        <Link href={listingUrl} style={listingLinkStyle}>
+        <strong>{buyerName}</strong> has sent you a message about{' '}
+        <Link href={listingUrl} style={emailOrangeLinkBoldStyle} className="email-orange-link">
           {listingTitle}
         </Link>
         .
@@ -340,7 +341,32 @@ export default function NewInquirySeller({
         ))}
       </Section>
 
-      <EmailButton href={listingUrl}>View listing</EmailButton>
+      <EmailButton href={replyMailto}>Reply to {buyerFirstName(buyerName)}</EmailButton>
+
+      <Text
+        style={{
+          color: emailColors.ink2,
+          fontFamily: emailFontFamily,
+          fontSize: '13px',
+          lineHeight: '1.55',
+          margin: '14px 0 0',
+        }}
+      >
+        {reassuranceLine}
+      </Text>
+
+      <Text
+        style={{
+          fontFamily: emailFontFamily,
+          fontSize: '13px',
+          lineHeight: '1.55',
+          margin: '12px 0 0',
+        }}
+      >
+        <Link href={listingUrl} style={emailInlineLinkStyle} className="email-orange-link">
+          View listing
+        </Link>
+      </Text>
     </EmailLayout>
   )
 }
