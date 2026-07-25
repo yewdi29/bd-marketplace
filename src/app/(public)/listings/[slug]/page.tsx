@@ -13,6 +13,10 @@ import ListingCard from '@/components/ListingCard'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingLocationPill from '@/components/listings/ListingLocationPill'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
+import {
+  isPubliclyViewableListingStatus,
+  PUBLICLY_VIEWABLE_LISTING_STATUSES,
+} from '@/lib/listings/publicVisibility'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,9 +81,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('listings')
-    .select('title, price, price_unit, price_visible, location_city, location_state, listing_images(url, sort_order)')
+    .select('title, price, price_unit, price_visible, status, location_city, location_state, listing_images(url, sort_order)')
     .eq('slug', slug)
-    .eq('status', 'active')
+    .in('status', [...PUBLICLY_VIEWABLE_LISTING_STATUSES])
     .single()
 
   if (!data) return { title: 'Listing Not Found' }
@@ -91,8 +95,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImage = firstImg?.url
 
   const location = [data.location_city, data.location_state].filter(Boolean).join(', ')
-  const priceDisplay = formatPrice(data.price, data.price_unit ?? 'total', data.price_visible !== false)
-  const description = `${data.title} available on Black Diamond Marketplace.${location ? ` Located in ${location}.` : ''} ${priceDisplay}.`
+  const isSoldListing = data.status === 'sold'
+  const priceDisplay = isSoldListing
+    ? 'No longer available'
+    : formatPrice(data.price, data.price_unit ?? 'total', data.price_visible !== false)
+  const lead = isSoldListing ? 'sold on' : 'available on'
+  const description = `${data.title} ${lead} Black Diamond Marketplace.${location ? ` Located in ${location}.` : ''} ${priceDisplay}.`
 
   return {
     title: `${data.title} | Black Diamond Marketplace`,
@@ -127,7 +135,9 @@ export default async function ListingDetailPage({ params }: Props) {
     .eq('slug', slug)
     .single()
 
-  if (!listing || listing.status !== 'active') notFound()
+  if (!listing || !isPubliclyViewableListingStatus(listing.status)) notFound()
+
+  const isSold = listing.status === 'sold'
 
   const l = listing as Listing & {
     price_visible?: boolean
@@ -221,6 +231,9 @@ export default async function ListingDetailPage({ params }: Props) {
   })
 
   const priceVisible = l.price_visible !== false
+  const priceDisplay = isSold
+    ? 'No longer available'
+    : formatPrice(l.price, l.price_unit ?? 'total', priceVisible)
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const listingUrl = `${appUrl}/listings/${slug}`
@@ -256,7 +269,9 @@ export default async function ListingDetailPage({ params }: Props) {
       '@type': 'Offer',
       price: l.price,
       priceCurrency: 'USD',
-      availability: 'https://schema.org/InStock',
+      availability: isSold
+        ? 'https://schema.org/OutOfStock'
+        : 'https://schema.org/InStock',
     },
   }
 
@@ -296,9 +311,10 @@ export default async function ListingDetailPage({ params }: Props) {
                     initialSaved={initialSaved}
                     isLoggedIn={!!user}
                     listingTitle={l.title}
-                    listingPrice={formatPrice(l.price, l.price_unit ?? 'total', priceVisible)}
+                    listingPrice={priceDisplay}
                     listingLocation={listingLocation}
                     listingUrl={listingUrl}
+                    showShare={!isSold}
                   />
                 }
               />
@@ -310,6 +326,15 @@ export default async function ListingDetailPage({ params }: Props) {
             className="flex flex-col min-w-0 w-full lg:min-w-[500px] lg:max-w-[600px] bg-white border border-[#E8E9EA] rounded-[16px]"
             style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)', padding: '24px' }}
           >
+
+            {isSold && (
+              <span
+                className="inline-flex items-center self-start px-2.5 py-1 text-[11px] font-mono font-bold rounded-pill border mb-3"
+                style={{ background: '#FFF0F0', color: '#CC0000', borderColor: '#FFCCCC' }}
+              >
+                Sold
+              </span>
+            )}
 
             {/* Category label */}
             <Link
@@ -335,7 +360,7 @@ export default async function ListingDetailPage({ params }: Props) {
               className={`font-mono font-medium ${hasLocationPill ? 'mb-2' : 'mb-5'}`}
               style={{ fontSize: '24px', color: '#FF6B35', letterSpacing: '-0.02em' }}
             >
-              {formatPrice(l.price, l.price_unit ?? 'total', priceVisible)}
+              {priceDisplay}
             </p>
 
             {hasLocationPill && (
@@ -416,18 +441,24 @@ export default async function ListingDetailPage({ params }: Props) {
                   {l.description}
                 </p>
 
-                {/* Divider after description */}
-                <div className="mb-5" style={{ borderTop: '1px solid #F0F1F2' }} />
+                {/* Divider before contact — omitted when sold (Listed By supplies its own) */}
+                {!isSold && (
+                  <div className="mb-5" style={{ borderTop: '1px solid #F0F1F2' }} />
+                )}
               </>
             )}
 
-            {/* ── Contact Seller — always visible ── */}
-            <p className="font-sans font-bold text-ink mb-4" style={{ fontSize: '14px' }}>
-              Contact Seller
-            </p>
-            <div className="mb-5">
-              <InquiryForm listingId={l.id} sellerId={l.seller_id} />
-            </div>
+            {/* ── Contact Seller — hidden once sold ── */}
+            {!isSold && (
+              <>
+                <p className="font-sans font-bold text-ink mb-4" style={{ fontSize: '14px' }}>
+                  Contact Seller
+                </p>
+                <div className="mb-5">
+                  <InquiryForm listingId={l.id} sellerId={l.seller_id} />
+                </div>
+              </>
+            )}
 
             {/* ── Listed By ── */}
             {seller?.company_name && (

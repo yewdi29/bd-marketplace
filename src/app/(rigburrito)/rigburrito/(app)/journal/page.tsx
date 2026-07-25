@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import AdminButton from '@/components/rigburrito/AdminButton'
 import HoldToConfirmButton from '@/components/rigburrito/HoldToConfirmButton'
 import ManageMenu from '@/components/rigburrito/ManageMenu'
@@ -22,7 +21,6 @@ interface ArticleRow {
 }
 
 export default function JournalPage() {
-  const router = useRouter()
   const [articles, setArticles] = useState<ArticleRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -66,7 +64,7 @@ export default function JournalPage() {
       </div>
 
       {loading ? <TableSkeleton /> : error ? <ErrorState message={error} onRetry={fetchArticles} /> : (
-        <div className="rigburrito-table-wrap">
+        <div className="rigburrito-table-wrap" style={{ overflow: 'visible' }}>
           <table className="rigburrito-table">
             <thead>
               <tr>
@@ -95,7 +93,7 @@ export default function JournalPage() {
                     ) : (
                       <ManageMenu
                         items={[
-                          { label: 'Edit', onSelect: () => router.push(`/rigburrito/journal/${a.id}/edit`) },
+                          { label: 'Edit', href: `/rigburrito/journal/${a.id}/edit` },
                           a.status !== 'published'
                             ? { label: 'Publish', onSelect: () => updateStatus(a.id, 'publish') }
                             : { label: 'Unpublish', onSelect: () => updateStatus(a.id, 'unpublish') },

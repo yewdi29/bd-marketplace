@@ -15,6 +15,7 @@ interface Props {
   listingPrice: string
   listingLocation: string | null
   listingUrl: string
+  showShare?: boolean
 }
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export default function ListingActions({
   listingPrice,
   listingLocation,
   listingUrl,
+  showShare = true,
 }: Props) {
   const [saved, setSaved] = useState(initialSaved)
   const [savingLoading, setSavingLoading] = useState(false)
@@ -128,6 +130,7 @@ export default function ListingActions({
       </button>
 
       {/* Share pill + popover */}
+      {showShare && (
       <div className="relative" ref={shareRef}>
         {/* Desktop (≥1024px): unchanged pill with label */}
         <button
@@ -160,6 +163,7 @@ export default function ListingActions({
           />
         )}
       </div>
+      )}
     </div>
   )
 }

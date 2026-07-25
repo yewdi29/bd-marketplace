@@ -21,6 +21,9 @@ export default function ListingLocationPill({
 
   if (!locationText) return null
 
+  const padY = 3
+  const padRight = 10
+
   return (
     <>
       {flagClass && <ListingCardFlagStyles />}
@@ -32,7 +35,9 @@ export default function ListingLocationPill({
           color: '#4A4D52',
           fontSize: '11px',
           borderRadius: '100px',
-          padding: '3px 10px',
+          padding: flagClass
+            ? `${padY}px ${padRight}px ${padY}px ${padY}px`
+            : `${padY}px ${padRight}px`,
           gap: flagClass ? '7px' : undefined,
         }}
       >

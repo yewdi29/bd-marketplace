@@ -268,6 +268,7 @@ export default function SellerListingsSection({ activeListings, soldListings }: 
                 listing={cardListing}
                 mode="static"
                 priceMuted
+                showShare={false}
                 imageClassName="opacity-60 grayscale"
                 thumbnailOverlay={soldOverlay}
               />

@@ -31,7 +31,7 @@ const SITEMAP = [
     links: [
       { label: 'How It Works', href: '/how-it-works' },
       { label: 'Pricing', href: '/pricing' },
-      { label: 'The Operator Journal', href: '/knowledge-base' },
+      { label: 'The Operator Journal', href: '/journal' },
     ],
   },
   {

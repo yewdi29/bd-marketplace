@@ -165,6 +165,14 @@ select {
   line-height: 1.9;
   color: #1A1D20;
 }
+.article-body h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 40px;
+  margin-bottom: 16px;
+  color: #1A1D20;
+}
 .article-body h2 {
   font-size: 24px;
   font-weight: 700;
@@ -229,6 +237,12 @@ select {
   border: none;
   border-top: 1px solid #E8E9EA;
   margin: 40px 0;
+}
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin: 24px 0;
 }
 
 /* ─── Utility: hide scrollbar while keeping scroll behavior ──────────────── */

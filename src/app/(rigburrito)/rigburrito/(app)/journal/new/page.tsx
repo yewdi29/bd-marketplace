@@ -6,7 +6,7 @@ export default function NewArticlePage() {
   return (
     <div>
       <h1 className="rigburrito-page-title">New Article</h1>
-      <ArticleEditorForm />
+      <ArticleEditorForm showCloseButton />
     </div>
   )
 }

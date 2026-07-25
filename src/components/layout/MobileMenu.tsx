@@ -20,7 +20,7 @@ import { trapFocus } from '@/lib/focusTrap'
 // Primary navigation links — always shown, regardless of auth state
 const NAV_LINKS = [
   { label: 'Search', href: '/search' },
-  { label: 'The Operator Journal', href: '/knowledge-base' },
+  { label: 'The Operator Journal', href: '/journal' },
   { label: 'About', href: '/about' },
 ]
 

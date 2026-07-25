@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 import FeaturedCarousel from '@/components/home/FeaturedCarousel'
+import HomeSectionHeader from '@/components/home/HomeSectionHeader'
 import { getAuthUser } from '@/lib/supabase/auth-server'
 import { createClient } from '@/lib/supabase/server'
 import type { MembershipPlan } from '@/lib/types/database'
@@ -155,25 +155,17 @@ export default async function FeaturedEquipmentSection() {
 
   return (
     <section className="py-16 lg:py-20 border-t border-[#E8E9EA]">
-      <div className="flex items-end justify-between mb-6">
-        <div>
-          <h2
-            className="font-sans font-bold text-ink"
-            style={{ fontSize: 'clamp(28px, 4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
-          >
-            Featured Equipment
-          </h2>
-          <p className="mt-4 font-sans text-ink-3 text-base leading-relaxed">
-            Hand-picked listings from verified sellers
-          </p>
-        </div>
-        <Link
-          href="/search?featured=true"
-          className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
+      <HomeSectionHeader linkHref="/search?featured=true" linkLabel="View all →">
+        <h2
+          className="font-sans font-bold text-ink"
+          style={{ fontSize: 'clamp(28px, 4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
         >
-          View all →
-        </Link>
-      </div>
+          Featured Equipment
+        </h2>
+        <p className="mt-4 font-sans text-ink-3 text-base leading-relaxed">
+          Hand-picked listings from verified sellers
+        </p>
+      </HomeSectionHeader>
       <FeaturedCarousel
         listings={featuredCarousel}
         isLoggedIn={!!user}

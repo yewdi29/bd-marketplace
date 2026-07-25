@@ -22,6 +22,8 @@ interface ListingCardLinkProps {
   thumbnailOverlay?: ReactNode
   imageClassName?: string
   priceMuted?: boolean
+  priceText?: string
+  statusPill?: ReactNode
   footer?: ReactNode
   className?: string
 }
@@ -41,6 +43,8 @@ export default function ListingCardLink({
   thumbnailOverlay,
   imageClassName = '',
   priceMuted = false,
+  priceText,
+  statusPill,
   footer,
   className = '',
 }: ListingCardLinkProps) {
@@ -88,6 +92,8 @@ export default function ListingCardLink({
         preview={preview}
         mode={mode}
         priceMuted={priceMuted}
+        priceText={priceText}
+        statusPill={statusPill}
         imageClassName={imageClassName}
         thumbnailOverlay={thumbnailOverlay}
         footer={footer}

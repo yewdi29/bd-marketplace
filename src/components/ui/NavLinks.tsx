@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 // To add, remove, or rename a link — edit here only.
 export const NAV_LINK_DEFS = (_isSignedIn: boolean) => [
   { label: 'Browse Equipment', href: '/search' },
-  { label: 'The Operator Journal', href: '/knowledge-base' },
+  { label: 'The Operator Journal', href: '/journal' },
   { label: 'How It Works', href: '/how-it-works' },
 ]
 

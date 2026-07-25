@@ -20,7 +20,7 @@ export function OperatorJournalSkeleton() {
       <div className="h-7 w-56 bg-[#F0F0F0] rounded-lg animate-pulse mb-6" />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-48 bg-[#F0F0F0] rounded-[16px] animate-pulse" />
+          <div key={i} className="min-h-[340px] bg-[#F0F0F0] rounded-[16px] animate-pulse" />
         ))}
       </div>
     </section>

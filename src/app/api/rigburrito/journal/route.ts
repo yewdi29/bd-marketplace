@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
   const status = body.status ?? 'draft'
   const now = new Date().toISOString()
 
+  const metaDescription = body.meta_description?.trim() || null
+
   const { data, error } = await service
     .from('articles')
     .insert({
@@ -42,8 +44,9 @@ export async function POST(req: NextRequest) {
       status,
       tags: body.tags ?? [],
       read_time_mins: body.read_time_mins ?? null,
-      meta_description: body.meta_description ?? null,
+      meta_description: metaDescription,
       featured_image: body.featured_image ?? null,
+      excerpt: metaDescription,
       published_at: status === 'published' ? now : null,
     })
     .select()

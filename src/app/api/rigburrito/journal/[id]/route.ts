@@ -33,6 +33,10 @@ export async function PATCH(
     if (body[f] !== undefined) updates[f] = body[f]
   }
 
+  if (body.meta_description !== undefined) {
+    updates.excerpt = body.meta_description?.trim() || null
+  }
+
   if (body.publish) {
     updates.status = 'published'
     updates.published_at = new Date().toISOString()

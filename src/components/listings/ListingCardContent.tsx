@@ -11,7 +11,11 @@ export interface ListingCardContentProps {
   mode?: 'link' | 'clickable' | 'static'
   showNewBadge?: boolean
   priceMuted?: boolean
+  /** Replaces formatted price text (e.g. sold saved listings). */
+  priceText?: string
   imageClassName?: string
+  /** Status pill rendered in the thumbnail top-left. */
+  statusPill?: ReactNode
   /** LCP / above-the-fold — skip lazy loading for thumbnail. */
   imagePriority?: boolean
   thumbnailOverlay?: ReactNode
@@ -25,7 +29,9 @@ export default function ListingCardContent({
   mode = 'link',
   showNewBadge = true,
   priceMuted = false,
+  priceText,
   imageClassName = '',
+  statusPill,
   imagePriority = false,
   thumbnailOverlay,
   footer,
@@ -101,6 +107,12 @@ export default function ListingCardContent({
           </span>
         )}
 
+        {statusPill && (
+          <div className="absolute top-2 left-2 z-10">
+            {statusPill}
+          </div>
+        )}
+
         {actions && (
           <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5">
             {actions}
@@ -128,7 +140,7 @@ export default function ListingCardContent({
             color: priceMuted ? undefined : '#FF6B35',
           }}
         >
-          {priceDisplay}
+          {priceText ?? priceDisplay}
         </p>
 
         {locationText && (

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { getActiveOrgMembership } from '@/lib/organizations/auth'
 
 export async function GET(_request: Request) {
   const cookieStore = await cookies()
@@ -18,7 +19,9 @@ export async function GET(_request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  const membership = await getActiveOrgMembership(user.id)
+
+  let query = supabase
     .from('listings')
     .select(`
       id, title, category, price, price_unit, price_visible, status, slug,
@@ -28,7 +31,18 @@ export async function GET(_request: Request) {
       poster:posted_by_user_id(full_name, email)
     `)
     .neq('status', 'removed')
-    .order('created_at', { ascending: false })
+
+  // Scope to the seller dashboard — do not rely on the public "active listings"
+  // RLS policy, which would otherwise include every live listing on the platform.
+  if (membership) {
+    query = query.or(
+      `seller_id.eq.${user.id},organization_id.eq.${membership.organization_id}`,
+    )
+  } else {
+    query = query.eq('seller_id', user.id)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

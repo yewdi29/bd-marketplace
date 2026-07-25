@@ -20,7 +20,7 @@ export async function GET() {
 
   const { data, error } = await adminClient
     .from('saved_listings')
-    .select('listing_id, listings(id, title, category, price, price_unit, price_visible, slug, created_at, location_city, location_state, listing_images(url, is_primary, sort_order), countries(name, iso_code))')
+    .select('listing_id, listings(id, title, category, price, price_unit, price_visible, status, slug, created_at, location_city, location_state, listing_images(url, is_primary, sort_order), countries(name, iso_code))')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 

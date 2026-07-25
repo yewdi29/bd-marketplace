@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Flame, HardHat, Mountain, Trees, Truck, Wheat } from 'lucide-react'
+import HomeSectionHeader from '@/components/home/HomeSectionHeader'
 
 const INDUSTRIES = [
   {
@@ -43,25 +44,17 @@ const INDUSTRIES = [
 export default function CategoryBrowse() {
   return (
     <section className="py-16 lg:py-20 border-t border-[#E8E9EA]">
-      <div className="flex items-end justify-between mb-6">
-        <div>
-          <h2
-            className="font-sans font-bold text-ink"
-            style={{ fontSize: 'clamp(28px, 4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
-          >
-            Browse by Industry
-          </h2>
-          <p className="mt-4 font-sans text-ink-3 text-base leading-relaxed">
-            Find equipment by industry
-          </p>
-        </div>
-        <Link
-          href="/search"
-          className="hidden sm:block text-sm font-sans font-semibold text-orange hover:text-orange-lt transition-colors"
+      <HomeSectionHeader linkHref="/search" linkLabel="Browse all →">
+        <h2
+          className="font-sans font-bold text-ink"
+          style={{ fontSize: 'clamp(28px, 4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
         >
-          Browse all →
-        </Link>
-      </div>
+          Browse by Industry
+        </h2>
+        <p className="mt-4 font-sans text-ink-3 text-base leading-relaxed">
+          Find equipment by industry
+        </p>
+      </HomeSectionHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {INDUSTRIES.map(industry => {

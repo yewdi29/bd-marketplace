@@ -338,6 +338,9 @@ create policy "Admins can view all memberships"
 create policy "Anyone can view active listings"
   on public.listings for select using (status = 'active');
 
+create policy "Anyone can view sold listings"
+  on public.listings for select using (status = 'sold');
+
 create policy "Sellers can view their own listings"
   on public.listings for select using (auth.uid() = seller_id);
 
@@ -356,6 +359,14 @@ create policy "Anyone can view images of active listings"
     exists (
       select 1 from public.listings
       where id = listing_id and status = 'active'
+    )
+  );
+
+create policy "Anyone can view images of sold listings"
+  on public.listing_images for select using (
+    exists (
+      select 1 from public.listings
+      where id = listing_id and status = 'sold'
     )
   );
 

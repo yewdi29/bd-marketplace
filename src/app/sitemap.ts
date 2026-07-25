@@ -40,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     {
-      url: `${BASE_URL}/knowledge-base`,
+      url: `${BASE_URL}/journal`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
@@ -70,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ])
 
   const articlePages: MetadataRoute.Sitemap = (articles ?? []).map(article => ({
-    url: `${BASE_URL}/knowledge-base/${article.slug}`,
+    url: `${BASE_URL}/journal/${article.slug}`,
     lastModified: new Date(article.updated_at ?? article.published_at ?? new Date()),
     changeFrequency: 'monthly',
     priority: 0.7,

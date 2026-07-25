@@ -462,7 +462,7 @@ Used by Featured Equipment, Browse by Industry, How It Works, and Newsletter.
 | **Optional label** | `font-mono text-[11px] font-bold text-orange uppercase tracking-[0.12em] mb-3` — e.g. `HOW IT WORKS`, `STAY INFORMED` |
 | **Headline (H2)** | `font-sans font-bold text-ink`, `font-size: clamp(28px, 4vw, 40px)`, `letter-spacing: -0.03em`, `line-height: 1.1` |
 | **Subtext** | `mt-4 font-sans text-ink-3 text-base leading-relaxed` |
-| **"View all →" link** | `text-sm font-semibold text-orange hover:text-orange-lt` — right-aligned in header row on `sm+` |
+| **"View all →" link** | `text-sm font-semibold text-orange hover:text-orange-lt` — right-aligned in header row on `sm+`; below title/subtext on mobile (`< sm`) via `HomeSectionHeader` |
 
 Header row layout: `flex items-end justify-between mb-6` when a side link is present; label + headline + subtext stack in the left column.
 
@@ -529,10 +529,11 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - On-card manage overlay: frosted white glass + action pills
 - Skeleton loading: `animate-pulse` gray blocks at card proportions
 
-### Knowledge Base
-- Clean editorial layout (Phase 1 stub — not fully built)
-- Article cards with category label, title, excerpt, read time
-- Orange category accent on active filter
+### Knowledge Base / Operator Journal
+- Clean editorial layout on `/journal` index and article detail
+- **Article cards** (`ArticleCard`): shared component on homepage preview and `/journal` index — `min-h-[340px]`, full-bleed `featured_image` background (`object-cover`), bottom-weighted gradient overlay (`transparent` → `rgba(0,0,0,0.88)`), white title/excerpt/meta text, orange category badge + CTA; fallback background `bg-ink` (`#1A1D20`) when no image
+- Card content: category badge, title, excerpt/caption, published date, read time, "Read article →"
+- Orange category accent on active filter pill
 
 ### Admin Command Center
 - Phase 3 — not yet built
@@ -607,11 +608,13 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.36 | July 2026 | **Operator Journal cards + excerpt field.** Shared `ArticleCard`: full-bleed featured image, bottom gradient overlay, white typography, 340px min-height, ink fallback when no image. Admin editor adds plain-text "Excerpt / Caption" field (150 chars recommended) saved to existing `excerpt` column. Homepage preview and `/journal` index use the same card component. |
 | v2.34.5 | July 2026 | **Newsletter form mobile layout.** Shared `NewsletterForm` stacks email input + Subscribe button below 730px (full-width, 48px min-height); tablet/desktop keep inline 40px row. Applies globally via `NewsletterSection`. |
 | v2.34.4 | July 2026 | **Hero CTA mobile tap targets.** Homepage hero buttons stack vertically below 730px only with full-width 48px-min-height pills; tablet and desktop keep compact side-by-side layout. Shared classes in `heroCtaClasses.ts`. |
 | v2.34.3 | July 2026 | **Hero globe refresh.** Arcs use shader-based GL lines with facing fade and 5-pass screen-space thickness (replaces Line2 addon). Faster arc timing (4.2s grow/hold, 1.5s spawn). Initial globe rotation `y: -1.92`. Labels expanded to 8 items with updated card shadow/border styling. |
 | v2.34.2 | July 2026 | **Hero globe arc color.** Homepage WebGL globe connection arcs switched from orange HSL (~38°) to purple HSL (~274–292°) in `heroGlobeArcs.ts`. Globe labels and map dots unchanged. |
 | v2.34.1 | July 2026 | **Enterprise tier block.** Shared `EnterpriseTierBlock`: eyebrow "Teams & organizations" (science blue), "Enterprise" as 22px card title, feature checklist (no public pricing), wide row below tier grids on `/pricing` and `/dashboard/upgrade`. |
+| v2.35 | July 2026 | **Homepage section header mobile links.** `HomeSectionHeader` component: Featured Equipment, Browse by Industry, and Operator Journal "View all" / "Browse all" links visible on mobile (below title stack); desktop unchanged (right-aligned in header row). Removed duplicate Operator Journal mobile-only footer link. |
 | v2.34 | July 2026 | **Public pricing page + Enterprise intake.** New `/pricing` route: Free + Starter/Pro/Max tier cards (monthly/annual toggle, 2-months-free badge), wide Enterprise row beneath with science-blue accent border and "Contact us" modal intake form. Footer Pricing link points to `/pricing`. |
 | v2.33 | July 2026 | **Transactional email design system.** Shared `EmailLayout` now uses correct logo aspect ratio (244×29 SVG → 227×27 display), unified typography (22px heading, 15px body, 11px uppercase meta labels), spacing rhythm, and bordered content cards. `NewInquirySeller` merges buyer contact + message into one card with FROM/MESSAGE sections. |
 | v2.32 | June 2026 | **Careers page.** New static `/careers` route (footer link target): dark hero, open-positions block with mailto CTA (`careers@blackdiamondmkt.com`), 3-column culture cards on `#F7F8F9` — patterns match How It Works and Contact. Added to sitemap. |

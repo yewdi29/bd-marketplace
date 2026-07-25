@@ -61,11 +61,27 @@ interface SavedListingItem {
   price: number
   price_unit: string
   price_visible: boolean | null
+  status: string
   slug: string | null
   created_at: string
   location_city: string | null
   location_state: string | null
   listing_images: { url: string; is_primary: boolean; sort_order: number }[]
+}
+
+const SOLD_STATUS_PILL = (
+  <span
+    className="inline-flex items-center px-2.5 py-1 text-[11px] font-mono font-bold rounded-pill border"
+    style={{ background: '#FFF0F0', color: '#CC0000', borderColor: '#FFCCCC' }}
+  >
+    Sold
+  </span>
+)
+
+function sortSavedListings(listings: SavedListingItem[]): SavedListingItem[] {
+  const active = listings.filter(l => l.status !== 'sold')
+  const sold = listings.filter(l => l.status === 'sold')
+  return [...active, ...sold]
 }
 
 type FilterTab = 'all' | 'active' | 'draft' | 'sold'
@@ -1126,15 +1142,22 @@ export default function DashboardPage() {
             </div>
           ) : (
             <ListingCardGrid gap="dashboard" className="listing-card-grid--saved">
-              {savedListings.map(listing => (
-                <ListingCardLink
-                  key={listing.id}
-                  listing={listing}
-                  isLoggedIn
-                  initialSaved
-                  onUnsave={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
-                />
-              ))}
+              {sortSavedListings(savedListings).map(listing => {
+                const isSold = listing.status === 'sold'
+                return (
+                  <ListingCardLink
+                    key={listing.id}
+                    listing={listing}
+                    isLoggedIn
+                    initialSaved
+                    onUnsave={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
+                    statusPill={isSold ? SOLD_STATUS_PILL : undefined}
+                    priceText={isSold ? 'No longer available' : undefined}
+                    imageClassName={isSold ? 'grayscale' : undefined}
+                    showShare={!isSold}
+                  />
+                )
+              })}
             </ListingCardGrid>
           )}
         </>

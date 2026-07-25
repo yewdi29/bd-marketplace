@@ -17,6 +17,16 @@ const nextConfig = {
         destination: '/search',
         permanent: true,
       },
+      {
+        source: '/knowledge-base',
+        destination: '/journal',
+        permanent: true,
+      },
+      {
+        source: '/knowledge-base/:slug',
+        destination: '/journal/:slug',
+        permanent: true,
+      },
     ]
   },
 }
