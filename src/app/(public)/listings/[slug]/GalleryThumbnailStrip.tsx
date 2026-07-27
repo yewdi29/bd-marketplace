@@ -1,5 +1,6 @@
 'use client'
 
+import { Camera } from 'lucide-react'
 import { muxThumbnailUrl } from '@/lib/listings/listingVideoUploadClient'
 import type { PublicGalleryItem } from '@/lib/listings/publicGallery'
 
@@ -23,6 +24,7 @@ interface Props {
   activeIdx: number
   onSelect: (idx: number) => void
   size?: number
+  onViewAll?: () => void
 }
 
 export default function GalleryThumbnailStrip({
@@ -30,6 +32,7 @@ export default function GalleryThumbnailStrip({
   activeIdx,
   onSelect,
   size = 64,
+  onViewAll,
 }: Props) {
   return (
     <div
@@ -77,6 +80,37 @@ export default function GalleryThumbnailStrip({
           </button>
         )
       })}
+
+      {onViewAll && (
+        <button
+          type="button"
+          onClick={e => { e.stopPropagation(); onViewAll() }}
+          aria-label={`View all ${items.length} items`}
+          className="relative shrink-0 flex flex-col items-center justify-center bg-orange transition-opacity hover:opacity-90"
+          style={{
+            width: size,
+            height: size,
+            borderRadius: '10px',
+            padding: '4px',
+            border: '2px solid #FF6B35',
+            gap: '1px',
+          }}
+        >
+          <Camera className="w-3 h-3 shrink-0 text-white" strokeWidth={2} aria-hidden />
+          <span
+            className="font-sans font-semibold text-white text-center leading-tight"
+            style={{ fontSize: '9px' }}
+          >
+            View All
+          </span>
+          <span
+            className="font-sans font-semibold text-white text-center leading-none"
+            style={{ fontSize: '9px' }}
+          >
+            ({items.length})
+          </span>
+        </button>
+      )}
     </div>
   )
 }

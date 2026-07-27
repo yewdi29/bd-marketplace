@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
-import { Camera } from 'lucide-react'
 import MobileLightbox from './MobileLightbox'
 import GalleryThumbnailStrip from './GalleryThumbnailStrip'
 import { useIsMobileGallery } from './useIsMobileGallery'
+import { useListingGalleryNav } from './ListingGalleryNavContext'
 import { muxThumbnailUrl } from '@/lib/listings/listingVideoUploadClient'
 import type { ComponentProps } from 'react'
 import type { PublicGalleryItem } from '@/lib/listings/publicGallery'
@@ -20,7 +20,7 @@ const GalleryMuxPlayer = dynamic(
 interface Props {
   items: PublicGalleryItem[]
   title: string
-  listingActions?: Omit<ComponentProps<typeof ListingActions>, 'trailing'>
+  listingActions?: ComponentProps<typeof ListingActions>
   shareUrl?: string
   shareTitle?: string
 }
@@ -113,8 +113,29 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
   const [mounted, setMounted] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const isMobile = useIsMobileGallery()
+  const galleryNav = useListingGalleryNav()
 
   useEffect(() => { setMounted(true) }, [])
+
+  const enterGrid = useCallback(() => {
+    setView('grid')
+    galleryNav?.openGrid()
+  }, [galleryNav])
+
+  const exitGrid = useCallback(() => {
+    setView('inline')
+    galleryNav?.closeGrid()
+  }, [galleryNav])
+
+  useEffect(() => {
+    if (!galleryNav) return
+
+    if (galleryNav.gridOpen) {
+      if (view === 'inline') setView('grid')
+    } else if (view === 'grid') {
+      setView('inline')
+    }
+  }, [galleryNav, galleryNav?.gridOpen, view])
 
   const sorted = useMemo(() => [...items].sort((a, b) => a.gallery_position - b.gallery_position), [items])
 
@@ -139,6 +160,17 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
     setView(lightboxOrigin === 'grid' ? 'grid' : 'inline')
     setLightboxOrigin(null)
   }, [lightboxOrigin])
+
+  // Safety net: restore document scroll lock if the gallery unmounts mid-overlay.
+  useEffect(() => {
+    return () => {
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+    }
+  }, [])
 
   useEffect(() => {
     if (view === 'inline') return
@@ -182,6 +214,7 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         if (view === 'lightbox') closeLightbox()
+        else if (view === 'grid') exitGrid()
         else setView('inline')
         return
       }
@@ -192,7 +225,7 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [view, next, prev, isMobile, closeLightbox])
+  }, [view, next, prev, isMobile, closeLightbox, exitGrid])
 
   function handleTouchStart(e: React.TouchEvent) {
     if (!activeIsPhoto) return
@@ -209,27 +242,9 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
     touchStartX.current = null
   }
 
-  const viewAllButton = total > 0 ? (
-    <button
-      onClick={e => { e.stopPropagation(); setView('grid') }}
-      aria-label={`View all ${total} items`}
-      className="gallery-action-pill flex items-center gap-1.5 text-ink transition-opacity"
-      style={{
-        fontSize: '13px',
-        fontWeight: 600,
-        padding: '8px 16px',
-        borderRadius: '100px',
-      }}
-    >
-      <Camera className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden />
-      <span className="hidden lg:inline font-sans">View all</span>
-      <span className="font-sans text-ink-3">({total})</span>
-    </button>
-  ) : null
-
   const galleryActionsOverlay = listingActions ? (
     <div onClick={e => e.stopPropagation()}>
-      <ListingActions {...listingActions} trailing={viewAllButton} />
+      <ListingActions {...listingActions} />
     </div>
   ) : null
 
@@ -269,7 +284,7 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
       <div className="page-shell pb-16">
         <div className="sticky top-0 z-10 pt-5 pb-4 bg-white">
           <button
-            onClick={() => setView('inline')}
+            onClick={exitGrid}
             aria-label="Back to listing"
             className="inline-flex items-center gap-1.5 bg-white border border-[#E8E9EA] rounded-pill shadow-card-hover px-4 py-2 text-sm font-sans font-semibold text-ink hover:border-[#D4D5D7] transition-all duration-200"
           >
@@ -470,7 +485,12 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
 
       {total > 1 && (
         <div className="hidden lg:block px-3 py-3 bg-white">
-          <GalleryThumbnailStrip items={sorted} activeIdx={activeIdx} onSelect={setActiveIdx} />
+          <GalleryThumbnailStrip
+            items={sorted}
+            activeIdx={activeIdx}
+            onSelect={setActiveIdx}
+            onViewAll={enterGrid}
+          />
         </div>
       )}
 

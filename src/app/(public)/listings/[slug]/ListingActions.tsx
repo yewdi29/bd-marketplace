@@ -16,8 +16,6 @@ interface Props {
   listingLocation: string | null
   listingUrl: string
   showShare?: boolean
-  /** Grouped with Save in the top-right overlay (e.g. View All). */
-  trailing?: React.ReactNode
 }
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
@@ -47,7 +45,6 @@ export default function ListingActions({
   listingLocation,
   listingUrl,
   showShare = true,
-  trailing,
 }: Props) {
   const [saved, setSaved] = useState(initialSaved)
   const [savingLoading, setSavingLoading] = useState(false)
@@ -101,10 +98,36 @@ export default function ListingActions({
   }
 
   return (
-    <>
-      {/* Share — top-left overlay */}
+    <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+      <button
+        onClick={handleSave}
+        disabled={savingLoading}
+        aria-label={saved ? 'Remove from saved' : 'Save listing'}
+        className="hidden lg:flex gallery-action-pill items-center gap-1.5 text-ink transition-opacity disabled:opacity-60"
+        style={pillStyle}
+      >
+        <span className={popping ? 'heart-pop' : ''}>
+          <HeartIcon filled={saved} />
+        </span>
+        {saved ? 'Saved' : 'Save'}
+      </button>
+
+      <button
+        onClick={handleSave}
+        disabled={savingLoading}
+        aria-label={saved ? 'Remove from saved' : 'Save listing'}
+        className="flex lg:hidden items-center justify-center shrink-0 transition-opacity disabled:opacity-60"
+        style={{ width: 44, height: 44 }}
+      >
+        <div className="gallery-action-pill w-9 h-9 rounded-full flex items-center justify-center text-ink">
+          <span className={popping ? 'heart-pop' : ''}>
+            <HeartIcon filled={saved} />
+          </span>
+        </div>
+      </button>
+
       {showShare && (
-        <div className="absolute top-3 left-3 z-10" ref={shareRef}>
+        <div className="relative" ref={shareRef}>
           <button
             onClick={() => setShareOpen(o => !o)}
             aria-label="Share listing"
@@ -130,43 +153,11 @@ export default function ListingActions({
             <SharePopoverPanel
               shareOptions={shareOptions}
               onSelect={() => setShareOpen(false)}
-              className="absolute left-0"
+              className="absolute right-0"
             />
           )}
         </div>
       )}
-
-      {/* Save + trailing (View All) — top-right overlay */}
-      <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
-        <button
-          onClick={handleSave}
-          disabled={savingLoading}
-          aria-label={saved ? 'Remove from saved' : 'Save listing'}
-          className="hidden lg:flex gallery-action-pill items-center gap-1.5 text-ink transition-opacity disabled:opacity-60"
-          style={pillStyle}
-        >
-          <span className={popping ? 'heart-pop' : ''}>
-            <HeartIcon filled={saved} />
-          </span>
-          {saved ? 'Saved' : 'Save'}
-        </button>
-
-        <button
-          onClick={handleSave}
-          disabled={savingLoading}
-          aria-label={saved ? 'Remove from saved' : 'Save listing'}
-          className="flex lg:hidden items-center justify-center shrink-0 transition-opacity disabled:opacity-60"
-          style={{ width: 44, height: 44 }}
-        >
-          <div className="gallery-action-pill w-9 h-9 rounded-full flex items-center justify-center text-ink">
-            <span className={popping ? 'heart-pop' : ''}>
-              <HeartIcon filled={saved} />
-            </span>
-          </div>
-        </button>
-
-        {trailing}
-      </div>
-    </>
+    </div>
   )
 }

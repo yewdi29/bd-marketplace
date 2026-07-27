@@ -7,8 +7,10 @@ import type { Listing, MembershipPlan } from '@/lib/types/database'
 import { formatPrice } from '@/lib/formatPrice'
 import PhotoGallery from './PhotoGallery'
 import { buildPublicGalleryItems } from '@/lib/listings/publicGallery'
+import { getFunctionalSpecsEntries } from '@/lib/listings/listingSpecs'
 import InquiryForm from './InquiryForm'
 import ListingBreadcrumb from './ListingBreadcrumb'
+import { ListingGalleryNavProvider } from './ListingGalleryNavContext'
 import ListingCard from '@/components/ListingCard'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingLocationPill from '@/components/listings/ListingLocationPill'
@@ -241,12 +243,10 @@ export default async function ListingDetailPage({ params }: Props) {
   const categoryDisplayLabel = l.categories?.name ?? catLabel(l.category)
   const categorySearchHref = listingCategorySearchHref(l)
 
-  // Build specs array — structured fields first, then dynamic AI specs
-  const aiSpecs: { label: string; value: string | number }[] = l.specs
-    ? Object.entries(l.specs)
-        .filter(([, v]) => v != null && String(v).trim() !== '')
-        .map(([k, v]) => ({ label: k, value: String(v) }))
-    : []
+  // Build specs array — dedicated columns first, then functional specs from JSON blob
+  const functionalSpecs: { label: string; value: string | number }[] = getFunctionalSpecsEntries(
+    l.specs as Record<string, unknown> | null,
+  )
 
   const specs: { label: string; value: string | number }[] = [
     l.year        ? { label: 'Year',        value: l.year }                                                   : null,
@@ -254,7 +254,7 @@ export default async function ListingDetailPage({ params }: Props) {
     l.model       ? { label: 'Model',        value: l.model }                                                  : null,
     l.condition   ? { label: 'Condition',    value: condLabel(l.condition) }                                   : null,
     { label: 'Category', value: catLabel(l.category) },
-    ...aiSpecs,
+    ...functionalSpecs,
   ].filter((s): s is { label: string; value: string | number } => s !== null)
 
   // JSON-LD Product schema
@@ -283,7 +283,8 @@ export default async function ListingDetailPage({ params }: Props) {
       <div className="bg-bg min-h-screen pb-20">
         <div className="page-shell">
 
-        {/* Breadcrumb (desktop) / Back button (mobile, tablet) */}
+        <ListingGalleryNavProvider itemCount={galleryItems.length}>
+        {/* Breadcrumb (desktop) / Back + View All row (mobile, tablet) */}
         <ListingBreadcrumb category={l.category} categoryLabel={catLabel(l.category)} title={l.title} />
 
         {/* ── Two-column grid — gallery fills remaining space, info column fluid between 450–550px ── */}
@@ -522,6 +523,7 @@ export default async function ListingDetailPage({ params }: Props) {
             )}
           </div>
         </div>
+        </ListingGalleryNavProvider>
 
         {/* ── Related Listings ── */}
         {related && related.length > 0 && (

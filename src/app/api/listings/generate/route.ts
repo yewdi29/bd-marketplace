@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { loadLocationTaxonomy } from '@/lib/locationResolver'
 import { resolveAiTaxonomy } from '@/lib/listingTaxonomyUpdate'
+import { mergeListingSpecs, sanitizeAiSpecs } from '@/lib/listings/listingSpecs'
 
 function buildSystemPrompt(taxonomy: {
   industries: { name: string; slug: string }[]
@@ -48,10 +49,10 @@ Use exactly these field names and value constraints:
   "country_slug": "One of: united-states | canada | mexico — infer from the location mentioned. Use null if no location is mentioned or you cannot determine the country confidently.",
   "location_city": "City name, or null if not mentioned",
   "location_state": "For United States: 2-letter state code (e.g. TX). For Canada: full province name (e.g. Alberta, Ontario). For Mexico: null. Null if not mentioned or uncertain.",
-  "description": "Professional 3–5 sentence listing description for the public marketplace page.",
-  "meta_description": "Single sentence, 130–160 characters, SEO meta description.",
+  "description": "Public listing description — see DESCRIPTION RULES below.",
+  "meta_description": "Single sentence, 130–160 characters, SEO meta description using ONLY facts the seller provided.",
   "tags": ["array", "of", "relevant", "keyword", "strings"],
-  "specs": {"Size": "5\\""}
+  "specs": {"Operating Weight": "78000 lbs"}
 }
 
 TITLE RULES:
@@ -86,6 +87,23 @@ Incorrect examples to avoid:
 - 2019 Caterpillar 336 Excavator — Enclosed Operator Cab with Hydraulic Raise System (descriptor too long)
 - High Quality Drill Pipe in Great Condition (no year/size, marketing language)
 - 2018 Kenworth T800 Heavy Duty Flatbed Truck — Excellent Condition Ready to Work (filler words, descriptor too long)
+
+DESCRIPTION RULES:
+- Write ALWAYS in first person, directly as the seller speaking to the buyer (e.g. "I'm selling...", "This unit has...", "I'm located in...").
+- NEVER use third person. NEVER write "the seller is offering", "the owner states", or refer to the seller/company by name as if an outside writer is describing them.
+- NEVER invent, embellish, or add any detail the seller did not actually provide. If the seller wrote "well maintained", output ONLY "well maintained" — do NOT invent maintenance schedules, service history, hour counts, or any other unstated specifics.
+- This zero-hallucination rule applies to EVERY category of detail: condition, hours, repairs, attachments, accessories, what's included, hauling/logistics, pricing context, and reason for selling.
+- Target roughly 150 words when the seller provided enough real substance to support it. There is no hard maximum — use enough room for genuine detail (condition actually stated, why selling if mentioned, logistics if mentioned, what's included if mentioned) without padding or filler.
+- If the seller's input is thin, a shorter honest description is correct. Do NOT pad to hit a word count.
+- Optimize for SEO strictly by phrasing the seller's ACTUAL provided facts clearly and specifically (exact model numbers, grade/spec terminology, location). Never add invented specificity for SEO.
+- Attachments, accessories, included items, hauling, pickup, and logistics details belong in the description ONLY — never in specs.
+
+SPECS RULES:
+- The specs object is for genuine functional/technical measurements ONLY (e.g. weight, dimensions, capacity, horsepower, size/diameter, reach, lift capacity, engine tier).
+- NEVER put year, model, manufacturer, brand, condition, or category in specs — these have dedicated JSON fields above and appear separately on the listing page. Redundantly writing them into specs causes duplicate display.
+- Include a spec ONLY if the seller explicitly provided that technical detail. Do not infer or invent specs.
+- No narrative language, no attachments, no hauling/pickup mentions, no vague marketing phrases in specs.
+- If the seller provided no functional/technical specs, set specs to null or {}.
 
 LOCATION RULES:
 - If the seller mentions a US city/state (e.g. "Midland, Texas" or "Houston, TX"), set country_slug to united-states and location_state to the 2-letter code.
@@ -159,7 +177,7 @@ export async function POST(request: NextRequest) {
 
   const { data: listing } = await adminClient
     .from('listings')
-    .select('seller_id, status')
+    .select('seller_id, status, specs')
     .eq('id', listing_id)
     .single()
 
@@ -223,7 +241,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-5',
-        max_tokens: 1024,
+        max_tokens: 2048,
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -263,6 +281,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  generated.specs = sanitizeAiSpecs(generated.specs)
+
   const resolvedTitle = generated.title || 'Untitled Draft'
   const taxonomy = await resolveAiTaxonomy(adminClient, {
     country_slug: generated.country_slug,
@@ -273,6 +293,11 @@ export async function POST(request: NextRequest) {
     title: resolvedTitle,
     category: generated.category,
   })
+
+  const mergedSpecs = mergeListingSpecs(
+    listing.specs as Record<string, unknown> | null,
+    generated.specs,
+  )
 
   const { error: updateError } = await adminClient
     .from('listings')
@@ -296,7 +321,7 @@ export async function POST(request: NextRequest) {
       description: generated.description ?? null,
       meta_description: generated.meta_description ?? null,
       tags: generated.tags ?? [],
-      specs: generated.specs ?? null,
+      specs: mergedSpecs,
       updated_at: new Date().toISOString(),
     })
     .eq('id', listing_id)
@@ -309,6 +334,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     listing: {
       ...publicFields,
+      specs: mergedSpecs,
       price: generated.price ?? 0,
       category: taxonomy.legacyCategory,
       country_id: taxonomy.country_id,
