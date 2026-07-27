@@ -6,21 +6,22 @@ import { createClient } from '@/lib/supabase/client'
 import { useGlowBorder } from '@/hooks/useGlowBorder'
 import ListingCardPreview from '@/components/listings/ListingCardPreview'
 import type { ListingCardListing } from '@/components/listings/listingCardTypes'
-import ListingPhotoSortableList from '@/components/listings/ListingPhotoSortableList'
-import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper, labelCls } from '@/components/listings/ListingTaxonomyFields'
+import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper } from '@/components/listings/ListingTaxonomyFields'
+import ListingMediaSection from '@/components/listings/ListingMediaSection'
 import NewListingMobileFlow from '@/components/listings/NewListingMobileFlow'
-import { useIsBelowLg } from '@/hooks/useIsBelowLg'
+import { useListingVideos } from '@/hooks/useListingVideos'
+import { useListingGallery } from '@/hooks/useListingGallery'
 import {
-  LISTING_PHOTO_ACCEPT,
-  LISTING_PHOTO_UPLOAD_HINT,
   MAX_LISTING_PHOTOS,
   uploadListingPhotos,
 } from '@/lib/listings/listingPhotoUpload'
+import { saveGalleryOrder } from '@/lib/listings/listingGallery'
 import {
   EMPTY_TAXONOMY_VALUES,
   useListingTaxonomy,
   type ListingTaxonomyFormValues,
 } from '@/hooks/useListingTaxonomy'
+import { useIsBelowLg } from '@/hooks/useIsBelowLg'
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -39,13 +40,14 @@ const PRICE_UNITS = [
   { value: 'per_meter', label: 'Per Meter' },
 ]
 
-const STEP_LABELS = ['Describe', 'Review & Refine', 'Photos & Video', 'Publish']
+const STEP_LABELS = ['Describe', 'Review & Refine', 'Media', 'Publish']
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PhotoState {
   id: string
   url: string
+  gallery_position?: number | null
 }
 
 export interface ListingForm {
@@ -155,16 +157,31 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
   const [taxonomy, setTaxonomy] = useState<ListingTaxonomyFormValues>(EMPTY_TAXONOMY_VALUES)
   const [photos, setPhotos] = useState<PhotoState[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  const [videoUrl, setVideoUrl] = useState('')
-  const [videoError, setVideoError] = useState('')
   const [priceError, setPriceError] = useState('')
 
   const [upgradePrompt, setUpgradePrompt] = useState(false)
   const draftCreated = useRef(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const isMobileFlow = useIsBelowLg()
   const taxonomyData = useListingTaxonomy()
+  const {
+    videos,
+    rejectedVideos,
+    loading: videosLoading,
+    canAddVideo,
+    activeVideoCount,
+    addVideo,
+    removeVideo,
+    mergeVideosFromGallery,
+  } = useListingVideos(listingId)
+
+  const { galleryItems, handleReorder } = useListingGallery({
+    listingId,
+    photos,
+    setPhotos,
+    videos,
+    mergeVideosFromGallery,
+  })
 
   const [promptFocused, setPromptFocused] = useState(false)
 
@@ -355,7 +372,11 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     if (uploaded.length > 0) {
       setPhotos(prev => [
         ...prev,
-        ...uploaded.map(image => ({ id: image.id, url: image.url })),
+        ...uploaded.map(image => ({
+          id: image.id,
+          url: image.url,
+          gallery_position: image.gallery_position ?? prev.length,
+        })),
       ])
     }
 
@@ -387,32 +408,20 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     }
   }
 
-  function isValidYouTubeUrl(url: string): boolean {
-    return /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)[\w-]{11}/.test(url)
-  }
-
   async function handleSavePhotos() {
     if (!listingId) return
-
-    // Validate video URL if provided
-    if (videoUrl.trim() && !isValidYouTubeUrl(videoUrl.trim())) {
-      setVideoError('Please enter a valid YouTube URL.')
-      return
-    }
 
     setStepLoading(true)
     setError('')
 
     try {
-      // Save image order + video URL
-      await fetch(`/api/listings/${listingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image_order: photos.map(p => p.id),
-          video_url: videoUrl.trim() || null,
-        }),
-      })
+      if (galleryItems.length > 0) {
+        const orderResult = await saveGalleryOrder(listingId, galleryItems)
+        if (!orderResult.ok) {
+          setError(orderResult.error)
+          return
+        }
+      }
       setStep(4)
     } catch {
       setError('Network error. Please try again.')
@@ -421,7 +430,16 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     }
   }
 
-  // ── Step 4: Publish / Save as Draft ────────────────────────────────────────
+  async function handleGalleryReorder(items: Parameters<typeof handleReorder>[0]) {
+    const reorderError = await handleReorder(items)
+    if (reorderError) setError(reorderError)
+  }
+
+  async function handleRemoveVideo(videoId: string): Promise<string | null> {
+    const removeError = await removeVideo(videoId)
+    if (removeError) setError(removeError)
+    return removeError
+  }
 
   async function handleSaveAsDraft() {
     if (!listingId) return
@@ -555,6 +573,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     return (
       <NewListingMobileFlow
         onClose={onClose}
+        listingId={listingId}
         step={step}
         setStep={setStep}
         prompt={prompt}
@@ -569,10 +588,16 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         setTaxonomy={setTaxonomy}
         photos={photos}
         uploadingPhoto={uploadingPhoto}
-        videoUrl={videoUrl}
-        setVideoUrl={setVideoUrl}
-        setVideoError={setVideoError}
-        videoError={videoError}
+        galleryItems={galleryItems}
+        canAddPhoto={photos.length < MAX_LISTING_PHOTOS}
+        canAddVideo={canAddVideo}
+        activeVideoCount={activeVideoCount}
+        rejectedVideos={rejectedVideos}
+        videosLoading={videosLoading}
+        onReorder={handleGalleryReorder}
+        onAddVideo={addVideo}
+        onRemoveVideo={handleRemoveVideo}
+        onVideoError={setError}
         priceError={priceError}
         setPriceError={setPriceError}
         promptContainerRef={promptContainerRef}
@@ -580,7 +605,6 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         promptFocused={promptFocused}
         onPromptFocus={handlePromptFocus}
         onPromptBlur={handlePromptBlur}
-        fileInputRef={fileInputRef}
         handleGenerate={handleGenerate}
         handleSaveFields={handleSaveFields}
         handleSavePhotos={handleSavePhotos}
@@ -589,7 +613,6 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         handleDiscard={handleDiscard}
         handleRemovePhoto={handleRemovePhoto}
         handleFileSelect={handleFileSelect}
-        onPhotoReorder={setPhotos}
         router={router}
       />
     )
@@ -881,81 +904,26 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
           {step === 3 && (
             <div>
               <h2 className="font-sans font-bold text-[22px] text-ink mb-1" style={{ letterSpacing: '-0.02em' }}>
-                Photos &amp; video
+                Media
               </h2>
-              <p className="text-sm text-ink-2 mb-5">
-                Add up to {MAX_LISTING_PHOTOS} photos. Drag to reorder — the first photo is the cover image.
-              </p>
 
-              {/* Drop zone */}
-              <div
-                className="border-2 border-dashed border-[#D4D5D7] rounded-[14px] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange hover:bg-orange/[0.02] transition-colors"
-                style={{ minHeight: photos.length === 0 ? '160px' : '80px', padding: '20px' }}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => {
-                  e.preventDefault()
-                  if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files)
-                }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={LISTING_PHOTO_ACCEPT}
-                  multiple
-                  className="hidden"
-                  onChange={e => { if (e.target.files) handleFileSelect(e.target.files) }}
-                />
-                {uploadingPhoto ? (
-                  <div className="flex items-center gap-2 text-ink-3">
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span className="text-sm font-sans">Uploading…</span>
-                  </div>
-                ) : (
-                  <>
-                    <svg className="w-8 h-8 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-sm font-sans text-ink-2">
-                      <span className="font-semibold text-orange">Click to browse</span> or drag &amp; drop
-                    </p>
-                    <p className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</p>
-                  </>
-                )}
-              </div>
-
-              {/* Photo count */}
-              {photos.length > 0 && (
-                <p className="text-xs font-mono text-ink-3 mt-2 mb-3 text-right">
-                  {photos.length} / {MAX_LISTING_PHOTOS} photos
-                </p>
-              )}
-
-              {/* Thumbnail grid */}
-              {photos.length > 0 && (
-                <ListingPhotoSortableList
-                  photos={photos}
-                  onReorder={setPhotos}
-                  onRemove={id => { void handleRemovePhoto(id) }}
-                  layout="grid"
-                />
-              )}
-
-              {/* Video section */}
-              <div className="mt-6">
-                <label className={labelCls}>Video <span className="text-ink-3 font-normal">(optional)</span></label>
-                <input
-                  type="url"
-                  value={videoUrl}
-                  onChange={e => { setVideoUrl(e.target.value); setVideoError('') }}
-                  className={inputCls}
-                  placeholder="Paste a YouTube link here"
-                />
-                {videoError && <p className="text-xs text-red-500 mt-1.5">{videoError}</p>}
-              </div>
+              <ListingMediaSection
+                listingId={listingId}
+                photos={photos}
+                galleryItems={galleryItems}
+                uploadingPhoto={uploadingPhoto}
+                canAddPhoto={photos.length < MAX_LISTING_PHOTOS}
+                canAddVideo={canAddVideo}
+                activeVideoCount={activeVideoCount}
+                rejectedVideos={rejectedVideos}
+                videosLoading={videosLoading}
+                onReorder={handleGalleryReorder}
+                onFileSelect={handleFileSelect}
+                onAddVideo={addVideo}
+                onRemovePhoto={(id) => { void handleRemovePhoto(id) }}
+                onRemoveVideo={handleRemoveVideo}
+                onError={setError}
+              />
             </div>
           )}
 

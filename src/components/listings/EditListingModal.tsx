@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper, labelCls } from '@/components/listings/ListingTaxonomyFields'
-import ListingPhotoSortableList from '@/components/listings/ListingPhotoSortableList'
+import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper } from '@/components/listings/ListingTaxonomyFields'
+import ListingMediaSection from '@/components/listings/ListingMediaSection'
 import EditListingMobileFlow from '@/components/listings/EditListingMobileFlow'
-import { useIsBelowLg } from '@/hooks/useIsBelowLg'
+import { useListingVideos } from '@/hooks/useListingVideos'
+import { useListingGallery } from '@/hooks/useListingGallery'
+import { saveGalleryOrder } from '@/lib/listings/listingGallery'
 import {
-  LISTING_PHOTO_ACCEPT,
-  LISTING_PHOTO_UPLOAD_HINT,
   MAX_LISTING_PHOTOS,
   uploadListingPhotos,
 } from '@/lib/listings/listingPhotoUpload'
+import { useIsBelowLg } from '@/hooks/useIsBelowLg'
 import {
   EMPTY_TAXONOMY_VALUES,
   useListingTaxonomy,
@@ -44,6 +45,7 @@ const MAX_PHOTOS = MAX_LISTING_PHOTOS
 export interface PhotoState {
   id: string
   url: string
+  gallery_position?: number | null
 }
 
 export interface EditForm {
@@ -86,14 +88,32 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
   // Photo state
   const [photos, setPhotos] = useState<PhotoState[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const {
+    videos,
+    rejectedVideos,
+    loading: videosLoading,
+    canAddVideo,
+    activeVideoCount,
+    addVideo,
+    removeVideo,
+    mergeVideosFromGallery,
+  } = useListingVideos(listingId)
+
+  const { galleryItems, handleReorder } = useListingGallery({
+    listingId,
+    photos,
+    setPhotos,
+    videos,
+    mergeVideosFromGallery,
+  })
 
   // Fetch listing data + existing images on mount
   useEffect(() => {
     async function fetchListing() {
       const { data, error: fetchError } = await supabase
         .from('listings')
-        .select('title, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, description, status, country_id, region_id, state_id, industry_id, category_id, listing_images(id, url, sort_order, is_primary)')
+        .select('title, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, description, status, country_id, region_id, state_id, industry_id, category_id, listing_images(id, url, sort_order, is_primary, gallery_position)')
         .eq('id', listingId)
         .single()
 
@@ -126,13 +146,19 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
       })
 
       // Sort images: primary first, then by sort_order
-      const imgs = ((data.listing_images ?? []) as { id: string; url: string; sort_order: number; is_primary: boolean }[])
+      const imgs = ((data.listing_images ?? []) as {
+        id: string
+        url: string
+        sort_order: number
+        is_primary: boolean
+        gallery_position: number | null
+      }[])
         .sort((a, b) => {
-          if (a.is_primary && !b.is_primary) return -1
-          if (!a.is_primary && b.is_primary) return 1
-          return a.sort_order - b.sort_order
+          const aPos = a.gallery_position ?? a.sort_order
+          const bPos = b.gallery_position ?? b.sort_order
+          return aPos - bPos
         })
-      setPhotos(imgs.map(i => ({ id: i.id, url: i.url })))
+      setPhotos(imgs.map(i => ({ id: i.id, url: i.url, gallery_position: i.gallery_position })))
       setListingStatus(data.status ?? '')
       setLoading(false)
     }
@@ -158,7 +184,11 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     if (uploaded.length > 0) {
       setPhotos(prev => [
         ...prev,
-        ...uploaded.map(image => ({ id: image.id, url: image.url })),
+        ...uploaded.map(image => ({
+          id: image.id,
+          url: image.url,
+          gallery_position: image.gallery_position ?? prev.length,
+        })),
       ])
     }
 
@@ -189,45 +219,52 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     }
   }
 
+  async function persistGalleryOrder(): Promise<{ ok: boolean; errorMsg?: string }> {
+    if (galleryItems.length === 0) return { ok: true }
+    const result = await saveGalleryOrder(listingId, galleryItems)
+    if (!result.ok) return { ok: false, errorMsg: result.error }
+    return { ok: true }
+  }
+
+  async function handleGalleryReorder(items: Parameters<typeof handleReorder>[0]) {
+    const reorderError = await handleReorder(items)
+    if (reorderError) setError(reorderError)
+  }
+
+  async function handleRemoveVideo(videoId: string): Promise<string | null> {
+    const removeError = await removeVideo(videoId)
+    if (removeError) setError(removeError)
+    return removeError
+  }
+
   // ── Shared patch helper ────────────────────────────────────────────────────
 
   async function patchListingFields(): Promise<{ ok: boolean; errorMsg?: string }> {
     if (!form) return { ok: false, errorMsg: 'No form data.' }
 
-    const requests: Promise<Response>[] = [
-      fetch(`/api/listings/${listingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: form.title,
-          category: form.category,
-          manufacturer: form.manufacturer || null,
-          model: form.model || null,
-          year: form.year ? parseInt(form.year) : null,
-          condition: form.condition,
-          price: parseFloat(form.price) || 0,
-          price_unit: form.price_unit,
-          price_visible: form.price_visible,
-          description: form.description || null,
-          ...taxonomy,
-        }),
+    const galleryResult = await persistGalleryOrder()
+    if (!galleryResult.ok) return galleryResult
+
+    const res = await fetch(`/api/listings/${listingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: form.title,
+        category: form.category,
+        manufacturer: form.manufacturer || null,
+        model: form.model || null,
+        year: form.year ? parseInt(form.year) : null,
+        condition: form.condition,
+        price: parseFloat(form.price) || 0,
+        price_unit: form.price_unit,
+        price_visible: form.price_visible,
+        description: form.description || null,
+        ...taxonomy,
       }),
-    ]
+    })
 
-    if (photos.length > 0) {
-      requests.push(
-        fetch(`/api/listings/${listingId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_order: photos.map(p => p.id) }),
-        })
-      )
-    }
-
-    const results = await Promise.all(requests)
-    const failed = results.find(r => !r.ok)
-    if (failed) {
-      const d = await failed.json() as { error?: string }
+    if (!res.ok) {
+      const d = await res.json() as { error?: string }
       return { ok: false, errorMsg: d.error ?? 'Save failed. Please try again.' }
     }
     return { ok: true }
@@ -325,6 +362,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     return (
       <EditListingMobileFlow
         onClose={onClose}
+        listingId={listingId}
         loading={loading}
         form={form}
         setForm={setForm}
@@ -332,6 +370,12 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
         setTaxonomy={setTaxonomy}
         photos={photos}
         uploadingPhoto={uploadingPhoto}
+        galleryItems={galleryItems}
+        canAddPhoto={photos.length < MAX_PHOTOS}
+        canAddVideo={canAddVideo}
+        activeVideoCount={activeVideoCount}
+        rejectedVideos={rejectedVideos}
+        videosLoading={videosLoading}
         listingStatus={listingStatus}
         error={error}
         publishError={publishError}
@@ -341,10 +385,12 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
         publishing={publishing}
         canPublish={canPublish}
         loadError={error}
-        fileInputRef={fileInputRef}
         handleFileSelect={handleFileSelect}
         handleDeletePhoto={handleDeletePhoto}
-        onPhotoReorder={setPhotos}
+        onReorder={handleGalleryReorder}
+        onAddVideo={addVideo}
+        onRemoveVideo={handleRemoveVideo}
+        onVideoError={setError}
         handleSaveDraft={handleSaveDraft}
         handleSave={handleSave}
         handlePublish={handlePublish}
@@ -402,75 +448,24 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                 </div>
               )}
 
-              {/* ── Photos section — first so seller sees media immediately ── */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={labelCls}>
-                    Photos<span className="ml-0.5 text-[#CC0000]">*</span>
-                  </label>
-                  <span className="text-xs font-mono text-ink-3">{photos.length} / {MAX_PHOTOS} photos</span>
-                </div>
-
-                {/* Existing + new thumbnail grid */}
-                {photos.length > 0 && (
-                  <div className="mb-3">
-                    <ListingPhotoSortableList
-                      photos={photos}
-                      onReorder={setPhotos}
-                      onRemove={id => { void handleDeletePhoto(id) }}
-                      layout="grid"
-                    />
-                  </div>
-                )}
-
-                {/* Upload zone */}
-                {photos.length < MAX_PHOTOS && (
-                  <div
-                    className="border-2 border-dashed border-[#D4D5D7] rounded-[14px] flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange hover:bg-orange/[0.02] transition-colors"
-                    style={{ minHeight: photos.length === 0 ? '140px' : '72px', padding: '16px' }}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => {
-                      e.preventDefault()
-                      if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files)
-                    }}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept={LISTING_PHOTO_ACCEPT}
-                      multiple
-                      className="hidden"
-                      onChange={e => { if (e.target.files) handleFileSelect(e.target.files) }}
-                    />
-                    {uploadingPhoto ? (
-                      <div className="flex items-center gap-2 text-ink-3">
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        <span className="text-sm font-sans">Uploading…</span>
-                      </div>
-                    ) : (
-                      <>
-                        <svg className="w-6 h-6 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-sm font-sans text-ink-2 text-center">
-                          <span className="font-semibold text-orange">Click to browse</span> or drag &amp; drop
-                        </p>
-                        {photos.length === 0 && (
-                          <p className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {photos.length > 0 && (
-                  <p className="text-xs text-ink-3 mt-1.5">Drag to reorder — first photo is the cover image</p>
-                )}
-              </div>
+              <ListingMediaSection
+                listingId={listingId}
+                photos={photos}
+                galleryItems={galleryItems}
+                uploadingPhoto={uploadingPhoto}
+                canAddPhoto={photos.length < MAX_PHOTOS}
+                canAddVideo={canAddVideo}
+                activeVideoCount={activeVideoCount}
+                rejectedVideos={rejectedVideos}
+                videosLoading={videosLoading}
+                onReorder={handleGalleryReorder}
+                onFileSelect={handleFileSelect}
+                onAddVideo={addVideo}
+                onRemovePhoto={(id) => { void handleDeletePhoto(id) }}
+                onRemoveVideo={handleRemoveVideo}
+                onError={setError}
+                required
+              />
 
               {/* Title */}
               <FormField label="Title" required>

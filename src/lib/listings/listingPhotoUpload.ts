@@ -25,6 +25,7 @@ export function validateListingPhotoFile(file: File): string | null {
 export interface UploadedListingPhoto {
   id: string
   url: string
+  gallery_position?: number | null
 }
 
 export async function uploadListingPhoto(

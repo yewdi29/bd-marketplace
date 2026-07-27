@@ -6,7 +6,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Listing, MembershipPlan } from '@/lib/types/database'
 import { formatPrice } from '@/lib/formatPrice'
 import PhotoGallery from './PhotoGallery'
-import ListingActions from './ListingActions'
+import { buildPublicGalleryItems } from '@/lib/listings/publicGallery'
 import InquiryForm from './InquiryForm'
 import ListingBreadcrumb from './ListingBreadcrumb'
 import ListingCard from '@/components/ListingCard'
@@ -128,10 +128,10 @@ export default async function ListingDetailPage({ params }: Props) {
   const { slug } = await params
   const supabase = await createClient()
 
-  // Fetch listing + images
+  // Fetch listing + gallery media (RLS on listing_videos returns ready videos only)
   const { data: listing } = await supabase
     .from('listings')
-    .select('*, listing_images(*), countries(name, iso_code), categories(slug, name)')
+    .select('*, listing_images(*), listing_videos(*), countries(name, iso_code), categories(slug, name)')
     .eq('slug', slug)
     .single()
 
@@ -223,12 +223,10 @@ export default async function ListingDetailPage({ params }: Props) {
     initialSaved = !!savedRow
   }
 
-  // Sort images: primary first, then by sort_order
-  const images = (l.listing_images ?? []).sort((a, b) => {
-    if (a.is_primary && !b.is_primary) return -1
-    if (!a.is_primary && b.is_primary) return 1
-    return a.sort_order - b.sort_order
-  })
+  const galleryItems = buildPublicGalleryItems(
+    l.listing_images ?? [],
+    l.listing_videos ?? [],
+  )
 
   const priceVisible = l.price_visible !== false
   const priceDisplay = isSold
@@ -301,22 +299,20 @@ export default async function ListingDetailPage({ params }: Props) {
               style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
             >
               <PhotoGallery
-                images={images}
+                items={galleryItems}
                 title={l.title}
                 shareUrl={listingUrl}
                 shareTitle={l.title}
-                actions={
-                  <ListingActions
-                    listingId={l.id}
-                    initialSaved={initialSaved}
-                    isLoggedIn={!!user}
-                    listingTitle={l.title}
-                    listingPrice={priceDisplay}
-                    listingLocation={listingLocation}
-                    listingUrl={listingUrl}
-                    showShare={!isSold}
-                  />
-                }
+                listingActions={{
+                  listingId: l.id,
+                  initialSaved: initialSaved,
+                  isLoggedIn: !!user,
+                  listingTitle: l.title,
+                  listingPrice: priceDisplay,
+                  listingLocation: listingLocation,
+                  listingUrl: listingUrl,
+                  showShare: !isSold,
+                }}
               />
             </div>
           </div>

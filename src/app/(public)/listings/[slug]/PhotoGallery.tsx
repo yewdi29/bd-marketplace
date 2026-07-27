@@ -1,16 +1,26 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { createPortal } from 'react-dom'
 import { Camera } from 'lucide-react'
 import MobileLightbox from './MobileLightbox'
+import GalleryThumbnailStrip from './GalleryThumbnailStrip'
 import { useIsMobileGallery } from './useIsMobileGallery'
-import type { ListingImage } from '@/lib/types/database'
+import { muxThumbnailUrl } from '@/lib/listings/listingVideoUploadClient'
+import type { ComponentProps } from 'react'
+import type { PublicGalleryItem } from '@/lib/listings/publicGallery'
+import ListingActions from './ListingActions'
+
+const GalleryMuxPlayer = dynamic(
+  () => import('@/components/listings/GalleryMuxPlayer'),
+  { ssr: false },
+)
 
 interface Props {
-  images: ListingImage[]
+  items: PublicGalleryItem[]
   title: string
-  actions?: React.ReactNode
+  listingActions?: Omit<ComponentProps<typeof ListingActions>, 'trailing'>
   shareUrl?: string
   shareTitle?: string
 }
@@ -42,52 +52,61 @@ function CloseIcon() {
   )
 }
 
-// ─── Thumbnail strip — shared between the inline view and the lightbox ────────
-
-function ThumbnailStrip({
-  images,
-  activeIdx,
-  onSelect,
-  size = 64,
-}: {
-  images: ListingImage[]
-  activeIdx: number
-  onSelect: (idx: number) => void
-  size?: number
-}) {
+function PlayBadge({ large = false }: { large?: boolean }) {
+  const size = large ? 'h-14 w-14' : 'h-10 w-10'
+  const icon = large ? 18 : 14
   return (
-    <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}>
-      {images.map((img, idx) => {
-        const active = idx === activeIdx
-        return (
-          <button
-            key={img.id}
-            onClick={e => { e.stopPropagation(); onSelect(idx) }}
-            aria-label={`View photo ${idx + 1}`}
-            className="shrink-0 bg-white transition-colors"
-            style={{
-              width: size,
-              height: size,
-              borderRadius: '10px',
-              padding: '4px',
-              border: `2px solid ${active ? '#FF6B35' : '#E8E9EA'}`,
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={img.url}
-              alt={img.alt_text ?? `Photo ${idx + 1}`}
-              className="w-full h-full object-cover"
-              style={{ borderRadius: '6px' }}
-            />
-          </button>
-        )
-      })}
-    </div>
+    <span className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
+      <span className={`flex ${size} items-center justify-center rounded-full bg-black/50 text-white`}>
+        <svg width={icon} height={icon} viewBox="0 0 10 10" fill="currentColor">
+          <path d="M2 1.5v7l6-3.5-6-3.5z" />
+        </svg>
+      </span>
+    </span>
   )
 }
 
-export default function PhotoGallery({ images, title, actions, shareUrl, shareTitle }: Props) {
+function GalleryMediaSlide({
+  item,
+  title,
+  objectFit,
+  className,
+  style,
+  onPhotoClick,
+}: {
+  item: PublicGalleryItem
+  title: string
+  objectFit: 'cover' | 'contain'
+  className?: string
+  style?: React.CSSProperties
+  onPhotoClick?: () => void
+}) {
+  if (item.kind === 'video') {
+    return (
+      <div className={className} style={style}>
+        <GalleryMuxPlayer
+          playbackId={item.mux_playback_id}
+          title={title}
+          objectFit={objectFit}
+          className="h-full w-full"
+        />
+      </div>
+    )
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={item.url}
+      alt={item.alt_text ?? title}
+      className={className}
+      style={style}
+      onClick={onPhotoClick}
+    />
+  )
+}
+
+export default function PhotoGallery({ items, title, listingActions, shareUrl, shareTitle }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [view, setView] = useState<View>('inline')
   const [lightboxOrigin, setLightboxOrigin] = useState<LightboxOrigin | null>(null)
@@ -97,17 +116,11 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
 
   useEffect(() => { setMounted(true) }, [])
 
-  const sorted = useMemo(
-    () => [...images].sort((a, b) => {
-      if (a.is_primary && !b.is_primary) return -1
-      if (!a.is_primary && b.is_primary) return 1
-      return a.sort_order - b.sort_order
-    }),
-    [images],
-  )
+  const sorted = useMemo(() => [...items].sort((a, b) => a.gallery_position - b.gallery_position), [items])
 
   const active = sorted[activeIdx]
   const total = sorted.length
+  const activeIsPhoto = active?.kind === 'photo'
 
   const goTo = useCallback((idx: number) => {
     setActiveIdx(((idx % total) + total) % total)
@@ -127,9 +140,6 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     setLightboxOrigin(null)
   }, [lightboxOrigin])
 
-  // Lock page scroll while a full-screen overlay is open. Body-only overflow
-  // is not enough on iOS — also lock html, fix body position, and block
-  // touchmove on the document except inside scrollable overlay regions.
   useEffect(() => {
     if (view === 'inline') return
 
@@ -151,6 +161,7 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
       if (target?.closest('[data-gallery-overlay-scroll]')) return
       if (target?.closest('[data-gallery-thumb-strip]')) return
       if (target?.closest('.pswp')) return
+      if (target?.closest('mux-player')) return
       e.preventDefault()
     }
     document.addEventListener('touchmove', preventTouchMove, { passive: false })
@@ -166,8 +177,6 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     }
   }, [view])
 
-  // Escape closes the current overlay — lightbox close respects entry origin.
-  // Arrow keys navigate photos while the desktop lightbox is open.
   useEffect(() => {
     if (view === 'inline') return
     function handleKey(e: KeyboardEvent) {
@@ -186,11 +195,12 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
   }, [view, next, prev, isMobile, closeLightbox])
 
   function handleTouchStart(e: React.TouchEvent) {
+    if (!activeIsPhoto) return
     touchStartX.current = e.touches[0].clientX
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return
+    if (!activeIsPhoto || touchStartX.current === null) return
     const deltaX = e.changedTouches[0].clientX - touchStartX.current
     if (Math.abs(deltaX) > 40) {
       if (deltaX < 0) next()
@@ -199,7 +209,30 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     touchStartX.current = null
   }
 
-  // ── No photos placeholder ───────────────────────────────────────────────────
+  const viewAllButton = total > 0 ? (
+    <button
+      onClick={e => { e.stopPropagation(); setView('grid') }}
+      aria-label={`View all ${total} items`}
+      className="gallery-action-pill flex items-center gap-1.5 text-ink transition-opacity"
+      style={{
+        fontSize: '13px',
+        fontWeight: 600,
+        padding: '8px 16px',
+        borderRadius: '100px',
+      }}
+    >
+      <Camera className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden />
+      <span className="hidden lg:inline font-sans">View all</span>
+      <span className="font-sans text-ink-3">({total})</span>
+    </button>
+  ) : null
+
+  const galleryActionsOverlay = listingActions ? (
+    <div onClick={e => e.stopPropagation()}>
+      <ListingActions {...listingActions} trailing={viewAllButton} />
+    </div>
+  ) : null
+
   if (total === 0) {
     return (
       <div
@@ -223,12 +256,11 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
         <span className="font-mono text-[11px] uppercase tracking-wider text-ink-3 opacity-50">
           No photos
         </span>
-        {actions}
+        {galleryActionsOverlay}
       </div>
     )
   }
 
-  // ── State 2: Full-screen masonry grid overlay ──────────────────────────────
   const gridOverlay = view === 'grid' && (
     <div
       className="fixed inset-0 z-[1000] bg-white overflow-y-auto overscroll-contain"
@@ -247,12 +279,12 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
         </div>
 
         <p className="font-sans font-bold text-ink mb-6" style={{ fontSize: '18px' }}>
-          {total} Photos
+          {total} {total === 1 ? 'Item' : 'Items'}
         </p>
         <div className="columns-1 sm:columns-2 lg:columns-3" style={{ columnGap: '12px' }}>
-          {sorted.map((img, idx) => (
+          {sorted.map((item, idx) => (
             <div
-              key={img.id}
+              key={`${item.kind}:${item.id}`}
               role="button"
               tabIndex={0}
               onClick={() => openLightbox('grid', idx)}
@@ -262,16 +294,28 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
                   openLightbox('grid', idx)
                 }
               }}
-              aria-label={`Open photo ${idx + 1}`}
-              className="block overflow-hidden rounded-[10px] bg-[#F0F0F0] cursor-pointer hover:opacity-90 transition-opacity"
+              aria-label={item.kind === 'photo' ? `Open photo ${idx + 1}` : `Open video ${idx + 1}`}
+              className="relative block overflow-hidden rounded-[10px] bg-[#F0F0F0] cursor-pointer hover:opacity-90 transition-opacity"
               style={{ width: '100%', marginBottom: '12px', breakInside: 'avoid', WebkitColumnBreakInside: 'avoid' } as React.CSSProperties}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.url}
-                alt={img.alt_text ?? `Photo ${idx + 1}`}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
+              {item.kind === 'photo' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.url}
+                  alt={item.alt_text ?? `Photo ${idx + 1}`}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                />
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={muxThumbnailUrl(item.mux_playback_id)}
+                    alt={`Video ${idx + 1}`}
+                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                  />
+                  <PlayBadge large />
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -279,11 +323,10 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     </div>
   )
 
-  // ── State 3a: Mobile lightbox (PhotoSwipe) ─────────────────────────────────
   const mobileLightbox = view === 'lightbox' && isMobile && (
     <MobileLightbox
       open
-      images={sorted}
+      items={sorted}
       title={title}
       initialIndex={activeIdx}
       shareUrl={shareUrl}
@@ -294,8 +337,7 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
     />
   )
 
-  // ── State 3b: Desktop lightbox — dark background, single image ─────────────
-  const desktopLightboxOverlay = view === 'lightbox' && !isMobile && (
+  const desktopLightboxOverlay = view === 'lightbox' && !isMobile && active && (
     <div
       className="fixed inset-0 z-[1100] flex flex-col"
       style={{ background: 'rgba(20,21,23,0.97)' }}
@@ -303,30 +345,28 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Close — returns to listing (direct) or masonry grid (via grid) */}
       <button
         onClick={e => { e.stopPropagation(); closeLightbox() }}
-        aria-label={lightboxOrigin === 'grid' ? 'Back to photo grid' : 'Back to listing'}
+        aria-label={lightboxOrigin === 'grid' ? 'Back to media grid' : 'Back to listing'}
         className="fixed top-5 left-5 z-10 flex items-center gap-1.5 rounded-pill px-4 py-2 text-sm font-sans font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors"
       >
         <CloseIcon />
         {lightboxOrigin === 'grid' ? 'Back' : 'Close'}
       </button>
 
-      {/* Image area — fills remaining space above the thumbnail strip */}
-      <div className="relative flex-1 flex items-center justify-center w-full min-h-0">
+      <div className="relative flex-1 flex items-center justify-center w-full min-h-0 px-4">
         {total > 1 && (
           <>
             <button
               onClick={e => { e.stopPropagation(); prev() }}
-              aria-label="Previous photo"
+              aria-label="Previous item"
               className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors"
             >
               <ChevronLeft />
             </button>
             <button
               onClick={e => { e.stopPropagation(); next() }}
-              aria-label="Next photo"
+              aria-label="Next item"
               className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full flex items-center justify-center text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors"
             >
               <ChevronRight />
@@ -334,14 +374,19 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
           </>
         )}
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={active.url}
-          alt={active.alt_text ?? title}
+        <div
+          key={`${active.kind}:${active.id}`}
+          className="flex h-full w-full max-w-[90vw] items-center justify-center"
           onClick={e => e.stopPropagation()}
-          style={{ maxWidth: '90vw', maxHeight: '100%', objectFit: 'contain' }}
-          className="select-none"
-        />
+        >
+          <GalleryMediaSlide
+            item={active}
+            title={title}
+            objectFit="contain"
+            className={active.kind === 'photo' ? 'max-h-full max-w-full select-none object-contain' : 'h-full w-full max-h-[85vh]'}
+            style={active.kind === 'photo' ? { maxWidth: '90vw', maxHeight: '100%', objectFit: 'contain' } : undefined}
+          />
+        </div>
       </div>
 
       {total > 1 && (
@@ -354,7 +399,6 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
         </p>
       )}
 
-      {/* Thumbnail strip — same treatment as the inline gallery's strip */}
       {total > 1 && (
         <div
           className="mx-auto mb-6 px-4 py-3 bg-white rounded-[14px]"
@@ -362,7 +406,7 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
           onClick={e => e.stopPropagation()}
           data-gallery-overlay-scroll
         >
-          <ThumbnailStrip images={sorted} activeIdx={activeIdx} onSelect={setActiveIdx} size={56} />
+          <GalleryThumbnailStrip items={sorted} activeIdx={activeIdx} onSelect={setActiveIdx} size={56} />
         </div>
       )}
     </div>
@@ -370,7 +414,6 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
 
   return (
     <>
-      {/* ── State 1: Inline main image — edge to edge, no padding ── */}
       <div
         className="relative w-full overflow-hidden outline-none"
         style={{ aspectRatio: '4/3' }}
@@ -382,28 +425,39 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={active.url}
-          alt={active.alt_text ?? title}
-          key={active.id}
-          className="absolute inset-0 w-full h-full object-cover cursor-pointer"
-          onClick={() => openLightbox('direct')}
-        />
+        {active && (
+          <div key={`${active.kind}:${active.id}`} className="absolute inset-0">
+            {active.kind === 'photo' ? (
+              <GalleryMediaSlide
+                item={active}
+                title={title}
+                objectFit="cover"
+                className="absolute inset-0 h-full w-full cursor-pointer object-cover"
+                onPhotoClick={() => openLightbox('direct')}
+              />
+            ) : (
+              <GalleryMediaSlide
+                item={active}
+                title={title}
+                objectFit="cover"
+                className="absolute inset-0 h-full w-full"
+              />
+            )}
+          </div>
+        )}
 
-        {/* Arrow navigation — desktop */}
         {total > 1 && (
           <>
             <button
               onClick={e => { e.stopPropagation(); prev() }}
-              aria-label="Previous photo"
+              aria-label="Previous item"
               className="gallery-action-pill absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full shadow-card-hover flex items-center justify-center transition-all duration-200 text-ink"
             >
               <ChevronLeft />
             </button>
             <button
               onClick={e => { e.stopPropagation(); next() }}
-              aria-label="Next photo"
+              aria-label="Next item"
               className="gallery-action-pill absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full shadow-card-hover flex items-center justify-center transition-all duration-200 text-ink"
             >
               <ChevronRight />
@@ -411,41 +465,15 @@ export default function PhotoGallery({ images, title, actions, shareUrl, shareTi
           </>
         )}
 
-        {/* View all — bottom-right, opens masonry grid */}
-        <button
-          onClick={e => { e.stopPropagation(); setView('grid') }}
-          aria-label={`View all ${total} photos`}
-          className="gallery-action-pill absolute bottom-3 right-3 z-10 flex items-center gap-1.5 text-ink transition-opacity"
-          style={{
-            fontSize: '13px',
-            fontWeight: 600,
-            padding: '8px 16px',
-            borderRadius: '100px',
-          }}
-        >
-          <Camera className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden />
-          <span className="font-sans">View all</span>
-          <span className="font-sans text-ink-3">({total})</span>
-        </button>
-
-        {/* Save / Share overlay — top-right */}
-        {actions && (
-          <div onClick={e => e.stopPropagation()}>
-            {actions}
-          </div>
-        )}
+        {galleryActionsOverlay}
       </div>
 
-      {/* Thumbnail strip — desktop only; mobile/tablet use swipe + arrows */}
       {total > 1 && (
         <div className="hidden lg:block px-3 py-3 bg-white">
-          <ThumbnailStrip images={sorted} activeIdx={activeIdx} onSelect={setActiveIdx} />
+          <GalleryThumbnailStrip items={sorted} activeIdx={activeIdx} onSelect={setActiveIdx} />
         </div>
       )}
 
-      {/* Grid + lightbox overlays render at document.body via a portal so they
-          always paint above the fixed navbar regardless of ancestor stacking
-          contexts created by this page's layout. */}
       {mounted && gridOverlay && createPortal(gridOverlay, document.body)}
       {mounted && mobileLightbox}
       {mounted && desktopLightboxOverlay && createPortal(desktopLightboxOverlay, document.body)}

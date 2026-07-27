@@ -16,6 +16,8 @@ interface Props {
   listingLocation: string | null
   listingUrl: string
   showShare?: boolean
+  /** Grouped with Save in the top-right overlay (e.g. View All). */
+  trailing?: React.ReactNode
 }
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
@@ -45,6 +47,7 @@ export default function ListingActions({
   listingLocation,
   listingUrl,
   showShare = true,
+  trailing,
 }: Props) {
   const [saved, setSaved] = useState(initialSaved)
   const [savingLoading, setSavingLoading] = useState(false)
@@ -98,72 +101,72 @@ export default function ListingActions({
   }
 
   return (
-    <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
-      {/* Save — desktop (≥1024px): unchanged pill with label */}
-      <button
-        onClick={handleSave}
-        disabled={savingLoading}
-        aria-label={saved ? 'Remove from saved' : 'Save listing'}
-        className="hidden lg:flex gallery-action-pill items-center gap-1.5 text-ink transition-opacity disabled:opacity-60"
-        style={pillStyle}
-      >
-        <span className={popping ? 'heart-pop' : ''}>
-          <HeartIcon filled={saved} />
-        </span>
-        {saved ? 'Saved' : 'Save'}
-      </button>
+    <>
+      {/* Share — top-left overlay */}
+      {showShare && (
+        <div className="absolute top-3 left-3 z-10" ref={shareRef}>
+          <button
+            onClick={() => setShareOpen(o => !o)}
+            aria-label="Share listing"
+            className="hidden lg:flex gallery-action-pill items-center gap-1.5 text-ink transition-opacity"
+            style={pillStyle}
+          >
+            <ShareIcon />
+            Share
+          </button>
 
-      {/* Save — mobile/tablet (<1024px): icon-only, 44x44 tap target around a
-          smaller visual circle */}
-      <button
-        onClick={handleSave}
-        disabled={savingLoading}
-        aria-label={saved ? 'Remove from saved' : 'Save listing'}
-        className="flex lg:hidden items-center justify-center shrink-0 transition-opacity disabled:opacity-60"
-        style={{ width: 44, height: 44 }}
-      >
-        <div className="gallery-action-pill w-9 h-9 rounded-full flex items-center justify-center text-ink">
+          <button
+            onClick={() => setShareOpen(o => !o)}
+            aria-label="Share listing"
+            className="flex lg:hidden items-center justify-center shrink-0 transition-opacity"
+            style={{ width: 44, height: 44 }}
+          >
+            <div className="gallery-action-pill w-9 h-9 rounded-full flex items-center justify-center text-ink">
+              <ShareIcon />
+            </div>
+          </button>
+
+          {shareOpen && (
+            <SharePopoverPanel
+              shareOptions={shareOptions}
+              onSelect={() => setShareOpen(false)}
+              className="absolute left-0"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Save + trailing (View All) — top-right overlay */}
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
+        <button
+          onClick={handleSave}
+          disabled={savingLoading}
+          aria-label={saved ? 'Remove from saved' : 'Save listing'}
+          className="hidden lg:flex gallery-action-pill items-center gap-1.5 text-ink transition-opacity disabled:opacity-60"
+          style={pillStyle}
+        >
           <span className={popping ? 'heart-pop' : ''}>
             <HeartIcon filled={saved} />
           </span>
-        </div>
-      </button>
-
-      {/* Share pill + popover */}
-      {showShare && (
-      <div className="relative" ref={shareRef}>
-        {/* Desktop (≥1024px): unchanged pill with label */}
-        <button
-          onClick={() => setShareOpen(o => !o)}
-          aria-label="Share listing"
-          className="hidden lg:flex gallery-action-pill items-center gap-1.5 text-ink transition-opacity"
-          style={pillStyle}
-        >
-          <ShareIcon />
-          Share
+          {saved ? 'Saved' : 'Save'}
         </button>
 
-        {/* Mobile/tablet (<1024px): icon-only, 44x44 tap target */}
         <button
-          onClick={() => setShareOpen(o => !o)}
-          aria-label="Share listing"
-          className="flex lg:hidden items-center justify-center shrink-0 transition-opacity"
+          onClick={handleSave}
+          disabled={savingLoading}
+          aria-label={saved ? 'Remove from saved' : 'Save listing'}
+          className="flex lg:hidden items-center justify-center shrink-0 transition-opacity disabled:opacity-60"
           style={{ width: 44, height: 44 }}
         >
           <div className="gallery-action-pill w-9 h-9 rounded-full flex items-center justify-center text-ink">
-            <ShareIcon />
+            <span className={popping ? 'heart-pop' : ''}>
+              <HeartIcon filled={saved} />
+            </span>
           </div>
         </button>
 
-        {shareOpen && (
-          <SharePopoverPanel
-            shareOptions={shareOptions}
-            onSelect={() => setShareOpen(false)}
-            className="absolute right-0"
-          />
-        )}
+        {trailing}
       </div>
-      )}
-    </div>
+    </>
   )
 }

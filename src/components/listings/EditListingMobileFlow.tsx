@@ -8,12 +8,12 @@ import ListingTaxonomyFields, {
   SelectWrapper,
   labelCls,
 } from '@/components/listings/ListingTaxonomyFields'
-import ListingPhotoSortableList from '@/components/listings/ListingPhotoSortableList'
+import ListingMediaSection from './ListingMediaSection'
 import type { EditForm, PhotoState } from './EditListingModal'
 import type { ListingTaxonomyFormValues } from '@/hooks/useListingTaxonomy'
+import type { GalleryItem } from '@/lib/listings/listingGallery'
+import type { ListingVideoSlot } from '@/lib/listings/listingVideoUploadClient'
 import {
-  LISTING_PHOTO_ACCEPT,
-  LISTING_PHOTO_UPLOAD_HINT,
   MAX_LISTING_PHOTOS,
 } from '@/lib/listings/listingPhotoUpload'
 
@@ -85,6 +85,7 @@ function StepProgress({ step }: { step: 1 | 2 }) {
 
 export interface EditListingMobileFlowProps {
   onClose: () => void
+  listingId: string
   loading: boolean
   form: EditForm | null
   setForm: React.Dispatch<React.SetStateAction<EditForm | null>>
@@ -92,6 +93,12 @@ export interface EditListingMobileFlowProps {
   setTaxonomy: React.Dispatch<React.SetStateAction<ListingTaxonomyFormValues>>
   photos: PhotoState[]
   uploadingPhoto: boolean
+  galleryItems: GalleryItem[]
+  canAddPhoto: boolean
+  canAddVideo: boolean
+  activeVideoCount: number
+  rejectedVideos: ListingVideoSlot[]
+  videosLoading: boolean
   listingStatus: string
   error: string
   publishError: string
@@ -101,10 +108,12 @@ export interface EditListingMobileFlowProps {
   publishing: boolean
   canPublish: boolean
   loadError: string
-  fileInputRef: React.RefObject<HTMLInputElement>
   handleFileSelect: (files: FileList) => Promise<void>
   handleDeletePhoto: (id: string) => Promise<void>
-  onPhotoReorder: (photos: PhotoState[]) => void
+  onReorder: (items: GalleryItem[]) => void | Promise<void>
+  onAddVideo: (file: File) => Promise<string | null>
+  onRemoveVideo: (videoId: string) => Promise<string | null>
+  onVideoError: (message: string) => void
   handleSaveDraft: () => Promise<void>
   handleSave: () => Promise<void>
   handlePublish: () => Promise<void>
@@ -112,6 +121,7 @@ export interface EditListingMobileFlowProps {
 
 export default function EditListingMobileFlow({
   onClose,
+  listingId,
   loading,
   form,
   setForm,
@@ -119,6 +129,12 @@ export default function EditListingMobileFlow({
   setTaxonomy,
   photos,
   uploadingPhoto,
+  galleryItems,
+  canAddPhoto,
+  canAddVideo,
+  activeVideoCount,
+  rejectedVideos,
+  videosLoading,
   listingStatus,
   error,
   publishError,
@@ -128,10 +144,12 @@ export default function EditListingMobileFlow({
   publishing,
   canPublish,
   loadError,
-  fileInputRef,
   handleFileSelect,
   handleDeletePhoto,
-  onPhotoReorder,
+  onReorder,
+  onAddVideo,
+  onRemoveVideo,
+  onVideoError,
   handleSaveDraft,
   handleSave,
   handlePublish,
@@ -296,60 +314,29 @@ export default function EditListingMobileFlow({
                 <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">
                   {isDraft ? 'Draft Listing' : 'Edit Listing'}
                 </p>
-                <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
-                  Photos
+                <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-5" style={{ letterSpacing: '-0.02em' }}>
+                  Media
                 </h1>
-                <p className="text-[15px] text-ink-2 leading-relaxed mb-5">
-                  Add up to {MAX_PHOTOS} photos. Press and hold a photo to reorder — the first photo is your cover image.
-                </p>
 
-                {photos.length < MAX_PHOTOS && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-[#D4D5D7] rounded-[14px] flex flex-col items-center justify-center gap-2 py-10 hover:border-orange hover:bg-orange/[0.02] transition-colors"
-                  >
-                    {uploadingPhoto ? (
-                      <div className="flex items-center gap-2 text-ink-3">
-                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden>
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        <span className="text-sm font-sans">Uploading…</span>
-                      </div>
-                    ) : (
-                      <>
-                        <CameraIcon />
-                        <span className="text-sm font-sans font-semibold text-ink">Add Photos</span>
-                        <span className="text-xs text-ink-3">Take a photo or choose from library</span>
-                        <span className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</span>
-                      </>
-                    )}
-                  </button>
-                )}
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={LISTING_PHOTO_ACCEPT}
-                  multiple
-                  className="hidden"
-                  onChange={e => { if (e.target.files) void handleFileSelect(e.target.files) }}
+                <ListingMediaSection
+                  listingId={listingId}
+                  photos={photos}
+                  galleryItems={galleryItems}
+                  uploadingPhoto={uploadingPhoto}
+                  canAddPhoto={canAddPhoto}
+                  canAddVideo={canAddVideo}
+                  activeVideoCount={activeVideoCount}
+                  rejectedVideos={rejectedVideos}
+                  videosLoading={videosLoading}
+                  layout="horizontal"
+                  onReorder={onReorder}
+                  onFileSelect={handleFileSelect}
+                  onAddVideo={onAddVideo}
+                  onRemovePhoto={(id) => { void handleDeletePhoto(id) }}
+                  onRemoveVideo={onRemoveVideo}
+                  onError={onVideoError}
+                  required
                 />
-
-                {photos.length > 0 && (
-                  <>
-                    <p className="text-xs font-mono text-ink-3 mt-3 mb-2 text-right">
-                      {photos.length} / {MAX_PHOTOS} photos
-                    </p>
-                    <ListingPhotoSortableList
-                      photos={photos}
-                      onReorder={onPhotoReorder}
-                      onRemove={id => { void handleDeletePhoto(id) }}
-                      layout="horizontal"
-                    />
-                  </>
-                )}
               </div>
             )}
 

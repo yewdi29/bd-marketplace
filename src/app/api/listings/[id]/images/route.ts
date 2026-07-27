@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { applyMajorChangeReview } from '@/lib/listings/applyMajorChangeReview'
+import { nextGalleryPosition } from '@/lib/listings/galleryPosition'
 import type { ListingChangeSnapshot } from '@/lib/listings/detectMajorChange'
 import {
   ALLOWED_LISTING_PHOTO_TYPES,
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   // First image in this listing is auto-primary
   const isPrimary = existingCount === 0
+  const galleryPosition = await nextGalleryPosition(adminClient, params.id)
 
   const { data: imgRecord, error: insertError } = await adminClient
     .from('listing_images')
@@ -104,8 +106,9 @@ export async function POST(request: NextRequest, { params }: Params) {
       url: publicUrl,
       sort_order: existingCount,
       is_primary: isPrimary,
+      gallery_position: galleryPosition,
     })
-    .select('id, url')
+    .select('id, url, gallery_position')
     .single()
 
   if (insertError) {

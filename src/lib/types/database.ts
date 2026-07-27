@@ -14,6 +14,13 @@ export type ArticleCategory =
   | 'industry'
 export type SubscriberStatus = 'active' | 'unsubscribed'
 
+export type ListingVideoStatus =
+  | 'uploading'
+  | 'processing'
+  | 'ready'
+  | 'rejected_too_long'
+  | 'error'
+
 export type OrgMemberRole = 'owner' | 'manager'
 export type OrgMemberStatus = 'invited' | 'active' | 'expired'
 export type OrgPreferredPaymentMethod = 'card' | 'ach'
@@ -122,6 +129,7 @@ export interface Listing {
   created_at: string
   updated_at: string
   listing_images?: ListingImage[]
+  listing_videos?: ListingVideo[]
   // Industry / category taxonomy — nullable until a listing has been
   // migrated or created against the new structure (see migrations).
   industry_id: string | null
@@ -185,7 +193,22 @@ export interface ListingImage {
   alt_text: string | null
   sort_order: number
   is_primary: boolean
+  gallery_position: number | null
   created_at: string
+}
+
+export interface ListingVideo {
+  id: string
+  listing_id: string
+  mux_asset_id: string | null
+  mux_playback_id: string | null
+  status: ListingVideoStatus
+  duration_seconds: number | null
+  position: number
+  gallery_position: number | null
+  rejection_reason: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Lead {

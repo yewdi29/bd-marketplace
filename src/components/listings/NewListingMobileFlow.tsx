@@ -3,28 +3,22 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import ListingCardPreview from '@/components/listings/ListingCardPreview'
-import ListingTaxonomyFields, {
-  FormField,
-  inputCls,
-  selectCls,
-  SelectWrapper,
-  labelCls,
-} from '@/components/listings/ListingTaxonomyFields'
+import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper } from '@/components/listings/ListingTaxonomyFields'
 import { useListingTaxonomy } from '@/hooks/useListingTaxonomy'
 import type { ListingTaxonomyFormValues } from '@/hooks/useListingTaxonomy'
 import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
 import {
-  LISTING_PHOTO_ACCEPT,
-  LISTING_PHOTO_UPLOAD_HINT,
   MAX_LISTING_PHOTOS,
 } from '@/lib/listings/listingPhotoUpload'
 import {
   getAccountListingLimit,
   hasUnlimitedListings,
 } from '@/lib/planLimits'
+import ListingMediaSection from './ListingMediaSection'
 import type { ListingForm, PhotoState } from './NewListingModal'
-import ListingPhotoSortableList from './ListingPhotoSortableList'
+import type { GalleryItem } from '@/lib/listings/listingGallery'
+import type { ListingVideoSlot } from '@/lib/listings/listingVideoUploadClient'
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -102,6 +96,7 @@ function StepProgress({ step }: { step: number }) {
 
 export interface NewListingMobileFlowProps {
   onClose: () => void
+  listingId: string | null
   step: 1 | 2 | 3 | 4
   setStep: (step: 1 | 2 | 3 | 4) => void
   prompt: string
@@ -116,10 +111,16 @@ export interface NewListingMobileFlowProps {
   setTaxonomy: React.Dispatch<React.SetStateAction<ListingTaxonomyFormValues>>
   photos: PhotoState[]
   uploadingPhoto: boolean
-  videoUrl: string
-  setVideoUrl: (v: string) => void
-  setVideoError: (v: string) => void
-  videoError: string
+  galleryItems: GalleryItem[]
+  canAddPhoto: boolean
+  canAddVideo: boolean
+  activeVideoCount: number
+  rejectedVideos: ListingVideoSlot[]
+  videosLoading: boolean
+  onReorder: (items: GalleryItem[]) => void | Promise<void>
+  onAddVideo: (file: File) => Promise<string | null>
+  onRemoveVideo: (videoId: string) => Promise<string | null>
+  onVideoError: (message: string) => void
   priceError: string
   setPriceError: (v: string) => void
   promptContainerRef: React.RefObject<HTMLDivElement>
@@ -127,7 +128,6 @@ export interface NewListingMobileFlowProps {
   promptFocused: boolean
   onPromptFocus: () => void
   onPromptBlur: () => void
-  fileInputRef: React.RefObject<HTMLInputElement>
   handleGenerate: () => Promise<void>
   handleSaveFields: () => Promise<void>
   handleSavePhotos: () => Promise<void>
@@ -136,12 +136,12 @@ export interface NewListingMobileFlowProps {
   handleDiscard: () => Promise<void>
   handleRemovePhoto: (id: string) => Promise<void>
   handleFileSelect: (files: FileList) => Promise<void>
-  onPhotoReorder: (photos: PhotoState[]) => void
   router: AppRouterInstance
 }
 
 export default function NewListingMobileFlow({
   onClose,
+  listingId,
   step,
   setStep,
   prompt,
@@ -156,10 +156,16 @@ export default function NewListingMobileFlow({
   setTaxonomy,
   photos,
   uploadingPhoto,
-  videoUrl,
-  setVideoUrl,
-  setVideoError,
-  videoError,
+  galleryItems,
+  canAddPhoto,
+  canAddVideo,
+  activeVideoCount,
+  rejectedVideos,
+  videosLoading,
+  onReorder,
+  onAddVideo,
+  onRemoveVideo,
+  onVideoError,
   priceError,
   setPriceError,
   promptContainerRef,
@@ -167,7 +173,6 @@ export default function NewListingMobileFlow({
   promptFocused,
   onPromptFocus,
   onPromptBlur,
-  fileInputRef,
   handleGenerate,
   handleSaveFields,
   handleSavePhotos,
@@ -176,7 +181,6 @@ export default function NewListingMobileFlow({
   handleDiscard,
   handleRemovePhoto,
   handleFileSelect,
-  onPhotoReorder,
   router,
 }: NewListingMobileFlowProps) {
   const [entered, setEntered] = useState(false)
@@ -583,70 +587,28 @@ export default function NewListingMobileFlow({
 
           {step === 3 && (
             <div className="px-5 pt-6 pb-4">
-              <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
-                Add Photos &amp; Video.
+              <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-5" style={{ letterSpacing: '-0.02em' }}>
+                Media
               </h1>
-              <p className="text-[15px] text-ink-2 leading-relaxed mb-5">
-                Add up to {MAX_LISTING_PHOTOS} photos. Press and hold a photo to reorder — the first photo is your cover image.
-              </p>
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-[#D4D5D7] rounded-[14px] flex flex-col items-center justify-center gap-2 py-10 hover:border-orange hover:bg-orange/[0.02] transition-colors"
-              >
-                {uploadingPhoto ? (
-                  <div className="flex items-center gap-2 text-ink-3">
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden>
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span className="text-sm font-sans">Uploading…</span>
-                  </div>
-                ) : (
-                  <>
-                    <CameraIcon />
-                    <span className="text-sm font-sans font-semibold text-ink">Add Photos</span>
-                    <span className="text-xs text-ink-3">Take a photo or choose from library</span>
-                    <span className="text-xs text-ink-3">{LISTING_PHOTO_UPLOAD_HINT}</span>
-                  </>
-                )}
-              </button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={LISTING_PHOTO_ACCEPT}
-                multiple
-                className="hidden"
-                onChange={e => { if (e.target.files) handleFileSelect(e.target.files) }}
+              <ListingMediaSection
+                listingId={listingId}
+                photos={photos}
+                galleryItems={galleryItems}
+                uploadingPhoto={uploadingPhoto}
+                canAddPhoto={canAddPhoto}
+                canAddVideo={canAddVideo}
+                activeVideoCount={activeVideoCount}
+                rejectedVideos={rejectedVideos}
+                videosLoading={videosLoading}
+                layout="horizontal"
+                onReorder={onReorder}
+                onFileSelect={handleFileSelect}
+                onAddVideo={onAddVideo}
+                onRemovePhoto={(id) => { void handleRemovePhoto(id) }}
+                onRemoveVideo={onRemoveVideo}
+                onError={onVideoError}
               />
-
-              {photos.length > 0 && (
-                <>
-                  <p className="text-xs font-mono text-ink-3 mt-3 mb-2 text-right">
-                    {photos.length} / {MAX_LISTING_PHOTOS} photos
-                  </p>
-                  <ListingPhotoSortableList
-                    photos={photos}
-                    onReorder={onPhotoReorder}
-                    onRemove={id => { void handleRemovePhoto(id) }}
-                    layout="horizontal"
-                  />
-                </>
-              )}
-
-              <div className="mt-8">
-                <label className={labelCls}>Add Video <span className="text-ink-3 font-normal">(optional)</span></label>
-                <input
-                  type="url"
-                  value={videoUrl}
-                  onChange={e => { setVideoUrl(e.target.value); setVideoError('') }}
-                  className={inputCls}
-                  placeholder="Paste a YouTube link here"
-                />
-                {videoError && <p className="text-xs text-red-500 mt-1.5">{videoError}</p>}
-              </div>
             </div>
           )}
 

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import type { ListingImage } from '@/lib/types/database'
+import { muxThumbnailUrl } from '@/lib/listings/listingVideoUploadClient'
+import type { PublicGalleryItem } from '@/lib/listings/publicGallery'
 
 const GAP_PX = 8
 
@@ -10,8 +11,20 @@ function normalizeIndex(idx: number, length: number) {
   return ((idx % length) + length) % length
 }
 
+function PlayBadge() {
+  return (
+    <span className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/55 text-white">
+        <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor">
+          <path d="M2 1.5v7l6-3.5-6-3.5z" />
+        </svg>
+      </span>
+    </span>
+  )
+}
+
 interface Props {
-  images: ListingImage[]
+  items: PublicGalleryItem[]
   activeIdx: number
   onSelect: (idx: number) => void
   onScrub: (idx: number) => void
@@ -19,7 +32,7 @@ interface Props {
 }
 
 export default function ScrubableThumbnailStrip({
-  images,
+  items,
   activeIdx,
   onSelect,
   onScrub,
@@ -32,7 +45,6 @@ export default function ScrubableThumbnailStrip({
 
   const stride = size + GAP_PX
 
-  // Keep active thumb centered when the main viewer changes (image swipe).
   useEffect(() => {
     if (scrubbingRef.current) return
     const el = thumbRefs.current[activeIdx]
@@ -41,16 +53,13 @@ export default function ScrubableThumbnailStrip({
   }, [activeIdx])
 
   function emitIndexFromScroll() {
-    // Only scrub the main viewer when the user is actively dragging the strip.
-    // Programmatic scrollIntoView (from swipe sync) also fires onScroll and was
-    // pulling PhotoSwipe back — e.g. capping navigation around image 5.
     if (!scrubbingRef.current) return
 
     const container = scrollRef.current
     if (!container) return
     const center = container.scrollLeft + container.clientWidth / 2
     const raw = Math.round((center - size / 2) / stride)
-    const idx = normalizeIndex(raw, images.length)
+    const idx = normalizeIndex(raw, items.length)
     if (idx !== lastEmittedIdx.current) {
       lastEmittedIdx.current = idx
       onScrub(idx)
@@ -70,19 +79,21 @@ export default function ScrubableThumbnailStrip({
       onMouseDown={() => { scrubbingRef.current = true }}
       onMouseUp={() => { scrubbingRef.current = false }}
     >
-      {images.map((img, idx) => {
+      {items.map((item, idx) => {
         const active = idx === activeIdx
+        const label = item.kind === 'photo' ? `View photo ${idx + 1}` : `View video ${idx + 1}`
+
         return (
           <button
-            key={img.id}
+            key={`${item.kind}:${item.id}`}
             ref={el => { thumbRefs.current[idx] = el }}
             type="button"
             onClick={e => {
               e.stopPropagation()
               onSelect(idx)
             }}
-            aria-label={`View photo ${idx + 1}`}
-            className="shrink-0 bg-white transition-colors"
+            aria-label={label}
+            className="relative shrink-0 bg-white transition-colors"
             style={{
               width: size,
               height: size,
@@ -91,14 +102,28 @@ export default function ScrubableThumbnailStrip({
               border: `2px solid ${active ? '#FF6B35' : '#E8E9EA'}`,
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={img.url}
-              alt={img.alt_text ?? `Photo ${idx + 1}`}
-              className="w-full h-full object-cover pointer-events-none"
-              style={{ borderRadius: '6px' }}
-              draggable={false}
-            />
+            {item.kind === 'photo' ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.url}
+                alt={item.alt_text ?? `Photo ${idx + 1}`}
+                className="h-full w-full object-cover pointer-events-none"
+                style={{ borderRadius: '6px' }}
+                draggable={false}
+              />
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={muxThumbnailUrl(item.mux_playback_id)}
+                  alt={`Video ${idx + 1}`}
+                  className="h-full w-full object-cover pointer-events-none"
+                  style={{ borderRadius: '6px' }}
+                  draggable={false}
+                />
+                <PlayBadge />
+              </>
+            )}
           </button>
         )
       })}
