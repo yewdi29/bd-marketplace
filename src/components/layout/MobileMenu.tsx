@@ -205,6 +205,7 @@ export default function MobileMenu({ open, onClose, user, triggerRef }: MobileMe
                   </Link>
                 )}
 
+                {!user.has_organization && (
                 <button
                   type="button"
                   onClick={handleManageSubscription}
@@ -214,6 +215,7 @@ export default function MobileMenu({ open, onClose, user, triggerRef }: MobileMe
                   <ProfileMenuIcon icon={user.plan === 'max' ? CreditCard : Sparkles} />
                   {user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}
                 </button>
+                )}
                 <button
                   type="button"
                   onClick={handleSignOut}

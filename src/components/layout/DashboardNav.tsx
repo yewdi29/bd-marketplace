@@ -3,7 +3,7 @@
 import { Suspense, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import Link from 'next/link'
-import Image from 'next/image'
+import BrandLogo from '@/components/ui/BrandLogo'
 import ProfileDropdown, { type ProfileUser } from '@/components/ui/ProfileDropdown'
 import SearchBar from '@/components/marketplace/SearchBar'
 import MobileMenu from '@/components/layout/MobileMenu'
@@ -51,14 +51,7 @@ export default function DashboardNav({ user }: { user: ProfileUser }) {
       >
         {/* Col 1: Logo */}
         <Link href="/" className="shrink-0">
-          <Image
-            src="/bd_logo-black.svg"
-            alt="Black Diamond"
-            width={140}
-            height={40}
-            priority
-            style={{ height: '27px', width: 'auto' }}
-          />
+          <BrandLogo priority />
         </Link>
 
         {/* Col 2: SearchBar — centered in remaining space.

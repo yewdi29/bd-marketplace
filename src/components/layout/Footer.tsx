@@ -48,9 +48,6 @@ type FooterLink =
   | { label: string; href: string; sellerPortal?: false }
   | { label: string; sellerPortal: true; href?: undefined }
 
-const LANGUAGES = ['English', 'Español', 'Français', 'Deutsch', 'Português']
-const CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'AUD']
-
 function IconInstagram() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -133,81 +130,25 @@ export default function Footer() {
     <footer style={{ background: '#1A1D20' }}>
       <div className="page-shell pt-14 pb-0">
 
-        {/* Main grid: 3/4 sitemap + 1/4 settings */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 pb-10">
-
-          {/* Sitemap columns — 1-col mobile, 2x2 tablet, 4-col desktop (unchanged) */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {SITEMAP.map(col => (
-              <div key={col.heading}>
-                <h3
-                  className="font-mono font-bold uppercase mb-4"
-                  style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}
-                >
-                  {col.heading}
-                </h3>
-                <ul className="space-y-2.5">
-                  {col.links.map(link => (
-                    <li key={link.label}>
-                      <FooterNavLink link={link} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          {/* Settings block */}
-          <div className="lg:col-span-1">
-            <h3
-              className="font-mono font-bold uppercase mb-4"
-              style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}
-            >
-              Settings
-            </h3>
-            <div className="flex flex-col gap-3">
-              <div>
-                <label
-                  className="font-sans block mb-1.5"
-                  style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}
-                >
-                  Language
-                </label>
-                <select
-                  aria-label="Language"
-                  defaultValue="English"
-                  className="w-full font-sans text-sm rounded-[10px] px-3 py-2 focus:outline-none"
-                  style={{
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.7)',
-                  }}
-                >
-                  {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-              <div>
-                <label
-                  className="font-sans block mb-1.5"
-                  style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}
-                >
-                  Currency
-                </label>
-                <select
-                  aria-label="Currency"
-                  defaultValue="USD"
-                  className="w-full font-sans text-sm rounded-[10px] px-3 py-2 focus:outline-none"
-                  style={{
-                    background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.7)',
-                  }}
-                >
-                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+        {/* Sitemap — 1-col mobile, 2x2 tablet, 4-col desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pb-10">
+          {SITEMAP.map(col => (
+            <div key={col.heading}>
+              <h3
+                className="font-mono font-bold uppercase mb-4"
+                style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}
+              >
+                {col.heading}
+              </h3>
+              <ul className="space-y-2.5">
+                {col.links.map(link => (
+                  <li key={link.label}>
+                    <FooterNavLink link={link} />
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
+          ))}
         </div>
 
         {/* Bottom bar — desktop (≥1024px): unchanged left/right split */}

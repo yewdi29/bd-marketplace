@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import BrandLogo from '@/components/ui/BrandLogo'
 import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 
@@ -39,14 +39,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex mb-6">
-            <Image
-              src="/bd_logo-black.svg"
-              alt="Black Diamond"
-              width={140}
-              height={40}
-              priority
-              style={{ height: '27px', width: 'auto' }}
-            />
+            <BrandLogo priority />
           </Link>
           <h1 className="font-sans font-bold text-[32px] text-ink" style={{ letterSpacing: '-0.03em' }}>
             Reset your password

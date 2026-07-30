@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'Plans & Pricing',
@@ -7,6 +9,24 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://blackdiamondmkt.com/dashboard/upgrade' },
 }
 
-export default function UpgradeLayout({ children }: { children: React.ReactNode }) {
+export default async function UpgradeLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    const { data: orgMember } = await supabase
+      .from('org_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (orgMember) {
+      redirect('/dashboard/organization?tab=billing')
+    }
+  }
+
   return children
 }

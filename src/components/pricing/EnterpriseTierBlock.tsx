@@ -6,6 +6,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { EnterpriseDiamondMark } from '@/components/ui/PlanBadge'
+import { ENTERPRISE_TIER_FEATURES } from '@/lib/pricing/membershipTiers'
 
 const EMPTY_FORM = {
   company_name: '',
@@ -33,14 +34,6 @@ const TEAM_SIZE_OPTIONS = [
   { value: '51-100', label: '51–100 people' },
   { value: '100+', label: '100+ people' },
 ]
-
-export const ENTERPRISE_FEATURES = [
-  'Everything in Max, plus:',
-  '5 seats included, additional seats available',
-  'Multi-location / multi-branch team support',
-  'Owner and Manager roles with organization-wide visibility',
-  'Dedicated support',
-] as const
 
 export function EnterpriseIntakeModal({
   open,
@@ -291,7 +284,7 @@ export default function EnterpriseTierBlock({ className = '' }: { className?: st
           </p>
           <div className="border-t border-[#F0F1F2] mb-5" />
           <ul className="space-y-3">
-            {ENTERPRISE_FEATURES.map(label => (
+            {ENTERPRISE_TIER_FEATURES.map(label => (
               <li key={label} className="flex items-start gap-2.5">
                 <span className="shrink-0 font-bold text-sm" style={{ color: '#FF6B35' }}>✓</span>
                 <span className="font-sans text-sm leading-snug" style={{ color: '#4A4D52' }}>{label}</span>

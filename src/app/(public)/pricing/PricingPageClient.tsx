@@ -5,97 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import EnterpriseTierBlock from '@/components/pricing/EnterpriseTierBlock'
 import { PlanDiamondMark } from '@/components/ui/PlanBadge'
+import {
+  FREE_TIER_FEATURES,
+  PAID_MEMBERSHIP_TIERS,
+} from '@/lib/pricing/membershipTiers'
 
 type BillingCycle = 'monthly' | 'annual'
-
-interface TierFeature {
-  label: string
-  included: boolean
-}
-
-interface PaidTier {
-  id: 'starter' | 'pro' | 'max'
-  name: string
-  monthly: number
-  annualPerMonth: number
-  annualTotal: number
-  annualSavings: number
-  listingLabel: string
-  popular: boolean
-  features: TierFeature[]
-}
-
-const FREE_FEATURES: TierFeature[] = [
-  { label: '3 active listings', included: true },
-  { label: 'AI listing generation', included: true },
-  { label: 'Basic search visibility', included: true },
-  { label: 'BD Verified badge', included: false },
-  { label: 'Directory page listing', included: false },
-  { label: 'Priority placement', included: false },
-]
-
-const PAID_TIERS: PaidTier[] = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    monthly: 299,
-    annualPerMonth: 267,
-    annualTotal: 3200,
-    annualSavings: 388,
-    listingLabel: '15 listings',
-    popular: false,
-    features: [
-      { label: '15 active listings', included: true },
-      { label: 'AI listing generation', included: true },
-      { label: 'BD Verified badge', included: true },
-      { label: 'Analytics per listing', included: true },
-      { label: 'Video upload', included: true },
-      { label: 'Priority search placement', included: true },
-      { label: 'Directory page listing', included: false },
-      { label: 'Newsletter features', included: false },
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    monthly: 699,
-    annualPerMonth: 625,
-    annualTotal: 7500,
-    annualSavings: 888,
-    listingLabel: '40 listings',
-    popular: true,
-    features: [
-      { label: '40 active listings', included: true },
-      { label: 'AI listing generation', included: true },
-      { label: 'BD Verified badge', included: true },
-      { label: 'Directory page listing', included: true },
-      { label: 'Monthly analytics report', included: true },
-      { label: '1 newsletter feature/week', included: true },
-      { label: 'All Starter features', included: true },
-      { label: 'Exclusive newsletter blast', included: false },
-    ],
-  },
-  {
-    id: 'max',
-    name: 'Max',
-    monthly: 999,
-    annualPerMonth: 917,
-    annualTotal: 11000,
-    annualSavings: 988,
-    listingLabel: 'Unlimited',
-    popular: false,
-    features: [
-      { label: 'Unlimited listings', included: true },
-      { label: 'Exclusive newsletter blast', included: true },
-      { label: 'Company spotlight', included: true },
-      { label: 'Dedicated account manager', included: true },
-      { label: 'Priority directory placement', included: true },
-      { label: 'Early feature access', included: true },
-      { label: 'All Pro features', included: true },
-      { label: 'Priority support', included: true },
-    ],
-  },
-]
 
 function BillingToggle({ cycle, onChange }: { cycle: BillingCycle; onChange: (c: BillingCycle) => void }) {
   const isAnnual = cycle === 'annual'
@@ -191,7 +106,7 @@ export default function PricingPageClient() {
           </span>
           <div className="border-t border-[#F0F1F2] mb-5" />
           <ul className="space-y-3 mb-6 flex-1">
-            {FREE_FEATURES.map(f => (
+            {FREE_TIER_FEATURES.map(f => (
               <li key={f.label} className="flex items-start gap-2.5">
                 <span className="shrink-0 font-bold text-sm" style={{ color: f.included ? '#FF6B35' : '#D4D5D7' }}>
                   {f.included ? '✓' : '✕'}
@@ -208,7 +123,7 @@ export default function PricingPageClient() {
           </Link>
         </div>
 
-        {PAID_TIERS.map(tier => {
+        {PAID_MEMBERSHIP_TIERS.map(tier => {
           const price = billingCycle === 'monthly' ? tier.monthly : tier.annualPerMonth
           return (
             <div
@@ -265,7 +180,10 @@ export default function PricingPageClient() {
               <button
                 type="button"
                 onClick={() => handleChoosePaid(tier.id)}
-                className="w-full py-3 text-sm font-bold rounded-pill transition-colors border border-[#D4D5D7] text-ink hover:border-orange hover:text-orange"
+                className="w-full py-3 text-sm font-bold rounded-pill text-white transition-colors"
+                style={{ background: '#FF6B35' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#FF8855' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#FF6B35' }}
               >
                 Choose {tier.name}
               </button>

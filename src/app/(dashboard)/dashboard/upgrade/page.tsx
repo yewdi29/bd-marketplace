@@ -6,96 +6,12 @@ import { createClient } from '@/lib/supabase/client'
 import type { MembershipPlan } from '@/lib/types/database'
 import { PlanDiamondMark } from '@/components/ui/PlanBadge'
 import EnterpriseTierBlock from '@/components/pricing/EnterpriseTierBlock'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import {
+  PAID_MEMBERSHIP_TIERS,
+  type PaidMembershipTier,
+} from '@/lib/pricing/membershipTiers'
 
 type BillingCycle = 'monthly' | 'annual'
-
-interface TierFeature {
-  label: string
-  included: boolean
-}
-
-interface TierConfig {
-  id: 'starter' | 'pro' | 'max'
-  icon: string
-  name: string
-  monthly: number
-  annualPerMonth: number
-  annualTotal: number
-  annualSavings: number
-  listingLabel: string
-  popular: boolean
-  features: TierFeature[]
-}
-
-// ─── Tier config ──────────────────────────────────────────────────────────────
-
-const TIERS: TierConfig[] = [
-  {
-    id: 'starter',
-    icon: '🥉',
-    name: 'Starter',
-    monthly: 299,
-    annualPerMonth: 267,
-    annualTotal: 3200,
-    annualSavings: 388,
-    listingLabel: '15 listings',
-    popular: false,
-    features: [
-      { label: '15 active listings', included: true },
-      { label: 'AI listing generation', included: true },
-      { label: 'BD Verified badge', included: true },
-      { label: 'Analytics per listing', included: true },
-      { label: 'Video upload', included: true },
-      { label: 'Priority search placement', included: true },
-      { label: 'Directory page listing', included: false },
-      { label: 'Newsletter features', included: false },
-    ],
-  },
-  {
-    id: 'pro',
-    icon: '🥈',
-    name: 'Pro',
-    monthly: 699,
-    annualPerMonth: 625,
-    annualTotal: 7500,
-    annualSavings: 888,
-    listingLabel: '40 listings',
-    popular: true,
-    features: [
-      { label: '40 active listings', included: true },
-      { label: 'AI listing generation', included: true },
-      { label: 'BD Verified badge', included: true },
-      { label: 'Directory page listing', included: true },
-      { label: 'Monthly analytics report', included: true },
-      { label: '1 newsletter feature/week', included: true },
-      { label: 'All Starter features', included: true },
-      { label: 'Exclusive newsletter blast', included: false },
-    ],
-  },
-  {
-    id: 'max',
-    icon: '🏆',
-    name: 'Max',
-    monthly: 999,
-    annualPerMonth: 917,
-    annualTotal: 11000,
-    annualSavings: 988,
-    listingLabel: 'Unlimited',
-    popular: false,
-    features: [
-      { label: 'Unlimited listings', included: true },
-      { label: 'Exclusive newsletter blast', included: true },
-      { label: 'Company spotlight', included: true },
-      { label: 'Dedicated account manager', included: true },
-      { label: 'Priority directory placement', included: true },
-      { label: 'Early feature access', included: true },
-      { label: 'All Pro features', included: true },
-      { label: 'Priority support', included: true },
-    ],
-  },
-]
 
 // ─── Billing Toggle ───────────────────────────────────────────────────────────
 
@@ -160,7 +76,7 @@ function TierCard({
   onManageMembership,
   portalLoading,
 }: {
-  tier: TierConfig
+  tier: PaidMembershipTier
   billingCycle: BillingCycle
   currentPlan: MembershipPlan
   onChoose: (id: string) => void
@@ -288,24 +204,14 @@ function TierCard({
       ) : (
         <button
           onClick={() => onChoose(tier.id)}
-          disabled={isCurrent || loading}
-          className="w-full py-3 text-sm font-bold rounded-pill transition-all duration-150 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          style={
-            isCurrent
-              ? { background: '#F4F4F5', color: '#9A9DA2', border: '1px solid #E4E4E7' }
-              : { background: '#FFFFFF', color: '#1A1D20', border: '1.5px solid #D4D5D7' }
-          }
+          disabled={loading}
+          className="w-full py-3 text-sm font-bold rounded-pill transition-colors disabled:cursor-not-allowed disabled:opacity-70 flex items-center justify-center gap-2 text-white"
+          style={{ background: '#FF6B35' }}
           onMouseEnter={e => {
-            if (!isCurrent && !loading) {
-              e.currentTarget.style.borderColor = '#FF6B35'
-              e.currentTarget.style.color = '#FF6B35'
-            }
+            if (!loading) e.currentTarget.style.background = '#FF8855'
           }}
           onMouseLeave={e => {
-            if (!isCurrent && !loading) {
-              e.currentTarget.style.borderColor = '#D4D5D7'
-              e.currentTarget.style.color = '#1A1D20'
-            }
+            if (!loading) e.currentTarget.style.background = '#FF6B35'
           }}
         >
           {loading ? (
@@ -313,7 +219,7 @@ function TierCard({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
-          ) : isCurrent ? 'Current Plan' : `Choose ${tier.name}`}
+          ) : `Choose ${tier.name}`}
         </button>
       )}
     </div>
@@ -421,7 +327,7 @@ export default function UpgradePage() {
           marginBottom: '20px',
         }}
       >
-        {TIERS.map(tier => (
+        {PAID_MEMBERSHIP_TIERS.map(tier => (
           <TierCard
             key={tier.id}
             tier={tier}

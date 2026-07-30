@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import BrandLogo from '@/components/ui/BrandLogo'
 import NavbarDesktopSearch from '@/components/layout/NavbarDesktopSearch'
 import NavbarDesktopAuth from '@/components/layout/NavbarDesktopAuth'
 import NavbarLoggedOutActions from '@/components/layout/NavbarLoggedOutActions'
@@ -8,14 +8,7 @@ import NavbarMobile from '@/components/layout/NavbarMobile'
 function Logo() {
   return (
     <Link href="/" className="shrink-0">
-      <Image
-        src="/bd_logo-black.svg"
-        alt="Black Diamond"
-        width={140}
-        height={40}
-        priority
-        style={{ height: '27px', width: 'auto' }}
-      />
+      <BrandLogo priority />
     </Link>
   )
 }

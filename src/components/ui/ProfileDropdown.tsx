@@ -208,7 +208,7 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                 </Link>
               )}
 
-              {/* Upgrade Plan — navigates to /dashboard/upgrade (or coming-soon toast for max) */}
+              {!user.has_organization && (
               <button
                 className="w-full flex items-center justify-between px-4 py-2 text-sm text-ink-2 hover:text-ink hover:bg-bg transition-colors"
                 onClick={handleManageSubscription}
@@ -226,6 +226,7 @@ export default function ProfileDropdown({ user }: { user: ProfileUser }) {
                   </span>
                 )}
               </button>
+              )}
             </div>
 
             <div className="border-t border-[#E8E9EA] py-1.5">

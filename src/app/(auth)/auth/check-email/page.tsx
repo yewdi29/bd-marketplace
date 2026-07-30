@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 export default function CheckEmailPage() {
   return (
@@ -8,7 +8,7 @@ export default function CheckEmailPage() {
 
         {/* Logo */}
         <Link href="/" className="inline-flex mb-8">
-          <Image src="/bd_logo-black.svg" alt="Black Diamond" width={140} height={40} priority style={{ height: '27px', width: 'auto' }} />
+          <BrandLogo priority />
         </Link>
 
         {/* Card */}
