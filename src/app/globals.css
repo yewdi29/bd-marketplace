@@ -302,6 +302,27 @@ select {
 .nl-step-forward { animation: nl-step-forward 0.28s cubic-bezier(0.4, 0, 0.22, 1) both; }
 .nl-step-back { animation: nl-step-back 0.28s cubic-bezier(0.4, 0, 0.22, 1) both; }
 
+/* ─── Listing detail: mobile Message Seller sticky CTA ─────────────────────── */
+.message-seller-sticky {
+  transform: translateY(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transition:
+    transform 0.55s cubic-bezier(0.34, 1.45, 0.64, 1),
+    opacity 0.35s ease;
+}
+.message-seller-sticky--visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.message-seller-sticky--hidden {
+  transform: translateY(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ─── Search bar: hero moving-glow border ─────────────────────────────────── */
 /* Applied only to variant="hero" search bar on focus.                         */
 /* Creates a 2px animated gradient border via padding trick.                   */

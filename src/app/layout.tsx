@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
@@ -112,6 +113,8 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim()
+
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-bg text-ink font-sans">
@@ -128,6 +131,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         {children}
+        {gaMeasurementId ? <GoogleAnalytics gaId={gaMeasurementId} /> : null}
       </body>
     </html>
   )

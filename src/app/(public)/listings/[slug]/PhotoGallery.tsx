@@ -141,7 +141,6 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
 
   const active = sorted[activeIdx]
   const total = sorted.length
-  const activeIsPhoto = active?.kind === 'photo'
 
   const goTo = useCallback((idx: number) => {
     setActiveIdx(((idx % total) + total) % total)
@@ -228,12 +227,13 @@ export default function PhotoGallery({ items, title, listingActions, shareUrl, s
   }, [view, next, prev, isMobile, closeLightbox, exitGrid])
 
   function handleTouchStart(e: React.TouchEvent) {
-    if (!activeIsPhoto) return
+    const target = e.target as Element | null
+    if (target?.closest('mux-player')) return
     touchStartX.current = e.touches[0].clientX
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (!activeIsPhoto || touchStartX.current === null) return
+    if (touchStartX.current === null) return
     const deltaX = e.changedTouches[0].clientX - touchStartX.current
     if (Math.abs(deltaX) > 40) {
       if (deltaX < 0) next()

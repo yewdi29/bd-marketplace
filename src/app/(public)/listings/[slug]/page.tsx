@@ -11,6 +11,7 @@ import { getFunctionalSpecsEntries } from '@/lib/listings/listingSpecs'
 import InquiryForm from './InquiryForm'
 import ListingBreadcrumb from './ListingBreadcrumb'
 import { ListingGalleryNavProvider } from './ListingGalleryNavContext'
+import MessageSellerStickyButton from './MessageSellerStickyButton'
 import ListingCard from '@/components/ListingCard'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingLocationPill from '@/components/listings/ListingLocationPill'
@@ -447,14 +448,17 @@ export default async function ListingDetailPage({ params }: Props) {
 
             {/* ── Contact Seller — hidden once sold ── */}
             {!isSold && (
-              <>
+              <section
+                id="contact-seller"
+                style={{ scrollMarginTop: '20px' }}
+              >
                 <p className="font-sans font-bold text-ink mb-4" style={{ fontSize: '14px' }}>
                   Contact Seller
                 </p>
                 <div className="mb-5">
                   <InquiryForm listingId={l.id} sellerId={l.seller_id} />
                 </div>
-              </>
+              </section>
             )}
 
             {/* ── Listed By ── */}
@@ -542,6 +546,8 @@ export default async function ListingDetailPage({ params }: Props) {
 
         </div>
       </div>
+
+      <MessageSellerStickyButton enabled={!isSold} />
     </>
   )
 }
