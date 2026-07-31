@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { CreditCard, LogOut, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { openFeedbackPanel } from '@/lib/feedback/openFeedback'
 import {
   getInitials,
   PROFILE_COMPANY_SETTINGS_LINK,
@@ -17,11 +18,13 @@ import { navLinkPrefetch } from '@/lib/navLink'
 import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
 import { trapFocus } from '@/lib/focusTrap'
 
-// Primary navigation links — always shown, regardless of auth state
+/** Primary nav — shown for signed-in and signed-out users (pill buttons). */
 const NAV_LINKS = [
-  { label: 'Search', href: '/search' },
-  { label: 'The Operator Journal', href: '/journal' },
+  { label: 'Browse Equipment', href: '/search' },
+  { label: 'Business Directory', href: '/sellers' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/about' },
+  { label: 'Contact', href: '/contact' },
 ]
 
 function CloseIcon() {
@@ -127,7 +130,9 @@ export default function MobileMenu({ open, onClose, user, triggerRef }: MobileMe
         style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)' }}
       />
 
-      {/* Slide-in panel — min(75%, 400px) wide at every size below 1024px */}
+      {/* Slide-in panel — min(75%, 400px) wide at every size below 1024px.
+          Light gray shell; white top card (rounded bottom + shadow) for account or auth CTAs;
+          site nav links sit on the gray layer below. */}
       <div
         ref={panelRef}
         role="dialog"
@@ -135,134 +140,207 @@ export default function MobileMenu({ open, onClose, user, triggerRef }: MobileMe
         aria-label="Menu"
         aria-hidden={!open}
         className={[
-          'fixed inset-y-0 right-0 bg-white flex flex-col z-[110] transition-transform duration-300',
+          'fixed inset-y-0 right-0 flex flex-col z-[110] transition-transform duration-300',
           'border-l border-[#E8E9EA] shadow-[-8px_0_32px_rgba(0,0,0,0.10)]',
+          'bg-[#F7F8F9]',
           open ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
         style={{ width: 'min(75vw, 400px)' }}
       >
-        {/* Close button */}
-        <div className="flex justify-end shrink-0 px-2 pt-2">
-          <button
-            ref={closeButtonRef}
-            onClick={onClose}
-            aria-label="Close menu"
-            className="flex items-center justify-center text-ink-2 hover:text-ink transition-colors"
-            style={{ width: 44, height: 44 }}
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="flex-1 overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           {user ? (
             <>
-              {/* Profile header */}
-              <div className="flex items-center gap-3 pb-4 mb-2 border-b border-[#E8E9EA]">
-                <div className="w-9 h-9 rounded-full bg-orange flex items-center justify-center shrink-0">
-                  <span className="text-white text-sm font-bold leading-none">
-                    {getInitials(user.full_name, user.email)}
-                  </span>
+              {/* Account layer — seamless white card, rounded bottom only */}
+              <div
+                className="bg-white"
+                style={{
+                  borderBottomLeftRadius: 20,
+                  borderBottomRightRadius: 20,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                }}
+              >
+                <div className="flex justify-end shrink-0 px-2 pt-2">
+                  <button
+                    ref={closeButtonRef}
+                    onClick={onClose}
+                    aria-label="Close menu"
+                    className="flex items-center justify-center text-ink-2 hover:text-ink transition-colors"
+                    style={{ width: 44, height: 44 }}
+                  >
+                    <CloseIcon />
+                  </button>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-ink truncate">{user.full_name ?? user.email}</p>
-                  <div className="mt-1">
-                    {user.has_organization ? (
-                      <EnterpriseBadge />
-                    ) : (
-                      <PlanBadge plan={user.plan} />
+
+                <div className="px-5 pb-3">
+                  <div className="flex items-center gap-3 pb-4 mb-1 border-b border-[#E8E9EA]">
+                    <div className="w-9 h-9 rounded-full bg-orange flex items-center justify-center shrink-0">
+                      <span className="text-white text-sm font-bold leading-none">
+                        {getInitials(user.full_name, user.email)}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-ink truncate">{user.full_name ?? user.email}</p>
+                      <div className="mt-1">
+                        {user.has_organization ? (
+                          <EnterpriseBadge />
+                        ) : (
+                          <PlanBadge plan={user.plan} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col">
+                    {PROFILE_MENU_LINKS.map(item => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        prefetch={navLinkPrefetch(item.href)}
+                        onClick={onClose}
+                        className={`${ROW} gap-2.5 border-b border-[#F0F0F0]`}
+                        style={{ minHeight: 44 }}
+                      >
+                        <ProfileMenuIcon icon={item.icon} />
+                        {item.label}
+                      </Link>
+                    ))}
+
+                    {user.has_organization && (
+                      <Link
+                        href={PROFILE_COMPANY_SETTINGS_LINK.href}
+                        prefetch={navLinkPrefetch(PROFILE_COMPANY_SETTINGS_LINK.href)}
+                        onClick={onClose}
+                        className={`${ROW} gap-2.5 border-b border-[#F0F0F0]`}
+                        style={{ minHeight: 44 }}
+                      >
+                        <ProfileMenuIcon icon={PROFILE_COMPANY_SETTINGS_LINK.icon} />
+                        {PROFILE_COMPANY_SETTINGS_LINK.label}
+                      </Link>
                     )}
+
+                    {!user.has_organization && (
+                      <button
+                        type="button"
+                        onClick={handleManageSubscription}
+                        className={`${ROW} gap-2.5 border-b border-[#F0F0F0] w-full`}
+                        style={{ minHeight: 44 }}
+                      >
+                        <ProfileMenuIcon icon={user.plan === 'max' ? CreditCard : Sparkles} />
+                        {user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className={`${ROW} gap-2.5 text-ink-3 w-full`}
+                      style={{ minHeight: 44 }}
+                    >
+                      <ProfileMenuIcon icon={LogOut} />
+                      Sign Out
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Profile links */}
-              <div className="flex flex-col">
-                {PROFILE_MENU_LINKS.map(item => (
+              {/* Lower layer — site nav on gray panel */}
+              <div className="flex flex-col px-5 pt-4">
+                {NAV_LINKS.map(item => (
                   <Link
                     key={item.href}
                     href={item.href}
-                    prefetch={navLinkPrefetch(item.href)}
                     onClick={onClose}
-                    className={`${ROW} gap-2.5 border-b border-[#F0F0F0]`}
+                    className={ROW}
                     style={{ minHeight: 44 }}
                   >
-                    <ProfileMenuIcon icon={item.icon} />
                     {item.label}
                   </Link>
                 ))}
-
-                {user.has_organization && (
-                  <Link
-                    href={PROFILE_COMPANY_SETTINGS_LINK.href}
-                    prefetch={navLinkPrefetch(PROFILE_COMPANY_SETTINGS_LINK.href)}
-                    onClick={onClose}
-                    className={`${ROW} gap-2.5 border-b border-[#F0F0F0]`}
-                    style={{ minHeight: 44 }}
-                  >
-                    <ProfileMenuIcon icon={PROFILE_COMPANY_SETTINGS_LINK.icon} />
-                    {PROFILE_COMPANY_SETTINGS_LINK.label}
-                  </Link>
-                )}
-
-                {!user.has_organization && (
+                <div className="my-2 border-t border-[#E8E9EA]" aria-hidden />
                 <button
                   type="button"
-                  onClick={handleManageSubscription}
-                  className={`${ROW} gap-2.5 border-b border-[#F0F0F0] w-full`}
+                  onClick={() => {
+                    onClose()
+                    window.setTimeout(() => openFeedbackPanel(), 220)
+                  }}
+                  className={`${ROW} w-full`}
                   style={{ minHeight: 44 }}
                 >
-                  <ProfileMenuIcon icon={user.plan === 'max' ? CreditCard : Sparkles} />
-                  {user.plan === 'max' ? 'Manage Billing' : 'Upgrade Plan'}
-                </button>
-                )}
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className={`${ROW} gap-2.5 text-ink-3 w-full`}
-                  style={{ minHeight: 44 }}
-                >
-                  <ProfileMenuIcon icon={LogOut} />
-                  Sign Out
+                  Feedback
                 </button>
               </div>
             </>
           ) : (
-            <div className="flex flex-col gap-3 pb-5 mb-2 border-b border-[#E8E9EA]">
-              <Link
-                href="/auth/signup"
-                onClick={onClose}
-                className="flex items-center text-sm font-medium text-ink-2 hover:text-ink transition-colors"
-                style={{ minHeight: 44 }}
+            <>
+              {/* Auth layer — same white card as signed-in account block */}
+              <div
+                className="bg-white"
+                style={{
+                  borderBottomLeftRadius: 20,
+                  borderBottomRightRadius: 20,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                }}
               >
-                Sell With Us
-              </Link>
-              <Link
-                href="/auth/login"
-                prefetch={false}
-                onClick={onClose}
-                className="flex items-center justify-center text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
-                style={{ minHeight: 44, boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
-              >
-                Sign In
-              </Link>
-            </div>
-          )}
+                <div className="flex justify-end shrink-0 px-2 pt-2">
+                  <button
+                    ref={closeButtonRef}
+                    onClick={onClose}
+                    aria-label="Close menu"
+                    className="flex items-center justify-center text-ink-2 hover:text-ink transition-colors"
+                    style={{ width: 44, height: 44 }}
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
 
-          {/* Primary nav links */}
-          <div className="flex flex-col mt-3">
-            {NAV_LINKS.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={ROW}
-                style={{ minHeight: 44 }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
+                <div className="px-5 pb-5 flex flex-col gap-3">
+                  <Link
+                    href="/auth/signup"
+                    onClick={onClose}
+                    className="flex items-center justify-center text-sm font-bold text-ink bg-white border border-[#D4D5D7] rounded-pill hover:border-orange hover:text-orange transition-colors"
+                    style={{ minHeight: 44 }}
+                  >
+                    Create Account
+                  </Link>
+                  <Link
+                    href="/auth/login"
+                    prefetch={false}
+                    onClick={onClose}
+                    className="flex items-center justify-center text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors"
+                    style={{ minHeight: 44, boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              </div>
+
+              {/* Lower layer — site nav on gray panel */}
+              <div className="flex flex-col px-5 pt-4">
+                {NAV_LINKS.map(item => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onClose}
+                    className={ROW}
+                    style={{ minHeight: 44 }}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <div className="my-2 border-t border-[#E8E9EA]" aria-hidden />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose()
+                    window.setTimeout(() => openFeedbackPanel(), 220)
+                  }}
+                  className={`${ROW} w-full`}
+                  style={{ minHeight: 44 }}
+                >
+                  Feedback
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>

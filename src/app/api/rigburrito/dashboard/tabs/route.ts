@@ -235,5 +235,56 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  if (tab === 'feedback') {
+    const { data, error } = await service
+      .from('feedback')
+      .select(
+        'id, category, message, image_url, page_url, user_id, user_tier, user_role, status, created_at',
+      )
+      .order('created_at', { ascending: false })
+      .limit(TAB_LIMIT)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const userIds = Array.from(
+      new Set((data ?? []).map(row => row.user_id).filter((id): id is string => Boolean(id))),
+    )
+
+    const profileById = new Map<string, { full_name: string | null; email: string }>()
+    if (userIds.length > 0) {
+      const { data: profiles } = await service
+        .from('users')
+        .select('id, full_name, email')
+        .in('id', userIds)
+
+      for (const profile of profiles ?? []) {
+        profileById.set(profile.id, {
+          full_name: profile.full_name,
+          email: profile.email,
+        })
+      }
+    }
+
+    const rows = (data ?? []).map(row => {
+      const profile = row.user_id ? profileById.get(row.user_id) : undefined
+      return {
+        id: row.id,
+        category: row.category,
+        message: row.message,
+        image_url: row.image_url,
+        page_url: row.page_url,
+        user_id: row.user_id,
+        user_tier: row.user_tier,
+        user_role: row.user_role,
+        status: row.status,
+        created_at: row.created_at,
+        submitter_name: profile?.full_name ?? null,
+        submitter_email: profile?.email ?? null,
+      }
+    })
+
+    return NextResponse.json({ success: true, tab, rows })
+  }
+
   return NextResponse.json({ error: 'Unknown tab' }, { status: 400 })
 }

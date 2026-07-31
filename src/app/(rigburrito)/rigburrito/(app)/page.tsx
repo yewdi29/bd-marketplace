@@ -41,6 +41,7 @@ type DashboardTab =
   | 'agent_activity'
   | 'yellow_red_leads'
   | 'membership_activity'
+  | 'feedback'
 
 import type { AgentActivityRow } from '@/lib/rigburrito/agentActivity'
 import { parseScoreBreakdown, resolveAgentConfidence } from '@/lib/rigburrito/agentActivity'
@@ -73,6 +74,21 @@ interface MembershipActivityRow {
   created_at: string
 }
 
+interface FeedbackRow {
+  id: string
+  category: string
+  message: string
+  image_url: string | null
+  page_url: string
+  user_id: string | null
+  user_tier: string | null
+  user_role: string | null
+  status: string
+  created_at: string
+  submitter_name: string | null
+  submitter_email: string | null
+}
+
 const METRIC_LABELS: Record<MetricKey, string> = {
   total_users: 'Total Users',
   active_listings: 'Active Listings',
@@ -87,6 +103,7 @@ const TABS: { id: DashboardTab; label: string }[] = [
   { id: 'agent_activity', label: 'Agent Activity' },
   { id: 'yellow_red_leads', label: 'Yellow/Red Listing Leads' },
   { id: 'membership_activity', label: 'Membership Activity' },
+  { id: 'feedback', label: 'Feedback' },
 ]
 
 export default function DashboardPage() {
@@ -298,6 +315,123 @@ export default function DashboardPage() {
     },
   ]
 
+  async function feedbackStatusAction(id: string, status: 'reviewed' | 'resolved' | 'dismissed') {
+    const res = await fetch(`/api/rigburrito/feedback/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? 'Failed to update status')
+    await fetchTab('feedback')
+  }
+
+  function truncateMessage(text: string, max = 80) {
+    const cleaned = text.replace(/\s+/g, ' ').trim()
+    return cleaned.length > max ? `${cleaned.slice(0, max)}…` : cleaned
+  }
+
+  function pagePathLabel(url: string) {
+    try {
+      const u = new URL(url)
+      return `${u.pathname}${u.search}` || '/'
+    } catch {
+      return url.length > 48 ? `${url.slice(0, 48)}…` : url
+    }
+  }
+
+  const feedbackColumns: ExpandableTableColumn<FeedbackRow>[] = [
+    { key: 'category', header: 'Category', render: r => <StatusBadge status={r.category} /> },
+    {
+      key: 'message',
+      header: 'Message',
+      className: 'rigburrito-agent-summary-cell',
+      render: r => truncateMessage(r.message),
+    },
+    { key: 'page', header: 'Page', render: r => pagePathLabel(r.page_url) },
+    {
+      key: 'submitter',
+      header: 'Submitted by',
+      render: r => (r.user_id ? (r.submitter_name ?? r.submitter_email ?? 'Member') : 'Anonymous'),
+    },
+    { key: 'status', header: 'Status', render: r => <StatusBadge status={r.status} /> },
+    { key: 'when', header: 'Submitted', render: r => formatDate(r.created_at) },
+  ]
+
+  const feedbackDetails: ExpandableTableDetailField<FeedbackRow>[] = [
+    { label: 'Message', render: r => r.message },
+    {
+      label: 'Page URL',
+      render: r => (
+        <a
+          href={r.page_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#0F1117', textDecoration: 'underline', wordBreak: 'break-all' }}
+        >
+          {r.page_url}
+        </a>
+      ),
+    },
+    {
+      label: 'Submitted by',
+      render: r =>
+        r.user_id
+          ? `${r.submitter_name ?? '—'}${r.submitter_email ? ` · ${r.submitter_email}` : ''}`
+          : 'Anonymous',
+    },
+    { label: 'Membership tier', render: r => r.user_tier ?? '—' },
+    { label: 'Org role', render: r => r.user_role ?? '—' },
+    { label: 'Timestamp', render: r => formatDateTime(r.created_at) },
+  ]
+
+  const feedbackDetailSections: ExpandableTableDetailSection<FeedbackRow>[] = [
+    {
+      render: r =>
+        r.image_url ? (
+          <div>
+            <span className="rigburrito-card-label">Screenshot</span>
+            <div className="mt-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <a href={r.image_url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={r.image_url}
+                  alt="Feedback screenshot"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: 240,
+                    borderRadius: 8,
+                    border: '1px solid #E5E7EB',
+                    objectFit: 'contain',
+                  }}
+                />
+              </a>
+            </div>
+          </div>
+        ) : null,
+    },
+  ]
+
+  const feedbackActions: ExpandableTableAction<FeedbackRow>[] = [
+    {
+      label: 'Mark reviewed',
+      variant: 'secondary',
+      onClick: r => feedbackStatusAction(r.id, 'reviewed'),
+    },
+    {
+      label: 'Resolve',
+      variant: 'success',
+      onClick: r => feedbackStatusAction(r.id, 'resolved'),
+    },
+    {
+      label: 'Dismiss',
+      variant: 'muted',
+      holdToConfirm: true,
+      holdMs: 2000,
+      onClick: r => feedbackStatusAction(r.id, 'dismissed'),
+    },
+  ]
+
   if (loading) {
     return (
       <div>
@@ -445,6 +579,30 @@ export default function DashboardPage() {
               onToggle={id => setExpandedRowId(prev => (prev === id ? null : id))}
               emptyState={
                 <EmptyState icon={Inbox} title="No membership activity" description="Recent signups and cancellations will appear here." />
+              }
+            />
+          )}
+        </Tabs.Content>
+
+        <Tabs.Content value="feedback" className="rigburrito-tab-panel">
+          {tabLoading ? <TableSkeleton cols={6} /> : tabError ? (
+            <ErrorState message={tabError} onRetry={() => fetchTab('feedback')} />
+          ) : (
+            <ExpandableDataTable
+              rows={tabRows as FeedbackRow[]}
+              columns={feedbackColumns}
+              detailFields={feedbackDetails}
+              detailSections={feedbackDetailSections}
+              actions={feedbackActions}
+              getRowId={r => r.id}
+              expandedId={expandedRowId}
+              onToggle={id => setExpandedRowId(prev => (prev === id ? null : id))}
+              emptyState={
+                <EmptyState
+                  icon={Inbox}
+                  title="No feedback yet"
+                  description="Submissions from the site-wide feedback tab will appear here."
+                />
               }
             />
           )}

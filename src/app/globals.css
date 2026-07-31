@@ -302,6 +302,54 @@ select {
 .nl-step-forward { animation: nl-step-forward 0.28s cubic-bezier(0.4, 0, 0.22, 1) both; }
 .nl-step-back { animation: nl-step-back 0.28s cubic-bezier(0.4, 0, 0.22, 1) both; }
 
+/* ─── Site-wide feedback peeking tab (desktop ≥1024px only) ───────────────── */
+/* Below lg, Feedback is opened from the hamburger MobileMenu instead.         */
+.feedback-peek-tab {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .feedback-peek-tab {
+    position: fixed;
+    right: 0;
+    bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px));
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 8px;
+    background: #E8E9EA;
+    color: #1A1D20;
+    border: none;
+    border-radius: 10px 0 0 10px;
+    box-shadow: -2px 2px 10px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: background 150ms ease, padding-right 150ms ease;
+  }
+  .feedback-peek-tab:hover {
+    background: #D4D5D7;
+    padding-right: 10px;
+  }
+  .feedback-peek-tab__label {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    line-height: 1;
+    color: #1A1D20;
+  }
+}
+@keyframes feedback-panel-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.feedback-panel {
+  animation: feedback-panel-in 0.22s cubic-bezier(0.4, 0, 0.22, 1) both;
+}
+
 /* ─── Listing detail: mobile Message Seller sticky CTA ─────────────────────── */
 .message-seller-sticky {
   transform: translateY(calc(100% + 24px));

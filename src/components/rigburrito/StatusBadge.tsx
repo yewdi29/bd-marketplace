@@ -31,6 +31,15 @@ const STATUS_COLORS: Record<string, BadgeColors> = {
   commission_opportunity: { text: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
   green: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   enterprise: { text: '#004499', bg: '#E6F0FF', border: '#B3D1FF' },
+  // Feedback categories
+  bug: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  feature_request: { text: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE' },
+  like: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  dislike: { text: '#C2410C', bg: '#FFF7ED', border: '#FDBA74' },
+  // Feedback statuses
+  reviewed: { text: '#0369A1', bg: '#F0F9FF', border: '#BAE6FD' },
+  resolved: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  dismissed: { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
 }
 
 const NEUTRAL: BadgeColors = { text: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' }
@@ -42,11 +51,22 @@ const DEAL_LABELS: Record<string, string> = {
   enterprise: 'Enterprise',
 }
 
+const FEEDBACK_LABELS: Record<string, string> = {
+  bug: 'Bug',
+  feature_request: 'Feature request',
+  like: 'Something I like',
+  dislike: "Something I don't like",
+  new: 'New',
+  reviewed: 'Reviewed',
+  resolved: 'Resolved',
+  dismissed: 'Dismissed',
+}
+
 export default function StatusBadge({ status, variant = 'listing' }: StatusBadgeProps) {
   const colors = STATUS_COLORS[status] ?? NEUTRAL
   const label = (variant === 'deal' && DEAL_LABELS[status])
     ? DEAL_LABELS[status]
-    : status.replace(/_/g, ' ')
+    : FEEDBACK_LABELS[status] ?? status.replace(/_/g, ' ')
   return (
     <span
       className="inline-block capitalize"

@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: July 2026 — v2.34.5
+> Last updated: July 2026 — v2.39
 
 ---
 
@@ -223,8 +223,9 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Scrollable content: `pb-[max(1.5rem,env(safe-area-inset-bottom))]` for notched phones
 - Body scroll locked while open
 - **Accessibility:** when closed, panel uses the `inert` attribute (removes all descendants from tab order and assistive tech); when open, focus traps inside the panel (`src/lib/focusTrap.ts`) and returns to the hamburger/avatar trigger on close
-- Logged-in: profile header (avatar, name, plan badge) + `PROFILE_MENU_LINKS` + upgrade/billing + sign out + primary nav links
-- Logged-out: Sell With Us + Sign In + primary nav links
+- **Logged-in layered panel:** shell `#F7F8F9`; account block is a seamless white card (flush top, `20px` rounded bottom corners, `box-shadow: 0 4px 16px rgba(0,0,0,0.06)`) containing close + profile + account actions; shared nav links sit on the gray layer below
+- Logged-out: white panel — Create Account (ghost pill) + Sign In (orange) + shared nav links
+- Shared nav links (both auth states, plain text rows): Browse Equipment (`/search`), Business Directory, Pricing, About, Contact, hairline separator, Feedback (opens feedback panel)
 - Mutually exclusive with `MobileSearchTakeover` — opening either always closes the other first
 
 ### Mobile Search Takeover (`src/components/layout/MobileSearchTakeover.tsx`)
@@ -608,6 +609,9 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.39 | July 2026 | **Mobile menu signed-in layering.** Signed-in drawer shell `#F7F8F9`; account info + actions in a white card with rounded bottom corners and light drop shadow; site nav sits on the gray layer beneath. |
+| v2.38 | July 2026 | **Mobile menu nav refresh.** Logged-out: Create Account ghost pill + Sign In. Shared nav for all users (plain text rows): Browse Equipment, Business Directory, Pricing, About, Contact, separator, Feedback. Peeking feedback tab desktop-only; mobile Feedback opens from hamburger. |
+| v2.37 | July 2026 | **Site-wide feedback tab.** Orange peeking tab fixed to the right viewport edge (desktop: vertically centered; mobile: above bottom safe area). Opens a right slide-over form (category, message, optional bug screenshot). Mounted in root layout; hidden on `/rigburrito/*`. |
 | v2.36 | July 2026 | **Operator Journal cards + excerpt field.** Shared `ArticleCard`: full-bleed featured image, bottom gradient overlay, white typography, 340px min-height, ink fallback when no image. Admin editor adds plain-text "Excerpt / Caption" field (150 chars recommended) saved to existing `excerpt` column. Homepage preview and `/journal` index use the same card component. |
 | v2.34.5 | July 2026 | **Newsletter form mobile layout.** Shared `NewsletterForm` stacks email input + Subscribe button below 730px (full-width, 48px min-height); tablet/desktop keep inline 40px row. Applies globally via `NewsletterSection`. |
 | v2.34.4 | July 2026 | **Hero CTA mobile tap targets.** Homepage hero buttons stack vertically below 730px only with full-width 48px-min-height pills; tablet and desktop keep compact side-by-side layout. Shared classes in `heroCtaClasses.ts`. |

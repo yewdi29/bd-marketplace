@@ -422,6 +422,7 @@ Centered in the content area.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.10 | 2026-07-31 | Dashboard Feedback tab: ExpandableDataTable for site feedback; category/status pills; expand shows message, screenshot, page URL, tier/role; status actions (reviewed/resolved/dismiss) |
 | 2.9 | 2026-07-10 | Agent Activity tab: Confidence column, agent/outcome pills, expanded feedback breakdown |
 | 2.8 | 2026-07-10 | Dashboard restructure: metric strip, detail region, lifted-pill tab bar, expandable table, orange choropleth scale; stat card sparklines removed |
 | 2.7 | 2026-07-04 | Listing slide-over: cursor-following image hover preview (320×240) |

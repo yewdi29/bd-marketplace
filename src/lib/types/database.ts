@@ -270,3 +270,19 @@ export interface NewsletterSubscriber {
   subscribed_at: string
   unsubscribed_at: string | null
 }
+
+export type FeedbackCategory = 'bug' | 'feature_request' | 'like' | 'dislike'
+export type FeedbackStatus = 'new' | 'reviewed' | 'resolved' | 'dismissed'
+
+export interface Feedback {
+  id: string
+  category: FeedbackCategory
+  message: string
+  image_url: string | null
+  page_url: string
+  user_id: string | null
+  user_tier: string | null
+  user_role: string | null
+  status: FeedbackStatus
+  created_at: string
+}
