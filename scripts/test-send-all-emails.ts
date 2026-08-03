@@ -84,9 +84,9 @@ const FAKE = {
   currentOwnerName: 'Alex Morgan',
   firstName: 'Jordan',
   confirmationUrl:
-    'https://example.supabase.co/auth/v1/verify?token=sample-token-hash&type=signup&redirect_to=https%3A%2F%2Fblackdiamondmkt.com%2Fauth%2Fcallback',
+    'https://blackdiamondmkt.com/auth/confirm-email?token_hash=sample-token-hash&type=signup&email=jordan.reyes.sample%40example.com',
   resetUrl:
-    'https://example.supabase.co/auth/v1/verify?token=sample-token-hash&type=recovery&redirect_to=https%3A%2F%2Fblackdiamondmkt.com%2Fauth%2Freset-password',
+    'https://blackdiamondmkt.com/auth/confirm-reset?token_hash=sample-token-hash&type=recovery',
   // Fixed fake UUIDs so email_log related_entity_id stays valid without real rows
   relatedId: '00000000-0000-4000-8000-000000000001',
 } as const

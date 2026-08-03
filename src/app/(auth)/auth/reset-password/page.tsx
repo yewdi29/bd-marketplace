@@ -22,26 +22,16 @@ export default function ResetPasswordPage() {
     let cancelled = false
 
     async function establishRecoverySession() {
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        if (exchangeError) {
-          if (!cancelled) {
-            setError('This reset link is invalid or has expired. Please request a new one.')
-            setCheckingLink(false)
-          }
-          return
-        }
-      }
-
+      // Prefer an existing recovery session from /auth/confirm-reset (verifyOtp on click).
+      // Do NOT auto-exchange a ?code= on GET — that burns one-time tokens when scanners prefetch.
       const { data: { session } } = await supabase.auth.getSession()
       if (!cancelled) {
         if (session) {
           setReady(true)
         } else {
-          setError('This reset link is invalid or has expired. Please request a new one.')
+          setError(
+            'Open the link from your email and click Continue on the confirmation page first. Or request a new reset link.',
+          )
         }
         setCheckingLink(false)
       }

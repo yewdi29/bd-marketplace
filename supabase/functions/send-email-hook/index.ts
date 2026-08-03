@@ -4,8 +4,8 @@
  * - Verifies Standard Webhooks signature (SEND_EMAIL_HOOK_SECRET)
  * - Relays email_action_type "signup" → POST /api/auth/confirmation-email
  * - Relays email_action_type "recovery" → POST /api/auth/password-reset-email
+ * - Passes raw token_hash + type (never a prebuilt /auth/v1/verify URL)
  * - All other action types: acknowledge with 200 and do not send
- *   (enabling this hook disables SMTP for ALL auth emails)
  *
  * Auth via AUTH_EMAIL_RELAY_SECRET (x-auth-email-relay-secret header).
  * No React Email rendering. No Resend calls.
@@ -38,18 +38,6 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   })
-}
-
-function buildVerifyUrl(
-  supabaseUrl: string,
-  emailData: SendEmailHookPayload['email_data'],
-): string {
-  const params = new URLSearchParams({
-    token: emailData.token_hash,
-    type: emailData.email_action_type,
-    redirect_to: emailData.redirect_to,
-  })
-  return `${supabaseUrl.replace(/\/$/, '')}/auth/v1/verify?${params.toString()}`
 }
 
 function resolveApiUrl(actionType: HandledAction): string {
@@ -117,12 +105,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
     )
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  if (!supabaseUrl) {
-    console.error('[send-email-hook] SUPABASE_URL is not set')
+  const tokenHash = verified.email_data?.token_hash?.trim()
+  if (!tokenHash) {
+    console.error(`[send-email-hook] ${actionType} payload missing email_data.token_hash`)
     return jsonResponse(
-      { error: { http_code: 500, message: 'SUPABASE_URL not configured' } },
-      500,
+      { error: { http_code: 400, message: 'Missing token_hash' } },
+      400,
     )
   }
 
@@ -135,21 +123,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     )
   }
 
-  const verifyUrl = buildVerifyUrl(supabaseUrl, verified.email_data)
   const apiUrl = resolveApiUrl(actionType)
 
-  const body =
-    actionType === 'signup'
-      ? {
-          email,
-          confirmationUrl: verifyUrl,
-          userId: verified.user.id ?? null,
-        }
-      : {
-          email,
-          resetUrl: verifyUrl,
-          userId: verified.user.id ?? null,
-        }
+  const body = {
+    email,
+    tokenHash,
+    type: actionType,
+    userId: verified.user.id ?? null,
+  }
 
   try {
     const res = await fetch(apiUrl, {

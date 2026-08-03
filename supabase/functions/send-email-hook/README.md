@@ -2,11 +2,14 @@
 
 Thin Supabase Edge Function relay for the Auth **Send Email Hook** (HTTPS).
 
-| `email_action_type` | Next.js route | Template |
-|---------------------|---------------|----------|
-| `signup` | `POST /api/auth/confirmation-email` | `AuthConfirmation` |
-| `recovery` | `POST /api/auth/password-reset-email` | `AuthPasswordReset` |
-| anything else | (no send — return 200) | — |
+| `email_action_type` | Next.js route | Template | Email CTA lands on |
+|---------------------|---------------|----------|-------------------|
+| `signup` | `POST /api/auth/confirmation-email` | `AuthConfirmation` | `/auth/confirm-email` (click to verifyOtp) |
+| `recovery` | `POST /api/auth/password-reset-email` | `AuthPasswordReset` | `/auth/confirm-reset` (click to verifyOtp) |
+| anything else | (no send — return 200) | — | — |
+
+Relay payload is `{ email, tokenHash, type, userId }` — never a raw
+Supabase `/auth/v1/verify` URL (those are consumed on GET by email scanners).
 
 ## Secrets (two different trust relationships)
 

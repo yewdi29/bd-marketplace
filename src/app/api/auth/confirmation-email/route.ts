@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { NextRequest, NextResponse } from 'next/server'
 import AuthConfirmation from '../../../../../emails/templates/AuthConfirmation'
+import { getEmailAppUrl } from '@/lib/email/resendClient'
 import { sendTransactionalEmail } from '@/lib/email/sendTransactionalEmail'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -18,7 +19,8 @@ function isAuthorized(req: NextRequest): boolean {
 
 /**
  * Internal relay target for the Supabase send-email-hook Edge Function.
- * Sends the branded AuthConfirmation email via Resend + email_log.
+ * Sends AuthConfirmation linking to our intermediate /auth/confirm-email page
+ * (never the raw Supabase /auth/v1/verify URL — avoids scanner token burn).
  */
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -27,8 +29,11 @@ export async function POST(req: NextRequest) {
 
   let body: {
     email?: string
-    confirmationUrl?: string
+    tokenHash?: string
+    type?: string
     userId?: string | null
+    /** @deprecated Prefer tokenHash — still accepted for backwards compatibility */
+    confirmationUrl?: string
   }
 
   try {
@@ -38,8 +43,8 @@ export async function POST(req: NextRequest) {
   }
 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-  const confirmationUrl =
-    typeof body.confirmationUrl === 'string' ? body.confirmationUrl.trim() : ''
+  const tokenHash = typeof body.tokenHash === 'string' ? body.tokenHash.trim() : ''
+  const type = typeof body.type === 'string' ? body.type.trim() : 'signup'
   const userId =
     typeof body.userId === 'string' && body.userId.trim() ? body.userId.trim() : null
 
@@ -47,9 +52,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
   }
 
-  if (!confirmationUrl || !/^https?:\/\//i.test(confirmationUrl)) {
-    return NextResponse.json({ error: 'Valid confirmationUrl is required' }, { status: 400 })
+  if (!tokenHash) {
+    return NextResponse.json({ error: 'tokenHash is required' }, { status: 400 })
   }
+
+  if (type !== 'signup') {
+    return NextResponse.json({ error: 'type must be signup' }, { status: 400 })
+  }
+
+  const params = new URLSearchParams({
+    token_hash: tokenHash,
+    type,
+    email,
+  })
+  const confirmationUrl = `${getEmailAppUrl()}/auth/confirm-email?${params.toString()}`
 
   const result = await sendTransactionalEmail({
     templateType: 'AuthConfirmation',

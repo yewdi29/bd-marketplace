@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { NextRequest, NextResponse } from 'next/server'
 import AuthPasswordReset from '../../../../../emails/templates/AuthPasswordReset'
+import { getEmailAppUrl } from '@/lib/email/resendClient'
 import { sendTransactionalEmail } from '@/lib/email/sendTransactionalEmail'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -18,7 +19,8 @@ function isAuthorized(req: NextRequest): boolean {
 
 /**
  * Internal relay target for the Supabase send-email-hook Edge Function (recovery).
- * Sends the branded AuthPasswordReset email via Resend + email_log.
+ * Sends AuthPasswordReset linking to our intermediate /auth/confirm-reset page
+ * (never the raw Supabase /auth/v1/verify URL — avoids scanner token burn).
  */
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -27,8 +29,11 @@ export async function POST(req: NextRequest) {
 
   let body: {
     email?: string
-    resetUrl?: string
+    tokenHash?: string
+    type?: string
     userId?: string | null
+    /** @deprecated Prefer tokenHash — still accepted for backwards compatibility */
+    resetUrl?: string
   }
 
   try {
@@ -38,7 +43,8 @@ export async function POST(req: NextRequest) {
   }
 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-  const resetUrl = typeof body.resetUrl === 'string' ? body.resetUrl.trim() : ''
+  const tokenHash = typeof body.tokenHash === 'string' ? body.tokenHash.trim() : ''
+  const type = typeof body.type === 'string' ? body.type.trim() : 'recovery'
   const userId =
     typeof body.userId === 'string' && body.userId.trim() ? body.userId.trim() : null
 
@@ -46,9 +52,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
   }
 
-  if (!resetUrl || !/^https?:\/\//i.test(resetUrl)) {
-    return NextResponse.json({ error: 'Valid resetUrl is required' }, { status: 400 })
+  if (!tokenHash) {
+    return NextResponse.json({ error: 'tokenHash is required' }, { status: 400 })
   }
+
+  if (type !== 'recovery') {
+    return NextResponse.json({ error: 'type must be recovery' }, { status: 400 })
+  }
+
+  const params = new URLSearchParams({
+    token_hash: tokenHash,
+    type,
+  })
+  const resetUrl = `${getEmailAppUrl()}/auth/confirm-reset?${params.toString()}`
 
   const result = await sendTransactionalEmail({
     templateType: 'AuthPasswordReset',

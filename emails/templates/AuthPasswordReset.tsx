@@ -12,11 +12,12 @@ export default function AuthPasswordReset({ resetUrl }: AuthPasswordResetProps) 
     >
       <EmailParagraph>
         We received a request to reset the password for your Black Diamond Marketplace account.
-        Click the button below to choose a new password.
+        Click below to continue, then choose a new password on the next page.
       </EmailParagraph>
-      <EmailButton href={resetUrl}>Reset password</EmailButton>
+      <EmailButton href={resetUrl}>Continue to Reset Password</EmailButton>
       <EmailParagraph>
-        If you didn&apos;t request this, you can safely ignore this email.
+        This link expires in 1 hour. If you didn&apos;t request this, you can safely ignore
+        this email.
       </EmailParagraph>
     </EmailLayout>
   )
