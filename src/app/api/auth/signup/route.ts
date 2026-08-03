@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { passwordMeetsRequirements } from '@/lib/auth/passwordRequirements'
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { email, password, fullName, companyName, city, state, country } = body
+  const { email, password, fullName, companyName, city, state, country, phone } = body
 
-  if (!email || !password || !fullName || !city || !state || !country) {
+  if (!email || !password || !fullName || !city || !state || !country || !phone) {
     return NextResponse.json({ error: 'All required fields must be filled in.' }, { status: 400 })
+  }
+
+  const phoneTrimmed = typeof phone === 'string' ? phone.trim() : ''
+  if (!phoneTrimmed) {
+    return NextResponse.json({ error: 'Phone number is required.' }, { status: 400 })
+  }
+
+  if (!passwordMeetsRequirements(password)) {
+    return NextResponse.json(
+      {
+        error:
+          'Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol.',
+      },
+      { status: 400 },
+    )
   }
 
   const ip =
@@ -25,13 +41,13 @@ export async function POST(request: NextRequest) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
       data: {
         full_name: fullName,
         company_name: companyName ?? null,
         city,
         state,
         country,
+        phone: phoneTrimmed,
         signup_ip_location: ip,
       },
     },
@@ -42,10 +58,6 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Post-signup enrichment via service role ───────────────────────────────
-  // Runs async enrichment (duplicate detection, email domain) without blocking
-  // the signup response. Uses admin client so we can write to the users table
-  // that was just populated by the on_auth_user_created trigger.
-
   const newUserId = signUpData.user?.id
   if (newUserId) {
     try {
@@ -55,12 +67,19 @@ export async function POST(request: NextRequest) {
       )
 
       const emailDomain = email.split('@')[1]?.toLowerCase() ?? null
+      // Mirror signup form fields onto public.users (same columns settings reads/writes).
+      // handle_new_user() inserts these from metadata; this update is defense-in-depth.
       const enrichment: Record<string, unknown> = {
+        full_name: typeof fullName === 'string' ? fullName.trim() || null : null,
+        company_name: typeof companyName === 'string' ? companyName.trim() || null : null,
+        phone: phoneTrimmed,
+        city: typeof city === 'string' ? city.trim() || null : null,
+        state: typeof state === 'string' ? state.trim() || null : null,
+        country: typeof country === 'string' ? country.trim() || null : null,
         email_domain: emailDomain,
         updated_at: new Date().toISOString(),
       }
 
-      // Soft-check for duplicate company name (case-insensitive)
       if (companyName) {
         const { data: duplicate } = await adminClient
           .from('users')

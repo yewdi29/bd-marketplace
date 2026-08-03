@@ -15,17 +15,6 @@ import {
   managerHasProfileEditAccess,
 } from '@/lib/organizations/managerPermissions'
 
-const US_STATES = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut',
-  'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
-  'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan',
-  'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
-  'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
-  'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota',
-  'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia',
-  'Wisconsin', 'Wyoming',
-]
-
 interface UserProfile {
   email: string
   full_name: string | null
@@ -625,29 +614,21 @@ export default function SettingsPage() {
                     type="text"
                     value={city}
                     onChange={e => setCity(e.target.value)}
-                    placeholder="City"
+                    placeholder="Houston"
                     className={inputClass}
+                    autoComplete="address-level2"
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>State</label>
-                  <div className="relative">
-                    <select
-                      value={stateField}
-                      onChange={e => setStateField(e.target.value)}
-                      className={inputClass + ' appearance-none pr-8'}
-                    >
-                      <option value="">Select state</option>
-                      {US_STATES.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                      <svg className="w-3.5 h-3.5 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
+                  <label className={labelClass}>State / Province</label>
+                  <input
+                    type="text"
+                    value={stateField}
+                    onChange={e => setStateField(e.target.value)}
+                    placeholder="Texas"
+                    className={inputClass}
+                    autoComplete="address-level1"
+                  />
                 </div>
               </div>
 
@@ -657,8 +638,9 @@ export default function SettingsPage() {
                   type="text"
                   value={country}
                   onChange={e => setCountry(e.target.value)}
-                  placeholder="Country"
+                  placeholder="United States"
                   className={inputClass}
+                  autoComplete="country-name"
                 />
               </div>
             </>

@@ -3,8 +3,9 @@
  *
  * - Verifies Standard Webhooks signature (SEND_EMAIL_HOOK_SECRET)
  * - Relays email_action_type "signup" → POST /api/auth/confirmation-email
+ *   (forwards email_data.token as otpCode for on-site 6-digit entry)
  * - Relays email_action_type "recovery" → POST /api/auth/password-reset-email
- * - Passes raw token_hash + type (never a prebuilt /auth/v1/verify URL)
+ *   (forwards token_hash for inert link → /auth/reset-password)
  * - All other action types: acknowledge with 200 and do not send
  *
  * Auth via AUTH_EMAIL_RELAY_SECRET (x-auth-email-relay-secret header).
@@ -105,15 +106,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     )
   }
 
-  const tokenHash = verified.email_data?.token_hash?.trim()
-  if (!tokenHash) {
-    console.error(`[send-email-hook] ${actionType} payload missing email_data.token_hash`)
-    return jsonResponse(
-      { error: { http_code: 400, message: 'Missing token_hash' } },
-      400,
-    )
-  }
-
   const relaySecret = Deno.env.get('AUTH_EMAIL_RELAY_SECRET')
   if (!relaySecret) {
     console.error('[send-email-hook] AUTH_EMAIL_RELAY_SECRET is not set')
@@ -125,11 +117,38 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const apiUrl = resolveApiUrl(actionType)
 
-  const body = {
-    email,
-    tokenHash,
-    type: actionType,
-    userId: verified.user.id ?? null,
+  let body: Record<string, unknown>
+
+  if (actionType === 'signup') {
+    const otpCode = verified.email_data?.token?.trim()
+    if (!otpCode) {
+      console.error('[send-email-hook] signup payload missing email_data.token')
+      return jsonResponse(
+        { error: { http_code: 400, message: 'Missing OTP token' } },
+        400,
+      )
+    }
+    body = {
+      email,
+      otpCode,
+      type: actionType,
+      userId: verified.user.id ?? null,
+    }
+  } else {
+    const tokenHash = verified.email_data?.token_hash?.trim()
+    if (!tokenHash) {
+      console.error('[send-email-hook] recovery payload missing email_data.token_hash')
+      return jsonResponse(
+        { error: { http_code: 400, message: 'Missing token_hash' } },
+        400,
+      )
+    }
+    body = {
+      email,
+      tokenHash,
+      type: actionType,
+      userId: verified.user.id ?? null,
+    }
   }
 
   try {

@@ -4,7 +4,7 @@ import { createServiceClient } from '@/lib/rigburrito/service'
 import { dispatchWelcomeEmailOnce } from '@/lib/email/welcomeEmail'
 
 /**
- * Called after client-side signup verifyOtp succeeds on /auth/confirm-email.
+ * Called after client-side signup verifyOtp succeeds (inline OTP on /auth/signup).
  * Reuses the same once-only welcome dispatch as /auth/callback.
  */
 export async function POST() {

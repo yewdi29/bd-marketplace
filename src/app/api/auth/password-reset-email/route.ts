@@ -19,8 +19,8 @@ function isAuthorized(req: NextRequest): boolean {
 
 /**
  * Internal relay target for the Supabase send-email-hook Edge Function (recovery).
- * Sends AuthPasswordReset linking to our intermediate /auth/confirm-reset page
- * (never the raw Supabase /auth/v1/verify URL — avoids scanner token burn).
+ * Links directly to /auth/reset-password with token_hash held inert until form submit
+ * (avoids scanner prefetch burning the one-time token).
  */
 export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     token_hash: tokenHash,
     type,
   })
-  const resetUrl = `${getEmailAppUrl()}/auth/confirm-reset?${params.toString()}`
+  const resetUrl = `${getEmailAppUrl()}/auth/reset-password?${params.toString()}`
 
   const result = await sendTransactionalEmail({
     templateType: 'AuthPasswordReset',

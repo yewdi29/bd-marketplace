@@ -2,14 +2,17 @@
 
 Thin Supabase Edge Function relay for the Auth **Send Email Hook** (HTTPS).
 
-| `email_action_type` | Next.js route | Template | Email CTA lands on |
-|---------------------|---------------|----------|-------------------|
-| `signup` | `POST /api/auth/confirmation-email` | `AuthConfirmation` | `/auth/confirm-email` (click to verifyOtp) |
-| `recovery` | `POST /api/auth/password-reset-email` | `AuthPasswordReset` | `/auth/confirm-reset` (click to verifyOtp) |
+| `email_action_type` | Next.js route | Template | Email content |
+|---------------------|---------------|----------|---------------|
+| `signup` | `POST /api/auth/confirmation-email` | `AuthConfirmation` | Displays 6-digit OTP (`email_data.token`) for on-site entry |
+| `recovery` | `POST /api/auth/password-reset-email` | `AuthPasswordReset` | Link to `/auth/reset-password?token_hash=…` (verified only on form submit) |
 | anything else | (no send — return 200) | — | — |
 
-Relay payload is `{ email, tokenHash, type, userId }` — never a raw
-Supabase `/auth/v1/verify` URL (those are consumed on GET by email scanners).
+Relay payloads:
+- signup: `{ email, otpCode, type, userId }`
+- recovery: `{ email, tokenHash, type, userId }`
+
+Never a raw Supabase `/auth/v1/verify` URL (those are consumed on GET by email scanners).
 
 ## Secrets (two different trust relationships)
 
@@ -24,8 +27,6 @@ Optional Edge Function env overrides:
 |-----|---------|
 | `AUTH_EMAIL_API_URL` | `https://blackdiamondmkt.com/api/auth/confirmation-email` |
 | `AUTH_PASSWORD_RESET_EMAIL_API_URL` | `https://blackdiamondmkt.com/api/auth/password-reset-email` |
-
-`SUPABASE_URL` is auto-provided to Edge Functions (used to build `/auth/v1/verify?...` links).
 
 ## Deploy
 

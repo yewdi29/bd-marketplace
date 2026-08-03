@@ -83,10 +83,9 @@ const FAKE = {
   inviterName: 'Alex Morgan',
   currentOwnerName: 'Alex Morgan',
   firstName: 'Jordan',
-  confirmationUrl:
-    'https://blackdiamondmkt.com/auth/confirm-email?token_hash=sample-token-hash&type=signup&email=jordan.reyes.sample%40example.com',
+  otpCode: '482917',
   resetUrl:
-    'https://blackdiamondmkt.com/auth/confirm-reset?token_hash=sample-token-hash&type=recovery',
+    'https://blackdiamondmkt.com/auth/reset-password?token_hash=sample-token-hash&type=recovery',
   // Fixed fake UUIDs so email_log related_entity_id stays valid without real rows
   relatedId: '00000000-0000-4000-8000-000000000001',
 } as const
@@ -228,7 +227,7 @@ function buildJobs(): TestEmailJob[] {
       subject: `[TEST] Confirm your email — Black Diamond Marketplace`,
       relatedEntityType: 'user',
       react: createElement(AuthConfirmation, {
-        confirmationUrl: FAKE.confirmationUrl,
+        otpCode: FAKE.otpCode,
       }),
     },
     {

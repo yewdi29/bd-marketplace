@@ -47,13 +47,14 @@ create table public.users (
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.users (id, email, full_name, company_name, avatar_url, city, state, country, signup_ip_location)
+  insert into public.users (id, email, full_name, company_name, avatar_url, phone, city, state, country, signup_ip_location)
   values (
     new.id,
     new.email,
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'company_name',
     new.raw_user_meta_data->>'avatar_url',
+    new.raw_user_meta_data->>'phone',
     new.raw_user_meta_data->>'city',
     new.raw_user_meta_data->>'state',
     new.raw_user_meta_data->>'country',
