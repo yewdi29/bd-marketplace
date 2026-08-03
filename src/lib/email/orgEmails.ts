@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import OrgInvite from '../../../emails/templates/OrgInvite'
 import PrimaryOwnerSetup from '../../../emails/templates/PrimaryOwnerSetup'
 import OwnershipTransferRequest from '../../../emails/templates/OwnershipTransferRequest'
+import OwnershipTransferCompleted from '../../../emails/templates/OwnershipTransferCompleted'
 import { getEmailAppUrl } from './resendClient'
 import { sendTransactionalEmailSafe } from './sendTransactionalEmail'
 
@@ -73,6 +74,26 @@ export function dispatchOwnershipTransferRequestEmail(opts: {
       organizationName: opts.organizationName,
       currentOwnerName: opts.currentOwnerName,
       acceptUrl,
+    }),
+  })
+}
+
+export function dispatchOwnershipTransferCompletedEmail(opts: {
+  recipientEmail: string
+  transferId: string
+  organizationName: string
+}): void {
+  const companySettingsUrl = `${getEmailAppUrl()}/dashboard/organization`
+
+  sendTransactionalEmailSafe({
+    templateType: 'OwnershipTransferCompleted',
+    recipientEmail: opts.recipientEmail,
+    relatedEntityType: 'org_ownership_transfer',
+    relatedEntityId: opts.transferId,
+    subject: `You're now the primary owner — ${opts.organizationName}`,
+    react: createElement(OwnershipTransferCompleted, {
+      organizationName: opts.organizationName,
+      companySettingsUrl,
     }),
   })
 }

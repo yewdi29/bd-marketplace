@@ -7,7 +7,7 @@ import BrandLogo from '@/components/ui/BrandLogo'
 import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 import {
-  consumeAuthRedirect,
+  clearAuthRedirect,
   isSafeRedirectPath,
   resolveAuthRedirect,
   storeAuthRedirect,
@@ -31,6 +31,9 @@ function LoginForm() {
   useEffect(() => {
     if (isSafeRedirectPath(redirectTo)) {
       storeAuthRedirect(redirectTo)
+    } else {
+      // Plain Sign In (no intentional return URL) — always land on dashboard.
+      clearAuthRedirect()
     }
   }, [redirectTo])
 
@@ -47,7 +50,9 @@ function LoginForm() {
       return
     }
 
-    const destination = resolveAuthRedirect(redirectTo, consumeAuthRedirect())
+    // Prefer an explicit ?redirectTo= (e.g. save/inquiry). Otherwise dashboard.
+    const destination = resolveAuthRedirect(redirectTo, null)
+    clearAuthRedirect()
     router.push(destination)
     router.refresh()
   }

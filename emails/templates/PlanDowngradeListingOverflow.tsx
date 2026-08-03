@@ -1,10 +1,16 @@
-import EmailLayout, { EmailButton, EmailParagraph } from '../components/EmailLayout'
+import EmailLayout, {
+  EmailButton,
+  EmailParagraph,
+  emailInlineLinkStyle,
+} from '../components/EmailLayout'
+import { Link } from '@react-email/components'
 
 interface PlanDowngradeListingOverflowProps {
   newPlanLabel: string
   unpublishedCount: number
   keptActiveCount: number
   dashboardUrl: string
+  upgradeUrl: string
 }
 
 export default function PlanDowngradeListingOverflow({
@@ -12,6 +18,7 @@ export default function PlanDowngradeListingOverflow({
   unpublishedCount,
   keptActiveCount,
   dashboardUrl,
+  upgradeUrl,
 }: PlanDowngradeListingOverflowProps) {
   const listingWord = unpublishedCount === 1 ? 'listing' : 'listings'
 
@@ -29,10 +36,21 @@ export default function PlanDowngradeListingOverflow({
       <EmailParagraph>
         Your <strong>{keptActiveCount} most recently created</strong> active listings
         remain live on the marketplace. Unpublished listings are saved as drafts — nothing
-        was deleted — and you can republish them anytime from your dashboard when you
-        have available slots.
+        was deleted.
       </EmailParagraph>
-      <EmailButton href={dashboardUrl}>Manage listings</EmailButton>
+      <EmailParagraph>
+        To bring these listings back right away,{' '}
+        <Link href={upgradeUrl} style={emailInlineLinkStyle} className="email-orange-link">
+          upgrade your plan
+        </Link>{' '}
+        for more active listing capacity. Prefer to stay on the Free plan? You can choose
+        which listings stay active anytime from your{' '}
+        <Link href={dashboardUrl} style={emailInlineLinkStyle} className="email-orange-link">
+          dashboard
+        </Link>
+        .
+      </EmailParagraph>
+      <EmailButton href={upgradeUrl}>Upgrade Plan</EmailButton>
     </EmailLayout>
   )
 }

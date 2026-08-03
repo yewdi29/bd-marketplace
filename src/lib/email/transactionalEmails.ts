@@ -119,7 +119,12 @@ export async function dispatchInquiryReceivedBuyerEmail(opts: {
   buyerEmail: string
   leadId: string
   listingTitle: string
+  listingSlug?: string | null
 }): Promise<void> {
+  const listingUrl = opts.listingSlug
+    ? `${getEmailAppUrl()}/listings/${opts.listingSlug}`
+    : getEmailAppUrl()
+
   sendTransactionalEmailSafe({
     templateType: 'InquiryReceivedBuyer',
     recipientEmail: opts.buyerEmail,
@@ -128,6 +133,7 @@ export async function dispatchInquiryReceivedBuyerEmail(opts: {
     subject: "We've received your inquiry — Black Diamond Marketplace",
     react: createElement(InquiryReceivedBuyer, {
       listingTitle: opts.listingTitle,
+      listingUrl,
     }),
   })
 }
@@ -150,6 +156,7 @@ export function dispatchPlanDowngradeListingOverflowEmail(opts: {
       unpublishedCount: opts.unpublishedCount,
       keptActiveCount: opts.keptActiveCount,
       dashboardUrl: `${getEmailAppUrl()}/dashboard`,
+      upgradeUrl: `${getEmailAppUrl()}/dashboard/upgrade`,
     }),
   })
 }

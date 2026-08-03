@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { authLoginUrl, authSignupUrl, storeAuthRedirect } from '@/lib/authRedirect'
+import { authLoginUrl, authSignupUrl } from '@/lib/authRedirect'
 
 interface Props {
   listingId: string
@@ -34,10 +34,6 @@ export default function InquiryForm({ listingId, sellerId }: Props) {
   const returnPath = pathname || '/'
   const loginUrl = authLoginUrl(returnPath)
   const signupUrl = authSignupUrl(returnPath)
-
-  useEffect(() => {
-    storeAuthRedirect(returnPath)
-  }, [returnPath])
 
   useEffect(() => {
     const supabase = createClient()

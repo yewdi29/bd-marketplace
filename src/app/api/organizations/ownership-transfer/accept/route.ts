@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { dispatchOwnershipTransferCompletedEmail } from '@/lib/email/orgEmails'
 
 function getService() {
   return createServiceClient(
@@ -77,8 +78,23 @@ export async function POST(req: NextRequest) {
     .update({ status: 'accepted' })
     .eq('id', transfer.id)
 
+  if (user.email) {
+    const { data: org } = await service
+      .from('organizations')
+      .select('name')
+      .eq('id', transfer.organization_id)
+      .maybeSingle()
+
+    dispatchOwnershipTransferCompletedEmail({
+      recipientEmail: user.email,
+      transferId: transfer.id,
+      organizationName: org?.name ?? 'your organization',
+    })
+  }
+
   return NextResponse.json({
     success: true,
     organizationId: transfer.organization_id,
   })
 }
+

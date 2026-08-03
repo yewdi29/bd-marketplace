@@ -246,7 +246,8 @@ const buttonStyle = {
   fontFamily: emailFontFamily,
   fontSize: '14px',
   fontWeight: 600,
-  marginTop: '4px',
+  marginTop: '24px',
+  marginBottom: '24px',
   padding: '12px 24px',
   textDecoration: 'none',
 }

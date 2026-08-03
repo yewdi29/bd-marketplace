@@ -2,6 +2,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { isSafeRedirectPath, resolveAuthRedirect } from '@/lib/authRedirect'
+import { dispatchWelcomeEmailOnceSafe } from '@/lib/email/welcomeEmail'
+import { createServiceClient } from '@/lib/rigburrito/service'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -30,6 +32,32 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Branded welcome — once, after signup confirmation succeeds (supplements Supabase Auth mail).
+      if (user?.id && user.email) {
+        let firstName: string | null = null
+        try {
+          const service = createServiceClient()
+          const { data: profile } = await service
+            .from('users')
+            .select('full_name')
+            .eq('id', user.id)
+            .maybeSingle()
+
+          const fullName = profile?.full_name?.trim()
+          firstName = fullName ? fullName.split(/\s+/)[0] ?? null : null
+        } catch {
+          // Non-fatal — welcome still sends without first name
+        }
+
+        dispatchWelcomeEmailOnceSafe({
+          userId: user.id,
+          recipientEmail: user.email,
+          firstName,
+        })
+      }
+
       const redirectParam = searchParams.get('redirectTo')
       const cookieRaw = request.cookies.get('bd_post_auth_redirect')?.value
       const cookieRedirect = cookieRaw ? decodeURIComponent(cookieRaw) : null

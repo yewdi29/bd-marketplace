@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import BrandLogo from '@/components/ui/BrandLogo'
 import Input from '@/components/ui/Input'
-import { isSafeRedirectPath, storeAuthRedirect } from '@/lib/authRedirect'
+import { clearAuthRedirect, isSafeRedirectPath, storeAuthRedirect } from '@/lib/authRedirect'
 
 const COUNTRIES = [
   'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Colombia', 'Venezuela', 'Ecuador', 'Peru', 'Trinidad and Tobago',
@@ -33,6 +33,8 @@ function SignupForm() {
   useEffect(() => {
     if (isSafeRedirectPath(redirectTo)) {
       storeAuthRedirect(redirectTo)
+    } else {
+      clearAuthRedirect()
     }
   }, [redirectTo])
 

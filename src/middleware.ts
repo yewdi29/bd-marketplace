@@ -89,9 +89,10 @@ export async function middleware(request: NextRequest) {
     user &&
     (pathname === '/auth/login' || pathname === '/auth/signup')
   ) {
-    const homeUrl = request.nextUrl.clone()
-    homeUrl.pathname = '/'
-    return NextResponse.redirect(homeUrl)
+    const dashboardUrl = request.nextUrl.clone()
+    dashboardUrl.pathname = '/dashboard'
+    dashboardUrl.search = ''
+    return NextResponse.redirect(dashboardUrl)
   }
 
   // Org members without a payment method may only reach Company Settings → Billing.

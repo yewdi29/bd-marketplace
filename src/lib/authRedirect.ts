@@ -24,10 +24,16 @@ export function storeAuthRedirect(path: string): void {
   document.cookie = `bd_post_auth_redirect=${encodeURIComponent(path)}; path=/; max-age=604800; SameSite=Lax`
 }
 
+export function clearAuthRedirect(): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(AUTH_REDIRECT_STORAGE_KEY)
+  document.cookie = 'bd_post_auth_redirect=; path=/; max-age=0; SameSite=Lax'
+}
+
 export function consumeAuthRedirect(): string | null {
   if (typeof window === 'undefined') return null
   const value = window.localStorage.getItem(AUTH_REDIRECT_STORAGE_KEY)
-  window.localStorage.removeItem(AUTH_REDIRECT_STORAGE_KEY)
+  clearAuthRedirect()
   return isSafeRedirectPath(value) ? value : null
 }
 

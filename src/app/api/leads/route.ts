@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
       buyerEmail: buyer_email,
       leadId: data.id,
       listingTitle: listing.title,
+      listingSlug: listing.slug,
     })
 
     if (dealTier === 'green') {
