@@ -609,6 +609,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.40 | August 2026 | **Email logo sharpness.** Transactional `EmailLayout` wordmark switched from SVG (`bd_logo-black.svg`) to a 4× retina PNG (`bd_logo-black-email.png`, 908×108 displayed at 227×27). SVG is blocked or poorly rasterized by major email clients, which caused a fuzzy logo. |
 | v2.39 | July 2026 | **Mobile menu signed-in layering.** Signed-in drawer shell `#F7F8F9`; account info + actions in a white card with rounded bottom corners and light drop shadow; site nav sits on the gray layer beneath. |
 | v2.38 | July 2026 | **Mobile menu nav refresh.** Logged-out: Create Account ghost pill + Sign In. Shared nav for all users (plain text rows): Browse Equipment, Business Directory, Pricing, About, Contact, separator, Feedback. Peeking feedback tab desktop-only; mobile Feedback opens from hamburger. |
 | v2.37 | July 2026 | **Site-wide feedback tab.** Orange peeking tab fixed to the right viewport edge (desktop: vertically centered; mobile: above bottom safe area). Opens a right slide-over form (category, message, optional bug screenshot). Mounted in root layout; hidden on `/rigburrito/*`. |

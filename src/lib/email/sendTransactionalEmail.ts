@@ -17,6 +17,7 @@ export type EmailTemplateType =
   | 'Welcome'
   | 'AuthConfirmation'
   | 'AuthPasswordReset'
+  | 'ListingLimitUpsell'
 
 export interface SendTransactionalEmailParams {
   templateType: EmailTemplateType

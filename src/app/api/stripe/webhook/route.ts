@@ -94,9 +94,14 @@ async function applyPlanChangeWithListingOverflow(
   newPlan: MembershipPlan,
   userUpdate: Record<string, unknown>,
 ): Promise<void> {
+  // Clear limit-upsell markers so a future cap on the new plan can trigger once.
   const { error } = await service
     .from('users')
-    .update(userUpdate)
+    .update({
+      ...userUpdate,
+      listing_limit_reached_at: null,
+      listing_limit_upsell_sent_at: null,
+    })
     .eq('id', userId)
 
   if (error) {

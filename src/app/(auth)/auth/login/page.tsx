@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import BrandLogo from '@/components/ui/BrandLogo'
+import PasswordInput from '@/components/auth/PasswordInput'
 import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 import {
@@ -84,13 +85,12 @@ function LoginForm() {
               required
               autoComplete="email"
             />
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               label="Password"
               placeholder="••••••••"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={setPassword}
               required
               autoComplete="current-password"
             />

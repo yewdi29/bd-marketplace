@@ -24,7 +24,12 @@ export const emailColors = {
   feedbackBg: '#F8F9FA',
 } as const
 
-/** Native dimensions from public/bd_logo-black.svg (viewBox 244×29). */
+/**
+ * Email logo: high-DPI PNG (not SVG).
+ * Gmail/Outlook/etc. often block or poorly rasterize SVG, which makes logos look fuzzy.
+ * Asset is 4× display size (908×108) so it stays sharp on retina screens when shown at 227×27.
+ * Source SVG: public/bd_logo-black.svg (viewBox 244×29) → public/bd_logo-black-email.png
+ */
 export const EMAIL_LOGO_NATURAL_WIDTH = 244
 export const EMAIL_LOGO_NATURAL_HEIGHT = 29
 export const EMAIL_LOGO_DISPLAY_HEIGHT = 27
@@ -32,8 +37,8 @@ export const EMAIL_LOGO_DISPLAY_WIDTH = Math.round(
   EMAIL_LOGO_DISPLAY_HEIGHT * (EMAIL_LOGO_NATURAL_WIDTH / EMAIL_LOGO_NATURAL_HEIGHT),
 )
 
-/** Same wordmark as site navbar — served from /public at deploy time. */
-export const EMAIL_LOGO_URL = 'https://blackdiamondmkt.com/bd_logo-black.svg'
+/** Retina PNG wordmark — served from /public at deploy time. */
+export const EMAIL_LOGO_URL = 'https://blackdiamondmkt.com/bd_logo-black-email.png'
 
 export const emailFontFamily =
   'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
@@ -212,8 +217,11 @@ const logoSectionStyle = {
 const logoImageStyle = {
   display: 'block',
   width: `${EMAIL_LOGO_DISPLAY_WIDTH}px`,
-  height: 'auto',
+  height: `${EMAIL_LOGO_DISPLAY_HEIGHT}px`,
   maxWidth: '100%',
+  border: 0,
+  outline: 'none',
+  textDecoration: 'none',
 }
 
 const headingStyle = {

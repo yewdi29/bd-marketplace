@@ -39,6 +39,8 @@ create table public.users (
   signup_ip_location  text,
   role                user_role not null default 'buyer',
   plan                membership_plan not null default 'free',
+  listing_limit_reached_at      timestamptz,
+  listing_limit_upsell_sent_at  timestamptz,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );

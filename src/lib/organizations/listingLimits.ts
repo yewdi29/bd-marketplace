@@ -86,3 +86,30 @@ export async function isAtActiveListingLimit(
     isEnterpriseMember: state.isEnterpriseMember,
   }
 }
+
+/**
+ * Record the first time a user hits their active-listing cap.
+ * No-op if already set — subsequent blocked attempts must not move the timestamp.
+ */
+export async function markListingLimitReachedOnce(
+  client: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  try {
+    const { data } = await client
+      .from('users')
+      .select('listing_limit_reached_at')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (data?.listing_limit_reached_at) return
+
+    await client
+      .from('users')
+      .update({ listing_limit_reached_at: new Date().toISOString() })
+      .eq('id', userId)
+      .is('listing_limit_reached_at', null)
+  } catch (err) {
+    console.error('[listingLimits] markListingLimitReachedOnce failed:', err)
+  }
+}

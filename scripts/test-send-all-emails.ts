@@ -33,6 +33,7 @@ import OwnershipTransferCompleted from '../emails/templates/OwnershipTransferCom
 import Welcome from '../emails/templates/Welcome'
 import AuthConfirmation from '../emails/templates/AuthConfirmation'
 import AuthPasswordReset from '../emails/templates/AuthPasswordReset'
+import ListingLimitUpsell from '../emails/templates/ListingLimitUpsell'
 import {
   sendTransactionalEmail,
   type EmailTemplateType,
@@ -236,6 +237,19 @@ function buildJobs(): TestEmailJob[] {
       relatedEntityType: 'user',
       react: createElement(AuthPasswordReset, {
         resetUrl: FAKE.resetUrl,
+      }),
+    },
+    {
+      templateType: 'ListingLimitUpsell',
+      subject: `[TEST] You've reached your Free listing limit`,
+      relatedEntityType: 'user',
+      react: createElement(ListingLimitUpsell, {
+        firstName: FAKE.firstName,
+        currentPlanLabel: 'Free',
+        currentLimit: 3,
+        nextPlanLabel: 'Starter',
+        nextListingAllowance: '15 active listings',
+        upgradeUrl: FAKE.upgradeUrl,
       }),
     },
   ]

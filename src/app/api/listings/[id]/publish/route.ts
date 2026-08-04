@@ -4,7 +4,10 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { dispatchListingApprovedEmail } from '@/lib/email/transactionalEmails'
 import { requireDashboardAccess } from '@/lib/organizations/auth'
-import { isAtActiveListingLimit } from '@/lib/organizations/listingLimits'
+import {
+  isAtActiveListingLimit,
+  markListingLimitReachedOnce,
+} from '@/lib/organizations/listingLimits'
 
 function slugify(text: string): string {
   return text
@@ -62,6 +65,7 @@ export async function PATCH(
   // ── Plan limit check — enforce active listing cap before publishing ──────────
   const { atLimit, limit: planLimit } = await isAtActiveListingLimit(adminClient, user.id)
   if (atLimit) {
+    await markListingLimitReachedOnce(adminClient, user.id)
     return NextResponse.json(
       { error: `You've reached your ${planLimit} active listing limit. Upgrade your membership for more listings.`, upgrade: true },
       { status: 403 },

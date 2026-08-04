@@ -1,6 +1,6 @@
 'use client'
 
-import Input from '@/components/ui/Input'
+import PasswordInput from '@/components/auth/PasswordInput'
 import {
   getPasswordChecks,
   getPasswordStrength,
@@ -34,15 +34,14 @@ export default function PasswordStrengthField({
 
   return (
     <div className="space-y-3">
-      <Input
+      <PasswordInput
         id={id}
-        type="password"
         label={label}
-        placeholder={placeholder}
         value={value}
-        onChange={e => onChange(e.target.value)}
-        required={required}
+        onChange={onChange}
+        placeholder={placeholder}
         autoComplete={autoComplete}
+        required={required}
         minLength={8}
       />
 

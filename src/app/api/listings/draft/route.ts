@@ -3,7 +3,10 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { requireDashboardAccess } from '@/lib/organizations/auth'
-import { isAtActiveListingLimit } from '@/lib/organizations/listingLimits'
+import {
+  isAtActiveListingLimit,
+  markListingLimitReachedOnce,
+} from '@/lib/organizations/listingLimits'
 
 // POST /api/listings/draft
 // Creates an empty draft listing and returns its ID.
@@ -36,6 +39,7 @@ export async function POST() {
   const { atLimit, limit } = await isAtActiveListingLimit(adminClient, user.id)
 
   if (atLimit) {
+    await markListingLimitReachedOnce(adminClient, user.id)
     return NextResponse.json(
       {
         error: `You've reached your ${limit} active listing limit. Upgrade your membership for more listings.`,
@@ -78,6 +82,7 @@ export async function POST() {
       msg.toLowerCase().includes('listing') &&
       (msg.toLowerCase().includes('limit') || msg.toLowerCase().includes('maximum') || msg.toLowerCase().includes('upgrade'))
     if (isTriggerLimitError) {
+      await markListingLimitReachedOnce(adminClient, user.id)
       return NextResponse.json(
         {
           error: `You've reached your ${limit} active listing limit. Upgrade your membership for more listings.`,

@@ -23,17 +23,13 @@ export default function Welcome({ firstName, browseUrl, dashboardUrl }: WelcomeP
         energy, construction, mining, and agriculture.
       </EmailParagraph>
       <EmailParagraph>
-        Here&apos;s a good place to start: browse live equipment listings, or head to your
-        dashboard when you&apos;re ready to list your own.
+        Here&apos;s a good place to start:{' '}
+        <Link href={browseUrl} style={emailInlineLinkStyle} className="email-orange-link">
+          Browse live equipment listings
+        </Link>
+        , or head to your dashboard when you&apos;re ready to list your own.
       </EmailParagraph>
-      <EmailButton href={browseUrl}>Browse equipment</EmailButton>
-      <EmailParagraph>
-        Prefer to sell? Open your{' '}
-        <Link href={dashboardUrl} style={emailInlineLinkStyle} className="email-orange-link">
-          account dashboard
-        </Link>{' '}
-        to create a listing anytime.
-      </EmailParagraph>
+      <EmailButton href={dashboardUrl}>Account dashboard</EmailButton>
     </EmailLayout>
   )
 }
