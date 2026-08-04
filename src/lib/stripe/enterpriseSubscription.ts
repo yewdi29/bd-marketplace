@@ -520,35 +520,68 @@ export async function confirmSeatQuantityChange(
   return { preview, logId: logRow.id }
 }
 
+export type SeatConfirmActor = {
+  userId?: string | null
+  name?: string | null
+}
+
 export async function confirmAddSeat(
   service: SupabaseClient,
   organizationId: string,
+  actor?: SeatConfirmActor | null,
 ): Promise<{ preview: SeatChangePreview; logId: string }> {
   const activeCount = await countActiveOrgMembers(service, organizationId)
-  return confirmSeatQuantityChange(
+  const result = await confirmSeatQuantityChange(
     service,
     organizationId,
     'add',
     activeCount,
     activeCount + 1,
   )
+
+  // Additive only — after Stripe + seat_change_log succeed. Never reorder the commit above.
+  const { dispatchSeatBillingReceiptSafe } = await import('@/lib/email/seatBillingReceipt')
+  dispatchSeatBillingReceiptSafe({
+    service,
+    organizationId,
+    changeType: 'add',
+    preview: result.preview,
+    logId: result.logId,
+    actor: actor ?? null,
+  })
+
+  return result
 }
 
 export async function confirmRemoveSeat(
   service: SupabaseClient,
   organizationId: string,
+  actor?: SeatConfirmActor | null,
 ): Promise<{ preview: SeatChangePreview; logId: string }> {
   const activeCount = await countActiveOrgMembers(service, organizationId)
   if (activeCount <= 0) {
     throw new Error('Organization has no active members to remove a seat from')
   }
-  return confirmSeatQuantityChange(
+  const result = await confirmSeatQuantityChange(
     service,
     organizationId,
     'remove',
     activeCount,
     activeCount - 1,
   )
+
+  // Additive only — after Stripe + seat_change_log succeed. Never reorder the commit above.
+  const { dispatchSeatBillingReceiptSafe } = await import('@/lib/email/seatBillingReceipt')
+  dispatchSeatBillingReceiptSafe({
+    service,
+    organizationId,
+    changeType: 'remove',
+    preview: result.preview,
+    logId: result.logId,
+    actor: actor ?? null,
+  })
+
+  return result
 }
 
 export interface SeatReconciliationResult {

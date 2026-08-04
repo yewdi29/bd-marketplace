@@ -4,6 +4,11 @@ import { createClient } from '@supabase/supabase-js'
 import type { MembershipPlan } from '@/lib/types/database'
 import { dispatchPlanDowngradeListingOverflowEmail } from '@/lib/email/transactionalEmails'
 import {
+  dispatchSubscriptionConfirmedIfUpgrade,
+  handleIndividualInvoicePaymentFailed,
+  handleIndividualInvoiceUpcoming,
+} from '@/lib/email/individualBillingEmails'
+import {
   getOrganizationByStripeSubscriptionId,
   handleEnterpriseCheckoutSetupCompleted,
   handleEnterpriseCheckoutSubscriptionCompleted,
@@ -73,7 +78,11 @@ function webhookErrorContext(event: Stripe.Event): Record<string, unknown> {
     ctx.organizationId = sub.metadata?.organization_id ?? null
   }
 
-  if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.payment_failed') {
+  if (
+    event.type === 'invoice.payment_succeeded' ||
+    event.type === 'invoice.payment_failed' ||
+    event.type === 'invoice.upcoming'
+  ) {
     const invoice = event.data.object as Stripe.Invoice
     const legacy = (invoice as Stripe.Invoice & {
       subscription?: string | Stripe.Subscription | null
@@ -120,6 +129,35 @@ async function applyPlanChangeWithListingOverflow(
   }
 }
 
+async function resolveIndividualUserId(
+  service: ReturnType<typeof getService>,
+  opts: { userId?: string; customerId?: string | null },
+): Promise<string | null> {
+  if (opts.userId) return opts.userId
+  if (!opts.customerId) return null
+
+  const { data: dbUser } = await service
+    .from('users')
+    .select('id')
+    .eq('stripe_customer_id', opts.customerId)
+    .maybeSingle()
+
+  return dbUser?.id ?? null
+}
+
+async function getUserPlan(
+  service: ReturnType<typeof getService>,
+  userId: string,
+): Promise<MembershipPlan> {
+  const { data } = await service
+    .from('users')
+    .select('plan')
+    .eq('id', userId)
+    .maybeSingle()
+
+  return (data?.plan ?? 'free') as MembershipPlan
+}
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
   const sig = req.headers.get('stripe-signature') ?? ''
@@ -159,7 +197,7 @@ export async function POST(req: NextRequest) {
           break
         }
 
-        // Individual membership checkout — unchanged
+        // Individual membership checkout — unchanged scoping
         if (session.mode !== 'subscription') {
           break
         }
@@ -181,8 +219,14 @@ export async function POST(req: NextRequest) {
 
         const plan = tierFromPriceId(priceId)
         const period = billingPeriodFromInterval(item.price.recurring?.interval)
-        const userId: string | undefined =
-          sub.metadata?.supabase_user_id ?? session.metadata?.supabase_user_id
+        const userId = await resolveIndividualUserId(service, {
+          userId: sub.metadata?.supabase_user_id ?? session.metadata?.supabase_user_id,
+          customerId: typeof session.customer === 'string' ? session.customer : session.customer?.id,
+        })
+
+        if (!userId) break
+
+        const previousPlan = await getUserPlan(service, userId)
 
         const userUpdate = {
           plan,
@@ -191,20 +235,15 @@ export async function POST(req: NextRequest) {
           billing_period: period,
         }
 
-        if (userId) {
-          await applyPlanChangeWithListingOverflow(service, userId, plan, userUpdate)
-        } else {
-          const customerId = session.customer as string
-          const { data: dbUser } = await service
-            .from('users')
-            .select('id')
-            .eq('stripe_customer_id', customerId)
-            .single()
+        await applyPlanChangeWithListingOverflow(service, userId, plan, userUpdate)
 
-          if (dbUser) {
-            await applyPlanChangeWithListingOverflow(service, dbUser.id, plan, userUpdate)
-          }
-        }
+        await dispatchSubscriptionConfirmedIfUpgrade({
+          service,
+          userId,
+          previousPlan,
+          newPlan: plan,
+          billingPeriod: period,
+        })
         break
       }
 
@@ -271,13 +310,24 @@ export async function POST(req: NextRequest) {
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice
+        // Enterprise only (early-returns when invoice is not an org subscription)
         await handleEnterpriseInvoicePaymentSucceeded(service, invoice)
         break
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
+        // Enterprise path first — no-ops for individual invoices
         await handleEnterpriseInvoicePaymentFailed(service, invoice)
+        // Parallel individual-tier path — no-ops for Enterprise org invoices
+        await handleIndividualInvoicePaymentFailed(service, invoice)
+        break
+      }
+
+      case 'invoice.upcoming': {
+        const invoice = event.data.object as Stripe.Invoice
+        // Individual tiers only — skips Enterprise org / enterprise-priced subscriptions
+        await handleIndividualInvoiceUpcoming(service, invoice)
         break
       }
 

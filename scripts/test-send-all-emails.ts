@@ -34,6 +34,10 @@ import Welcome from '../emails/templates/Welcome'
 import AuthConfirmation from '../emails/templates/AuthConfirmation'
 import AuthPasswordReset from '../emails/templates/AuthPasswordReset'
 import ListingLimitUpsell from '../emails/templates/ListingLimitUpsell'
+import SubscriptionConfirmed from '../emails/templates/SubscriptionConfirmed'
+import PaymentFailed from '../emails/templates/PaymentFailed'
+import UpcomingRenewal from '../emails/templates/UpcomingRenewal'
+import SeatBillingReceipt from '../emails/templates/SeatBillingReceipt'
 import {
   sendTransactionalEmail,
   type EmailTemplateType,
@@ -252,13 +256,133 @@ function buildJobs(): TestEmailJob[] {
         upgradeUrl: FAKE.upgradeUrl,
       }),
     },
+    {
+      templateType: 'ListingLimitUpsell',
+      subject: `[TEST] You've reached your Starter listing limit`,
+      relatedEntityType: 'user',
+      react: createElement(ListingLimitUpsell, {
+        firstName: FAKE.firstName,
+        currentPlanLabel: 'Starter',
+        currentLimit: 15,
+        nextPlanLabel: 'Pro',
+        nextListingAllowance: '40 active listings',
+        upgradeUrl: FAKE.upgradeUrl,
+      }),
+    },
+    {
+      templateType: 'ListingLimitUpsell',
+      subject: `[TEST] You've reached your Pro listing limit`,
+      relatedEntityType: 'user',
+      react: createElement(ListingLimitUpsell, {
+        firstName: FAKE.firstName,
+        currentPlanLabel: 'Pro',
+        currentLimit: 40,
+        nextPlanLabel: 'Max',
+        nextListingAllowance: 'unlimited active listings',
+        upgradeUrl: FAKE.upgradeUrl,
+      }),
+    },
+    {
+      templateType: 'SubscriptionConfirmed',
+      subject: `[TEST] You're on the Starter plan — Black Diamond Marketplace`,
+      relatedEntityType: 'user',
+      react: createElement(SubscriptionConfirmed, {
+        firstName: FAKE.firstName,
+        planId: 'starter',
+        planLabel: 'Starter',
+        billingPeriodLabel: 'monthly',
+        features: [
+          '15 active listings',
+          'AI listing generation',
+          'BD Verified badge',
+          'Video upload',
+          'Business Directory Access',
+        ],
+        manageBillingUrl: FAKE.dashboardUrl + '/settings',
+      }),
+    },
+    {
+      templateType: 'SubscriptionConfirmed',
+      subject: `[TEST] You're on the Pro plan — Black Diamond Marketplace`,
+      relatedEntityType: 'user',
+      react: createElement(SubscriptionConfirmed, {
+        firstName: FAKE.firstName,
+        planId: 'pro',
+        planLabel: 'Pro',
+        billingPeriodLabel: 'annual',
+        features: [
+          'Everything in Starter, plus:',
+          '40 active listings',
+          'Monthly analytics report',
+          '1 newsletter feature/week',
+        ],
+        manageBillingUrl: FAKE.dashboardUrl + '/settings',
+      }),
+    },
+    {
+      templateType: 'SubscriptionConfirmed',
+      subject: `[TEST] You're on the Max plan — Black Diamond Marketplace`,
+      relatedEntityType: 'user',
+      react: createElement(SubscriptionConfirmed, {
+        firstName: FAKE.firstName,
+        planId: 'max',
+        planLabel: 'Max',
+        billingPeriodLabel: 'monthly',
+        features: [
+          'Everything in Pro, plus:',
+          'Unlimited listings',
+          'Exclusive newsletter blast (monthly)',
+          'Business Directory priority placement',
+          'Home Page Partner Spotlight',
+          'Priority support',
+        ],
+        manageBillingUrl: FAKE.dashboardUrl + '/settings',
+      }),
+    },
+    {
+      templateType: 'PaymentFailed',
+      subject: `[TEST] Payment failed for your Starter plan`,
+      relatedEntityType: 'user',
+      react: createElement(PaymentFailed, {
+        firstName: FAKE.firstName,
+        planLabel: 'Starter',
+        amountDue: '$299.00',
+        updatePaymentUrl: FAKE.dashboardUrl + '/settings',
+      }),
+    },
+    {
+      templateType: 'UpcomingRenewal',
+      subject: `[TEST] Your Starter plan renews on April 15, 2026`,
+      relatedEntityType: 'user',
+      react: createElement(UpcomingRenewal, {
+        firstName: FAKE.firstName,
+        planLabel: 'Starter',
+        amountDue: '$299.00',
+        renewalDate: 'April 15, 2026',
+        manageBillingUrl: FAKE.dashboardUrl + '/settings',
+      }),
+    },
+    {
+      templateType: 'SeatBillingReceipt',
+      subject: `[TEST] Seat added — ${FAKE.organizationName}`,
+      relatedEntityType: 'seat_change_log',
+      react: createElement(SeatBillingReceipt, {
+        organizationName: FAKE.organizationName,
+        changeType: 'add',
+        actorName: 'Sam Manager',
+        showActorLine: true,
+        newSeatCount: 7,
+        amountLabel: '$12.50 charge (prorated)',
+        billingUrl: FAKE.companySettingsUrl + '?tab=billing',
+      }),
+    },
   ]
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function resolveRecipient(): string {
-  const fromArg = process.argv.slice(2).filter(a => !a.startsWith('-'))
+  const fromArg = process.argv.slice(2).filter(a => !a.startsWith('-') && !a.startsWith('--only'))
   if (fromArg.length > 1) {
     console.error('Error: pass exactly one email address (or use TEST_EMAIL_RECIPIENT).')
     process.exit(1)
@@ -268,7 +392,8 @@ function resolveRecipient(): string {
   if (!raw) {
     console.error(
       'Usage: npx tsx scripts/test-send-all-emails.ts you@example.com\n' +
-        '   or: TEST_EMAIL_RECIPIENT=you@example.com npx tsx scripts/test-send-all-emails.ts',
+        '   or: TEST_EMAIL_RECIPIENT=you@example.com npx tsx scripts/test-send-all-emails.ts\n' +
+        'Optional: --only=ListingLimitUpsell,SubscriptionConfirmed',
     )
     process.exit(1)
   }
@@ -286,8 +411,20 @@ function resolveRecipient(): string {
   return raw
 }
 
+function resolveOnlyFilter(): Set<string> | null {
+  const onlyArg = process.argv.slice(2).find(a => a.startsWith('--only='))
+  if (!onlyArg) return null
+  const types = onlyArg
+    .slice('--only='.length)
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+  return types.length > 0 ? new Set(types) : null
+}
+
 async function main() {
   const recipient = resolveRecipient()
+  const only = resolveOnlyFilter()
 
   if (!process.env.RESEND_API_KEY) {
     console.error('Error: RESEND_API_KEY is not set (check .env.local).')
@@ -298,9 +435,14 @@ async function main() {
     process.exit(1)
   }
 
-  const jobs = buildJobs()
+  const jobs = buildJobs().filter(job => (only ? only.has(job.templateType) : true))
+  if (jobs.length === 0) {
+    console.error('Error: no jobs matched --only filter.')
+    process.exit(1)
+  }
   console.log(`Sending ${jobs.length} transactional templates via sendTransactionalEmail`)
   console.log(`Recipient: ${recipient}`)
+  if (only) console.log(`Filter: ${[...only].join(', ')}`)
   console.log('---')
 
   let ok = 0

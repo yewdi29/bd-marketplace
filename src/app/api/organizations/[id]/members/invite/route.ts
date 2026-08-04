@@ -8,6 +8,7 @@ import {
   confirmAddSeat,
   previewAddSeat,
 } from '@/lib/stripe/enterpriseSubscription'
+import { resolveSeatChangeActorName } from '@/lib/email/seatBillingReceipt'
 import {
   DEFAULT_MANAGER_PERMISSIONS,
   managerHasOrgWideManagerAccess,
@@ -141,7 +142,11 @@ export async function POST(
   }
 
   try {
-    await confirmAddSeat(service, params.id)
+    const actorName = await resolveSeatChangeActorName(service, auth.userId)
+    await confirmAddSeat(service, params.id, {
+      userId: auth.userId,
+      name: actorName,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Seat billing failed'
     return NextResponse.json({ error: message }, { status: 400 })

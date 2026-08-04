@@ -179,8 +179,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Agent flag comment is missing or too short' }, { status: 400 })
         }
 
+        // Email seller here — agent raw recommendation no longer sends ListingNeedsChanges.
         const flagResult = await flagListing(service, listingId, auth.userId, comment, {
-          notifySeller: false,
+          notifySeller: true,
         })
         if (!flagResult.ok) {
           return NextResponse.json({ error: flagResult.error }, { status: flagResult.status })

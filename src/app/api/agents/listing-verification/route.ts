@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPaperclipSecret } from '@/lib/agents/verifyPaperclipSecret'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import { dispatchListingNeedsChangesEmail } from '@/lib/email/transactionalEmails'
 
 const AGENT_NAME = 'Listing Verifier'
 
@@ -160,17 +159,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    if (recommended_action === 'flag' && flag_comment?.trim()) {
-      const seller = listing.users as unknown as { email: string } | null
-      if (seller?.email) {
-        await dispatchListingNeedsChangesEmail({
-          sellerEmail: seller.email,
-          listingId: listing_id,
-          listingTitle: listing.title,
-          flagComment: flag_comment.trim(),
-        })
-      }
-    }
+    // Do NOT email the seller on raw agent flag recommendations.
+    // ListingNeedsChanges fires only after admin accept/override on /confirm
+    // (or via the separate manual admin flag route).
 
     return NextResponse.json({ success: true, recommendation_id: recommendation.id })
   } catch {

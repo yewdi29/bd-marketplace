@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { requireOrgMember } from '@/lib/organizations/auth'
 import { confirmRemoveSeat } from '@/lib/stripe/enterpriseSubscription'
+import { resolveSeatChangeActorName } from '@/lib/email/seatBillingReceipt'
 import {
   managerHasOrgWideManagerAccess,
   parseManagerPermissionsInput,
@@ -215,7 +216,11 @@ export async function DELETE(
 
   if (target.status === 'active' || target.status === 'invited') {
     try {
-      await confirmRemoveSeat(service, params.id)
+      const actorName = await resolveSeatChangeActorName(service, auth.userId)
+      await confirmRemoveSeat(service, params.id, {
+        userId: auth.userId,
+        name: actorName,
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Seat billing update failed'
       return NextResponse.json({ error: message }, { status: 400 })

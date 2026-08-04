@@ -18,6 +18,10 @@ export type EmailTemplateType =
   | 'AuthConfirmation'
   | 'AuthPasswordReset'
   | 'ListingLimitUpsell'
+  | 'SubscriptionConfirmed'
+  | 'PaymentFailed'
+  | 'UpcomingRenewal'
+  | 'SeatBillingReceipt'
 
 export interface SendTransactionalEmailParams {
   templateType: EmailTemplateType

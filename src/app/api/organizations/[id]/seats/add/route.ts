@@ -5,6 +5,7 @@ import {
   confirmAddSeat,
   previewAddSeat,
 } from '@/lib/stripe/enterpriseSubscription'
+import { resolveSeatChangeActorName } from '@/lib/email/seatBillingReceipt'
 
 function getService() {
   return createServiceClient(
@@ -47,7 +48,11 @@ export async function POST(
       return NextResponse.json({ success: true, preview })
     }
 
-    const result = await confirmAddSeat(service, params.id)
+    const actorName = await resolveSeatChangeActorName(service, auth.userId)
+    const result = await confirmAddSeat(service, params.id, {
+      userId: auth.userId,
+      name: actorName,
+    })
     return NextResponse.json({ success: true, ...result })
   } catch (err) {
     console.error('[organizations/seats/add]', err)
