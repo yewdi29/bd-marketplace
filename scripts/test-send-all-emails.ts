@@ -442,7 +442,7 @@ async function main() {
   }
   console.log(`Sending ${jobs.length} transactional templates via sendTransactionalEmail`)
   console.log(`Recipient: ${recipient}`)
-  if (only) console.log(`Filter: ${[...only].join(', ')}`)
+  if (only) console.log(`Filter: ${Array.from(only).join(', ')}`)
   console.log('---')
 
   let ok = 0
