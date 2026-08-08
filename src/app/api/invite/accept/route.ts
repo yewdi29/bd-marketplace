@@ -3,14 +3,24 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { activateOrgMemberOnJoin } from '@/lib/organizations/activateOrgMembership'
 
+function getService() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
+
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
   if (!token) {
     return NextResponse.json({ error: 'token is required' }, { status: 400 })
   }
 
-  const supabase = await createClient()
-  const { data: member, error } = await supabase
+  // Service role required: invitees are usually signed out, and RLS on
+  // org_members only allows existing org members to SELECT. The invite
+  // token itself is the capability secret (same pattern as POST below).
+  const service = getService()
+  const { data: member, error } = await service
     .from('org_members')
     .select(`
       id,
@@ -64,10 +74,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized', requiresAuth: true }, { status: 401 })
   }
 
-  const service = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const service = getService()
 
   const { data: member, error } = await service
     .from('org_members')
