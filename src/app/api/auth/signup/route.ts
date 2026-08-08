@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { passwordMeetsRequirements } from '@/lib/auth/passwordRequirements'
+import { sendSignupOtpEmail } from '@/lib/auth/sendSignupOtpEmail'
+
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
@@ -30,79 +38,75 @@ export async function POST(request: NextRequest) {
     request.headers.get('x-real-ip') ??
     null
 
-  // Use anon key so Supabase sends the confirmation email via signUp().
-  // admin.createUser() does not fire the confirmation email reliably.
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
   const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+  const admin = getAdminClient()
 
-  const { data: signUpData, error } = await supabase.auth.signUp({
+  /**
+   * Create the auth user with the service role (does not rely on Send Email Hook).
+   * Confirmation OTP is generated + emailed explicitly below via Resend.
+   */
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: normalizedEmail,
     password,
-    options: {
-      data: {
-        full_name: fullName,
-        company_name: companyName ?? null,
-        city,
-        state,
-        country,
-        phone: phoneTrimmed,
-        signup_ip_location: ip,
-      },
+    email_confirm: false,
+    user_metadata: {
+      full_name: fullName,
+      company_name: companyName ?? null,
+      city,
+      state,
+      country,
+      phone: phoneTrimmed,
+      signup_ip_location: ip,
     },
   })
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
-  }
+  let userId = created.user?.id ?? null
 
-  /**
-   * Supabase anti-enumeration: if the email already has an account, signUp
-   * returns 200 with an empty identities array and does NOT send confirmation.
-   * Resend the signup OTP so invite/onboarding (and retries) still get a code.
-   */
-  const identities = signUpData.user?.identities
-  if (signUpData.user && (!identities || identities.length === 0)) {
-    const { error: resendError } = await supabase.auth.resend({
-      type: 'signup',
+  if (createError) {
+    const msg = createError.message.toLowerCase()
+    const alreadyExists =
+      msg.includes('already') || msg.includes('registered') || msg.includes('exists')
+
+    if (!alreadyExists) {
+      return NextResponse.json({ error: createError.message }, { status: 400 })
+    }
+
+    // Pending unconfirmed account from a prior attempt — resend OTP.
+    // Confirmed accounts get already_registered from sendSignupOtpEmail.
+    const otp = await sendSignupOtpEmail({
       email: normalizedEmail,
+      password,
     })
 
-    if (resendError) {
-      const msg = resendError.message.toLowerCase()
-      if (msg.includes('already') || msg.includes('confirmed') || msg.includes('registered')) {
-        return NextResponse.json(
-          {
-            error: 'An account with this email already exists. Please sign in instead.',
-            code: 'already_registered',
-          },
-          { status: 400 },
-        )
-      }
+    if (otp.alreadyConfirmed) {
       return NextResponse.json(
-        { error: resendError.message || 'Could not send confirmation code. Please try again.' },
+        {
+          error: otp.error ?? 'An account with this email already exists. Please sign in instead.',
+          code: 'already_registered',
+        },
         { status: 400 },
       )
     }
 
-    return NextResponse.json({ success: true, confirmationResent: true })
+    if (!otp.sent) {
+      return NextResponse.json(
+        {
+          error:
+            otp.error ??
+            'An account with this email already exists. Please sign in instead.',
+          code: 'already_registered',
+        },
+        { status: 400 },
+      )
+    }
+
+    return NextResponse.json({ success: true, confirmationSent: true })
   }
 
   // ── Post-signup enrichment via service role ───────────────────────────────
-  const newUserId = signUpData.user?.id
-  if (newUserId) {
+  if (userId) {
     try {
-      const adminClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
-
       const emailDomain = normalizedEmail.split('@')[1]?.toLowerCase() ?? null
-      // Mirror signup form fields onto public.users (same columns settings reads/writes).
-      // handle_new_user() inserts these from metadata; this update is defense-in-depth.
       const enrichment: Record<string, unknown> = {
         full_name: typeof fullName === 'string' ? fullName.trim() || null : null,
         company_name: typeof companyName === 'string' ? companyName.trim() || null : null,
@@ -115,11 +119,11 @@ export async function POST(request: NextRequest) {
       }
 
       if (companyName) {
-        const { data: duplicate } = await adminClient
+        const { data: duplicate } = await admin
           .from('users')
           .select('id')
           .ilike('company_name', companyName.trim())
-          .neq('id', newUserId)
+          .neq('id', userId)
           .maybeSingle()
 
         if (duplicate) {
@@ -127,14 +131,30 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await adminClient
-        .from('users')
-        .update(enrichment)
-        .eq('id', newUserId)
+      await admin.from('users').update(enrichment).eq('id', userId)
     } catch {
       // Non-fatal — signup succeeded, enrichment failed silently
     }
   }
 
-  return NextResponse.json({ success: true })
+  const otp = await sendSignupOtpEmail({
+    email: normalizedEmail,
+    password,
+    userId,
+  })
+
+  if (!otp.sent) {
+    return NextResponse.json(
+      {
+        error:
+          otp.error ??
+          'Account created, but the confirmation email failed to send. Use Resend code on the next screen.',
+        code: 'confirmation_send_failed',
+        userCreated: true,
+      },
+      { status: 502 },
+    )
+  }
+
+  return NextResponse.json({ success: true, confirmationSent: true })
 }

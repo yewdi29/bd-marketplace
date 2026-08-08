@@ -121,6 +121,14 @@ function SignupForm() {
     const data = await res.json()
 
     if (!res.ok) {
+      // Account may exist unconfirmed with email send failure — still allow OTP + resend.
+      if (data.code === 'confirmation_send_failed' && data.userCreated) {
+        setStep('otp')
+        setError(data.error ?? 'Confirmation email failed. Tap Resend code below.')
+        setResendSeconds(0)
+        setLoading(false)
+        return
+      }
       setError(data.error ?? 'Something went wrong. Please try again.')
       setLoading(false)
       return
@@ -134,8 +142,15 @@ function SignupForm() {
       })
     }
 
-    // Confirmation OTP is sent by Supabase Auth → send-email-hook on signUp,
-    // or via auth.resend when the email already had a pending signup.
+    // Already confirmed (or confirm-email disabled) — continue invite/onboarding.
+    if (data.alreadyConfirmed) {
+      const destination = resolveAuthRedirect(redirectTo, consumeAuthRedirect())
+      router.push(destination)
+      router.refresh()
+      return
+    }
+
+    // OTP emailed directly from /api/auth/signup via admin.generateLink + Resend.
     setStep('otp')
     setResendSeconds(RESEND_COOLDOWN_SEC)
     setLoading(false)
@@ -186,17 +201,23 @@ function SignupForm() {
     setResending(true)
     setError('')
 
-    const { error: resendError } = await supabase.auth.resend({
-      type: 'signup',
-      email: email.trim().toLowerCase(),
+    const res = await fetch('/api/auth/resend-confirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        password,
+      }),
     })
+    const data = await res.json()
 
-    if (resendError) {
-      setError(resendError.message || 'Could not resend the code. Please try again.')
+    if (!res.ok) {
+      setError(data.error || 'Could not resend the code. Please try again.')
       setResending(false)
       return
     }
 
+    setError('')
     setResendSeconds(RESEND_COOLDOWN_SEC)
     setResending(false)
   }
