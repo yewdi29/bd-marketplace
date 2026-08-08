@@ -123,7 +123,9 @@ function InviteAcceptContent() {
 
   async function handleLoginRedirect() {
     const returnUrl = `/invite/accept?token=${encodeURIComponent(token ?? '')}`
-    router.push(`/auth/login?redirect=${encodeURIComponent(returnUrl)}`)
+    const params = new URLSearchParams({ redirectTo: returnUrl })
+    if (invite?.invitedEmail) params.set('email', invite.invitedEmail)
+    router.push(`/auth/login?${params.toString()}`)
   }
 
   if (loading || redirectingToCheckout) {
@@ -178,7 +180,7 @@ function InviteAcceptContent() {
           Sign in to accept
         </button>
         <Link
-          href={`/auth/signup?redirect=${encodeURIComponent(`/invite/accept?token=${token}`)}&email=${encodeURIComponent(invite.invitedEmail)}`}
+          href={`/auth/signup?redirectTo=${encodeURIComponent(`/invite/accept?token=${token}`)}&email=${encodeURIComponent(invite.invitedEmail)}`}
           className="w-full py-3 text-sm font-semibold text-ink border border-[#E8E9EA] rounded-pill text-center"
         >
           Create account

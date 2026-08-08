@@ -37,8 +37,10 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+
   const { data: signUpData, error } = await supabase.auth.signUp({
-    email,
+    email: normalizedEmail,
     password,
     options: {
       data: {
@@ -57,6 +59,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
+  /**
+   * Supabase anti-enumeration: if the email already has an account, signUp
+   * returns 200 with an empty identities array and does NOT send confirmation.
+   * Resend the signup OTP so invite/onboarding (and retries) still get a code.
+   */
+  const identities = signUpData.user?.identities
+  if (signUpData.user && (!identities || identities.length === 0)) {
+    const { error: resendError } = await supabase.auth.resend({
+      type: 'signup',
+      email: normalizedEmail,
+    })
+
+    if (resendError) {
+      const msg = resendError.message.toLowerCase()
+      if (msg.includes('already') || msg.includes('confirmed') || msg.includes('registered')) {
+        return NextResponse.json(
+          {
+            error: 'An account with this email already exists. Please sign in instead.',
+            code: 'already_registered',
+          },
+          { status: 400 },
+        )
+      }
+      return NextResponse.json(
+        { error: resendError.message || 'Could not send confirmation code. Please try again.' },
+        { status: 400 },
+      )
+    }
+
+    return NextResponse.json({ success: true, confirmationResent: true })
+  }
+
   // ── Post-signup enrichment via service role ───────────────────────────────
   const newUserId = signUpData.user?.id
   if (newUserId) {
@@ -66,7 +100,7 @@ export async function POST(request: NextRequest) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       )
 
-      const emailDomain = email.split('@')[1]?.toLowerCase() ?? null
+      const emailDomain = normalizedEmail.split('@')[1]?.toLowerCase() ?? null
       // Mirror signup form fields onto public.users (same columns settings reads/writes).
       // handle_new_user() inserts these from metadata; this update is defense-in-depth.
       const enrichment: Record<string, unknown> = {

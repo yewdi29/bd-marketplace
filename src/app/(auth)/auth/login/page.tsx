@@ -25,9 +25,16 @@ function LoginForm() {
   const [error, setError] = useState('')
 
   const redirectTo = searchParams.get('redirectTo')
-  const signupHref = redirectTo && isSafeRedirectPath(redirectTo)
-    ? `/auth/signup?redirectTo=${encodeURIComponent(redirectTo)}`
-    : '/auth/signup'
+  const emailFromQuery = searchParams.get('email')?.trim() ?? ''
+  const signupHref = (() => {
+    const params = new URLSearchParams()
+    if (redirectTo && isSafeRedirectPath(redirectTo)) {
+      params.set('redirectTo', redirectTo)
+    }
+    if (emailFromQuery) params.set('email', emailFromQuery)
+    const qs = params.toString()
+    return qs ? `/auth/signup?${qs}` : '/auth/signup'
+  })()
 
   useEffect(() => {
     if (isSafeRedirectPath(redirectTo)) {
@@ -37,6 +44,10 @@ function LoginForm() {
       clearAuthRedirect()
     }
   }, [redirectTo])
+
+  useEffect(() => {
+    if (emailFromQuery) setEmail(emailFromQuery)
+  }, [emailFromQuery])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()

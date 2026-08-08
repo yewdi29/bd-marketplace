@@ -9,7 +9,13 @@ import PhoneInput from '@/components/auth/PhoneInput'
 import PasswordStrengthField from '@/components/auth/PasswordStrengthField'
 import { createClient } from '@/lib/supabase/client'
 import { passwordMeetsRequirements } from '@/lib/auth/passwordRequirements'
-import { clearAuthRedirect, isSafeRedirectPath, storeAuthRedirect } from '@/lib/authRedirect'
+import {
+  clearAuthRedirect,
+  consumeAuthRedirect,
+  isSafeRedirectPath,
+  resolveAuthRedirect,
+  storeAuthRedirect,
+} from '@/lib/authRedirect'
 
 const COUNTRIES = [
   'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Colombia', 'Venezuela', 'Ecuador', 'Peru', 'Trinidad and Tobago',
@@ -35,6 +41,7 @@ function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo')
+  const emailFromQuery = searchParams.get('email')?.trim() ?? ''
   const supabase = createClient()
 
   useEffect(() => {
@@ -46,12 +53,18 @@ function SignupForm() {
   }, [redirectTo])
 
   const loginHref = redirectTo && isSafeRedirectPath(redirectTo)
-    ? `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`
+    ? `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}${
+        emailFromQuery ? `&email=${encodeURIComponent(emailFromQuery)}` : ''
+      }`
     : '/auth/login'
 
   const [step, setStep] = useState<'form' | 'otp'>('form')
   const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(emailFromQuery)
+
+  useEffect(() => {
+    if (emailFromQuery) setEmail(emailFromQuery)
+  }, [emailFromQuery])
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
   const [companyName, setCompanyName] = useState('')
@@ -117,10 +130,12 @@ function SignupForm() {
       await fetch('/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'signup' }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), source: 'signup' }),
       })
     }
 
+    // Confirmation OTP is sent by Supabase Auth → send-email-hook on signUp,
+    // or via auth.resend when the email already had a pending signup.
     setStep('otp')
     setResendSeconds(RESEND_COOLDOWN_SEC)
     setLoading(false)
@@ -160,7 +175,9 @@ function SignupForm() {
       // Non-fatal — account is confirmed either way
     }
 
-    router.push('/dashboard')
+    // Return to invite accept (or other post-auth destination) when present.
+    const destination = resolveAuthRedirect(redirectTo, consumeAuthRedirect())
+    router.push(destination)
     router.refresh()
   }
 
@@ -247,6 +264,7 @@ function SignupForm() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
+                readOnly={Boolean(emailFromQuery)}
               />
               <PhoneInput value={phone} onChange={setPhone} required />
               <PasswordStrengthField value={password} onChange={setPassword} />
