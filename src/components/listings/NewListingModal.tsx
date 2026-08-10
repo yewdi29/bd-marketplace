@@ -9,6 +9,8 @@ import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper } from '@/components/listings/ListingTaxonomyFields'
 import ListingMediaSection from '@/components/listings/ListingMediaSection'
 import NewListingMobileFlow from '@/components/listings/NewListingMobileFlow'
+import DozerAsciiLoader from '@/components/listings/DozerAsciiLoader'
+import { runGenerateWithDozerProgress } from '@/lib/listings/runGenerateWithDozerProgress'
 import { useListingVideos } from '@/hooks/useListingVideos'
 import { useListingGallery } from '@/hooks/useListingGallery'
 import {
@@ -150,6 +152,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
   const [listingId, setListingId] = useState<string | null>(null)
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [generateProgress, setGenerateProgress] = useState(0)
   const [stepLoading, setStepLoading] = useState(false)
   const [discardConfirm, setDiscardConfirm] = useState(false)
   const [error, setError] = useState('')
@@ -254,35 +257,38 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
   async function handleGenerate() {
     if (!listingId) return
     setGenerating(true)
+    setGenerateProgress(0)
     setError('')
 
     try {
-      const res = await fetch('/api/listings/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, listing_id: listingId }),
-      })
-      const data = await res.json() as {
-        listing?: Partial<ListingForm & {
-          price: number
-          price_visible: boolean
-          country_id?: string | null
-          region_id?: string | null
-          state_id?: string | null
-          industry_id?: string | null
-          category_id?: string | null
-          location_city?: string | null
-          location_state?: string | null
-        }>
-        error?: string
-      }
+      const data = await runGenerateWithDozerProgress(async () => {
+        const res = await fetch('/api/listings/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, listing_id: listingId }),
+        })
+        const json = await res.json() as {
+          listing?: Partial<ListingForm & {
+            price: number
+            price_visible: boolean
+            country_id?: string | null
+            region_id?: string | null
+            state_id?: string | null
+            industry_id?: string | null
+            category_id?: string | null
+            location_city?: string | null
+            location_state?: string | null
+          }>
+          error?: string
+        }
 
-      if (!res.ok || !data.listing) {
-        setError(data.error ?? 'Generation failed. Please try again.')
-        return
-      }
+        if (!res.ok || !json.listing) {
+          throw new Error(json.error ?? 'Generation failed. Please try again.')
+        }
+        return json.listing
+      }, setGenerateProgress)
 
-      const l = data.listing
+      const l = data
       setForm({
         title: l.title ?? '',
         category: l.category ?? '',
@@ -305,10 +311,11 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         location_state: l.location_state ?? '',
       })
       setStep(2)
-    } catch {
-      setError('Network error. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error. Please try again.')
     } finally {
       setGenerating(false)
+      setGenerateProgress(0)
     }
   }
 
@@ -579,6 +586,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         prompt={prompt}
         setPrompt={setPrompt}
         generating={generating}
+        generateProgress={generateProgress}
         stepLoading={stepLoading}
         error={error}
         upgradePrompt={upgradePrompt}
@@ -698,50 +706,66 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
           {/* ─────── STEP 1: Describe ─────── */}
           {step === 1 && (
             <div>
-              <h2 className="font-sans font-bold text-[22px] text-ink mb-1" style={{ letterSpacing: '-0.02em' }}>
-                Describe your equipment
-              </h2>
-              <p className="text-sm text-ink-2 mb-5 leading-relaxed">
-                Just talk to us like you would a buyer. Our AI will extract all the details and build your listing.
-              </p>
-              {/*
-               * Canvas glow: the container div IS the ref target and the positioning
-               * context for the canvas. One div, no intermediate wrapper — eliminates
-               * any offset between what the ResizeObserver measures and where the
-               * canvas sits.
-               */}
-              <div
-                ref={promptContainerRef}
-                className="relative"
-                style={{ borderRadius: '10px' }}
-              >
-                {/* Canvas — absolute, z-index 0, behind the textarea */}
-                <canvas
-                  ref={promptCanvasRef}
-                  style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
-                />
-                {/* Textarea — block + z-index 1 so it sits above the canvas */}
-                <textarea
-                  value={prompt}
-                  onChange={e => setPrompt(e.target.value)}
-                  onFocus={handlePromptFocus}
-                  onBlur={handlePromptBlur}
-                  placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location. Just talk to us like you would a buyer."
-                  className={`${inputCls} resize-none leading-relaxed focus:outline-none focus:ring-0`}
-                  style={{
-                    minHeight: '200px',
-                    borderColor: promptFocused ? 'transparent' : '#E8E9EA',
-                    display: 'block',
-                    position: 'relative',
-                    zIndex: 1,
-                    transition: 'border-color 0.15s',
-                  }}
-                  disabled={generating}
-                />
-                <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>
-                  {prompt.length}
-                </span>
-              </div>
+              {generating ? (
+                <div>
+                  <h2 className="font-sans font-bold text-[22px] text-ink mb-1" style={{ letterSpacing: '-0.02em' }}>
+                    Building your listing
+                  </h2>
+                  <p className="text-sm text-ink-2 mb-4 leading-relaxed">
+                    Our AI is extracting details from your description.
+                  </p>
+                  <div
+                    className="rounded-[10px] border border-[#E8E9EA] overflow-hidden"
+                    style={{ height: 360 }}
+                  >
+                    <DozerAsciiLoader progress={generateProgress} />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h2 className="font-sans font-bold text-[22px] text-ink mb-1" style={{ letterSpacing: '-0.02em' }}>
+                    Describe your equipment
+                  </h2>
+                  <p className="text-sm text-ink-2 mb-5 leading-relaxed">
+                    Just talk to us like you would a buyer. Our AI will extract all the details and build your listing.
+                  </p>
+                  {/*
+                   * Canvas glow: the container div IS the ref target and the positioning
+                   * context for the canvas. One div, no intermediate wrapper — eliminates
+                   * any offset between what the ResizeObserver measures and where the
+                   * canvas sits.
+                   */}
+                  <div
+                    ref={promptContainerRef}
+                    className="relative"
+                    style={{ borderRadius: '10px' }}
+                  >
+                    <canvas
+                      ref={promptCanvasRef}
+                      style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
+                    />
+                    <textarea
+                      value={prompt}
+                      onChange={e => setPrompt(e.target.value)}
+                      onFocus={handlePromptFocus}
+                      onBlur={handlePromptBlur}
+                      placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location. Just talk to us like you would a buyer."
+                      className={`${inputCls} resize-none leading-relaxed focus:outline-none focus:ring-0`}
+                      style={{
+                        minHeight: '200px',
+                        borderColor: promptFocused ? 'transparent' : '#E8E9EA',
+                        display: 'block',
+                        position: 'relative',
+                        zIndex: 1,
+                        transition: 'border-color 0.15s',
+                      }}
+                    />
+                    <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>
+                      {prompt.length}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

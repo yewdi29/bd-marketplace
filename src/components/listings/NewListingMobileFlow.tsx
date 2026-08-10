@@ -16,6 +16,7 @@ import {
   hasUnlimitedListings,
 } from '@/lib/planLimits'
 import ListingMediaSection from './ListingMediaSection'
+import DozerAsciiLoader from '@/components/listings/DozerAsciiLoader'
 import type { ListingForm, PhotoState } from './NewListingModal'
 import type { GalleryItem } from '@/lib/listings/listingGallery'
 import type { ListingVideoSlot } from '@/lib/listings/listingVideoUploadClient'
@@ -102,6 +103,7 @@ export interface NewListingMobileFlowProps {
   prompt: string
   setPrompt: (v: string) => void
   generating: boolean
+  generateProgress: number
   stepLoading: boolean
   error: string
   upgradePrompt: boolean
@@ -147,6 +149,7 @@ export default function NewListingMobileFlow({
   prompt,
   setPrompt,
   generating,
+  generateProgress,
   stepLoading,
   error,
   upgradePrompt,
@@ -411,42 +414,59 @@ export default function NewListingMobileFlow({
         >
           {step === 1 && (
             <div className="flex flex-col min-h-full px-5 pt-6 pb-4">
-              <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
-                Describe your equipment.
-              </h1>
-              <p className="text-[15px] text-ink-2 leading-relaxed mb-5">
-                Just talk to us like you would a buyer. Our AI will extract all the details and build your listing.
-              </p>
+              {generating ? (
+                <>
+                  <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
+                    Building your listing.
+                  </h1>
+                  <p className="text-[15px] text-ink-2 leading-relaxed mb-4">
+                    Our AI is extracting details from your description.
+                  </p>
+                  <div
+                    className="relative flex-1 flex flex-col min-h-[280px] rounded-[10px] border border-[#E8E9EA] overflow-hidden"
+                  >
+                    <DozerAsciiLoader progress={generateProgress} className="flex-1" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
+                    Describe your equipment.
+                  </h1>
+                  <p className="text-[15px] text-ink-2 leading-relaxed mb-5">
+                    Just talk to us like you would a buyer. Our AI will extract all the details and build your listing.
+                  </p>
 
-              <div
-                ref={promptContainerRef}
-                className="relative flex-1 flex flex-col min-h-[200px]"
-                style={{ borderRadius: '10px' }}
-              >
-                <canvas
-                  ref={promptCanvasRef}
-                  style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
-                />
-                <textarea
-                  value={prompt}
-                  onChange={e => setPrompt(e.target.value)}
-                  onFocus={onPromptFocus}
-                  onBlur={onPromptBlur}
-                  placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location."
-                  className={`${inputCls} flex-1 resize-none leading-relaxed min-h-[220px] focus:outline-none focus:ring-0`}
-                  style={{
-                    display: 'block',
-                    position: 'relative',
-                    zIndex: 1,
-                    borderColor: promptFocused ? 'transparent' : '#E8E9EA',
-                    transition: 'border-color 0.15s',
-                  }}
-                  disabled={generating}
-                />
-                <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>
-                  {prompt.length}
-                </span>
-              </div>
+                  <div
+                    ref={promptContainerRef}
+                    className="relative flex-1 flex flex-col min-h-[200px]"
+                    style={{ borderRadius: '10px' }}
+                  >
+                    <canvas
+                      ref={promptCanvasRef}
+                      style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
+                    />
+                    <textarea
+                      value={prompt}
+                      onChange={e => setPrompt(e.target.value)}
+                      onFocus={onPromptFocus}
+                      onBlur={onPromptBlur}
+                      placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location."
+                      className={`${inputCls} flex-1 resize-none leading-relaxed min-h-[220px] focus:outline-none focus:ring-0`}
+                      style={{
+                        display: 'block',
+                        position: 'relative',
+                        zIndex: 1,
+                        borderColor: promptFocused ? 'transparent' : '#E8E9EA',
+                        transition: 'border-color 0.15s',
+                      }}
+                    />
+                    <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>
+                      {prompt.length}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
