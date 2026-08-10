@@ -66,12 +66,17 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
+  // Client converts HEIC and compresses to JPEG before upload; this is the
+  // post-prepare safety net (also under Vercel's ~4.5 MB body limit).
   if (!ALLOWED_LISTING_PHOTO_TYPES.includes(file.type as (typeof ALLOWED_LISTING_PHOTO_TYPES)[number])) {
     return NextResponse.json({ error: 'Only PNG and JPG files are allowed' }, { status: 400 })
   }
 
   if (file.size > MAX_LISTING_PHOTO_BYTES) {
-    return NextResponse.json({ error: 'File must be under 4 MB' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Optimized photo must be under 4 MB — try a different image' },
+      { status: 400 },
+    )
   }
 
   const bytes = await file.arrayBuffer()

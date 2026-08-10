@@ -8,8 +8,7 @@ import {
 } from '@/lib/email/inquiryEmails'
 import { dispatchInquiryReceivedBuyerEmail } from '@/lib/email/transactionalEmails'
 import { scheduleInquiryVerification } from '@/lib/inquiryVerification/scheduleVerification'
-
-type DealTier = 'green' | 'yellow' | 'red'
+import { resolveListingDealTier } from '@/lib/listings/dealTier'
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
@@ -80,8 +79,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Listing is not active' }, { status: 400 })
     }
 
-    const dealTier = (listing.tier ?? 'green') as DealTier
+    // Never persist null tier — seller email + fallback cron require tier='green'.
+    // Some active listings have tier=null when the price trigger never ran.
+    const dealTier = resolveListingDealTier(listing)
     const leadStatus = dealTier === 'green' ? 'new' : 'pending_review'
+
+    if (!listing.tier) {
+      void service
+        .from('listings')
+        .update({ tier: dealTier })
+        .eq('id', listing_id)
+        .is('tier', null)
+    }
 
     const { data, error } = await service
       .from('leads')
@@ -94,7 +103,7 @@ export async function POST(request: NextRequest) {
         buyer_phone: buyer_phone ?? null,
         buyer_company: buyer_company ?? null,
         message,
-        tier: listing.tier,
+        tier: dealTier,
         status: leadStatus,
       })
       .select()

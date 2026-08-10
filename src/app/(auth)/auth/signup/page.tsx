@@ -42,6 +42,7 @@ function SignupForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo')
   const emailFromQuery = searchParams.get('email')?.trim() ?? ''
+  const companyNameFromQuery = searchParams.get('companyName')?.trim() ?? ''
   const supabase = createClient()
 
   useEffect(() => {
@@ -52,11 +53,13 @@ function SignupForm() {
     }
   }, [redirectTo])
 
-  const loginHref = redirectTo && isSafeRedirectPath(redirectTo)
-    ? `/auth/login?redirectTo=${encodeURIComponent(redirectTo)}${
-        emailFromQuery ? `&email=${encodeURIComponent(emailFromQuery)}` : ''
-      }`
-    : '/auth/login'
+  const loginHref = (() => {
+    if (!redirectTo || !isSafeRedirectPath(redirectTo)) return '/auth/login'
+    const params = new URLSearchParams({ redirectTo })
+    if (emailFromQuery) params.set('email', emailFromQuery)
+    if (companyNameFromQuery) params.set('companyName', companyNameFromQuery)
+    return `/auth/login?${params.toString()}`
+  })()
 
   const [step, setStep] = useState<'form' | 'otp'>('form')
   const [fullName, setFullName] = useState('')
@@ -67,7 +70,11 @@ function SignupForm() {
   }, [emailFromQuery])
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
-  const [companyName, setCompanyName] = useState('')
+  const [companyName, setCompanyName] = useState(companyNameFromQuery)
+
+  useEffect(() => {
+    if (companyNameFromQuery) setCompanyName(companyNameFromQuery)
+  }, [companyNameFromQuery])
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [country, setCountry] = useState('')
@@ -275,6 +282,7 @@ function SignupForm() {
                 onChange={e => setCompanyName(e.target.value)}
                 required
                 autoComplete="organization"
+                readOnly={Boolean(companyNameFromQuery)}
               />
               <Input
                 id="email"

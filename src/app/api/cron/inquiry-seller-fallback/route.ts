@@ -16,10 +16,12 @@ export async function GET(req: NextRequest) {
   const service = createServiceClient()
   const cutoff = new Date(Date.now() - FALLBACK_AFTER_MS).toISOString()
 
+  // Include tier IS NULL — older inquiries copied listing.tier when it was unset,
+  // which blocked seller email (send path / this cron previously required tier=green).
   const { data: pending, error } = await service
     .from('leads')
     .select('id')
-    .eq('tier', 'green')
+    .or('tier.eq.green,tier.is.null')
     .eq('status', 'new')
     .is('seller_inquiry_email_sent_at', null)
     .not('listing_id', 'is', null)

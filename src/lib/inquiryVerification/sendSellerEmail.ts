@@ -48,7 +48,9 @@ export async function sendNewInquirySellerEmailOnce(
   }
 
   // Green-tier immediate path only — yellow/red use admin approval.
-  if (lead.tier !== 'green' || lead.status !== 'new') {
+  // Treat null tier as green (legacy rows / listings that missed the tier trigger).
+  const effectiveTier = lead.tier ?? 'green'
+  if (effectiveTier !== 'green' || lead.status !== 'new') {
     return { sent: false, deduplicated: true }
   }
 

@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from '@react-email/components'
-import type { ReactNode } from 'react'
+import React, { type ReactNode } from 'react'
 
 export const emailColors = {
   ink: '#1A1D20',

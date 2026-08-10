@@ -26,12 +26,14 @@ function LoginForm() {
 
   const redirectTo = searchParams.get('redirectTo')
   const emailFromQuery = searchParams.get('email')?.trim() ?? ''
+  const companyNameFromQuery = searchParams.get('companyName')?.trim() ?? ''
   const signupHref = (() => {
     const params = new URLSearchParams()
     if (redirectTo && isSafeRedirectPath(redirectTo)) {
       params.set('redirectTo', redirectTo)
     }
     if (emailFromQuery) params.set('email', emailFromQuery)
+    if (companyNameFromQuery) params.set('companyName', companyNameFromQuery)
     const qs = params.toString()
     return qs ? `/auth/signup?${qs}` : '/auth/signup'
   })()

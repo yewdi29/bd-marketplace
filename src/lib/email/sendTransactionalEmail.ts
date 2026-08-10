@@ -1,7 +1,11 @@
-import type { ReactElement } from 'react'
+import React, { type ReactElement } from 'react'
 import { render } from '@react-email/render'
 import { createServiceClient } from '@/lib/rigburrito/service'
 import { EMAIL_FROM, getResend } from './resendClient'
+
+// Email templates under /emails often omit a React value import (type-only).
+// @react-email/render can execute classic JSX that expects global React.
+;(globalThis as typeof globalThis & { React: typeof React }).React = React
 
 export type EmailTemplateType =
   | 'ListingApproved'

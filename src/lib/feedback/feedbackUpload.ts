@@ -1,15 +1,14 @@
 /**
- * Feedback screenshot upload — reuses the same PNG/JPG + 4 MB rules as listing photos.
+ * Feedback screenshot upload — strict PNG/JPG + 4 MB (no HEIC convert / compress path).
  */
 import {
   ALLOWED_LISTING_PHOTO_TYPES,
-  LISTING_PHOTO_ACCEPT,
   MAX_LISTING_PHOTO_BYTES,
   formatPhotoSizeMb,
   validateListingPhotoFile,
 } from '@/lib/listings/listingPhotoUpload'
 
-export const FEEDBACK_IMAGE_ACCEPT = LISTING_PHOTO_ACCEPT
+export const FEEDBACK_IMAGE_ACCEPT = 'image/png, image/jpeg'
 export const FEEDBACK_IMAGE_HINT = 'PNG or JPG · max 4 MB · optional for bug reports'
 export const MAX_FEEDBACK_IMAGE_BYTES = MAX_LISTING_PHOTO_BYTES
 export const ALLOWED_FEEDBACK_IMAGE_TYPES = ALLOWED_LISTING_PHOTO_TYPES

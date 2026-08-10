@@ -49,7 +49,8 @@ export async function runInquiryVerificationPipeline(leadId: string): Promise<vo
     })
   }
 
-  if (lead.tier === 'green' && lead.status === 'new') {
+  const effectiveTier = lead.tier ?? 'green'
+  if (effectiveTier === 'green' && lead.status === 'new') {
     await sendNewInquirySellerEmailOnce(service, leadId, { includeVerification: true })
   }
 }
