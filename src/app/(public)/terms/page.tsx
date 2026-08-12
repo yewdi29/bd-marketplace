@@ -189,8 +189,8 @@ export default function TermsPage() {
             <li>
               First-time Enterprise annual subscribers may request a full refund within 30 days of
               the initial annual subscription charge by contacting{' '}
-              <a href="mailto:support@blackdiamondmkt.com" className="text-orange hover:text-orange-lt transition-colors">
-                support@blackdiamondmkt.com
+              <a href="mailto:contact@blackdiamondmkt.com" className="text-orange hover:text-orange-lt transition-colors">
+                contact@blackdiamondmkt.com
               </a>
               . This window applies only to the first annual payment and does not extend to seat
               additions, plan changes, or renewal charges
@@ -266,8 +266,8 @@ export default function TermsPage() {
             className="mt-4 bg-bg border border-[#E8E9EA] rounded-[10px] px-5 py-4 font-sans text-ink-2"
             style={{ fontSize: '14px', lineHeight: 1.7 }}
           >
-            <a href="mailto:legal@blackdiamondmarketplace.com" className="text-orange hover:text-orange-lt transition-colors">
-              legal@blackdiamondmarketplace.com
+            <a href="mailto:contact@blackdiamondmkt.com" className="text-orange hover:text-orange-lt transition-colors">
+              contact@blackdiamondmkt.com
             </a>
             <br />
             Black Diamond Marketplace — Odessa, Texas

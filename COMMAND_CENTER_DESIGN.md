@@ -327,7 +327,7 @@ Three separate color systems in the same table — do not conflate them:
 |--------|---------|-------|
 | Confidence | Plain text percentage | ≥75 `#16A34A`, 55–74 `#D97706`, ≤54 `#DC2626` — not a pill |
 | Agent pill | Agent name | Listing Verifier teal `#0E7490` / `#ECFEFF` / `#A5F3FC`; Lead Scorer purple `#7C3AED` / `#F5F3FF` / `#DDD6FE`; Red Alert coral `#E85D4A` / `#FFF1EE` / `#FACFC7` |
-| Outcome pill | Outcome status | `pending_review` burnt orange `#C2410C` / `#FFF7ED` / `#FDBA74`; success (`approved`, `scored`, `alerted`) green; failure (`flagged`, `overridden`) red |
+| Outcome pill | Outcome status | `pending_review` burnt orange `#C2410C` / `#FFF7ED` / `#FDBA74`; success (`approved`, `auto_approved`, `scored`, `alerted`) green; failure (`flagged`, `overridden`) red |
 
 Expanded Listing Verifier rows include a Feedback section: five criterion scores (0–20) with the same confidence color thresholds applied per criterion, plus `flag_comment` or a clean-approval message.
 
@@ -422,6 +422,7 @@ Centered in the content area.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.11 | 2026-08-12 | Agent Activity: `auto_approved` outcome pill (same green success treatment as `approved`) for Listing Verifier auto-publish |
 | 2.10 | 2026-07-31 | Dashboard Feedback tab: ExpandableDataTable for site feedback; category/status pills; expand shows message, screenshot, page URL, tier/role; status actions (reviewed/resolved/dismiss) |
 | 2.9 | 2026-07-10 | Agent Activity tab: Confidence column, agent/outcome pills, expanded feedback breakdown |
 | 2.8 | 2026-07-10 | Dashboard restructure: metric strip, detail region, lifted-pill tab bar, expandable table, orange choropleth scale; stat card sparklines removed |

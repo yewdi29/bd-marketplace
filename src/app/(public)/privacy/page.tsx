@@ -94,8 +94,8 @@ export default function PrivacyPage() {
           </ul>
           <p className="mt-4">
             To exercise any of these rights contact us at{' '}
-            <a href="mailto:privacy@blackdiamondmarketplace.com" className="text-orange hover:text-orange-lt transition-colors">
-              privacy@blackdiamondmarketplace.com
+            <a href="mailto:contact@blackdiamondmkt.com" className="text-orange hover:text-orange-lt transition-colors">
+              contact@blackdiamondmkt.com
             </a>
           </p>
         </section>
@@ -106,8 +106,8 @@ export default function PrivacyPage() {
           </h2>
           <p>
             We retain account data for as long as your account remains active. Listing data is retained for the duration of your membership plus 12 months. Lead inquiry data is retained for 24 months. You may request deletion of your personal data at any time by contacting{' '}
-            <a href="mailto:privacy@blackdiamondmarketplace.com" className="text-orange hover:text-orange-lt transition-colors">
-              privacy@blackdiamondmarketplace.com
+            <a href="mailto:contact@blackdiamondmkt.com" className="text-orange hover:text-orange-lt transition-colors">
+              contact@blackdiamondmkt.com
             </a>. We will respond to deletion requests within 30 days.
           </p>
         </section>
@@ -160,8 +160,8 @@ export default function PrivacyPage() {
             className="mt-4 bg-bg border border-[#E8E9EA] rounded-[10px] px-5 py-4 font-sans text-ink-2"
             style={{ fontSize: '14px', lineHeight: 1.7 }}
           >
-            <a href="mailto:privacy@blackdiamondmarketplace.com" className="text-orange hover:text-orange-lt transition-colors">
-              privacy@blackdiamondmarketplace.com
+            <a href="mailto:contact@blackdiamondmkt.com" className="text-orange hover:text-orange-lt transition-colors">
+              contact@blackdiamondmkt.com
             </a>
             <br />
             Black Diamond Marketplace — Odessa, Texas

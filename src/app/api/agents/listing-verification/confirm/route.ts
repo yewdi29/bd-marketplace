@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  LISTING_VERIFIER_AGENT_NAME,
+  publishListingFromVerificationApprove,
+} from '@/lib/agents/listingVerificationPublish'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import { dispatchListingApprovedEmail, dispatchListingNeedsChangesEmail } from '@/lib/email/transactionalEmails'
+import { dispatchListingNeedsChangesEmail } from '@/lib/email/transactionalEmails'
 
-const AGENT_NAME = 'Listing Verifier'
+const AGENT_NAME = LISTING_VERIFIER_AGENT_NAME
 
 async function updateVerificationLogOutcome(
   service: ReturnType<typeof createServiceClient>,
@@ -118,57 +122,14 @@ export async function POST(req: NextRequest) {
 
     if (action === 'accept') {
       if (recommendation.recommended_action === 'approve') {
-        const { data: listing, error: listingError } = await service
-          .from('listings')
-          .select('id, title, slug, users!listings_seller_id_fkey(email)')
-          .eq('id', listingId)
-          .single()
-
-        if (listingError || !listing) {
-          return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
-        }
-
-        const now = new Date().toISOString()
-        const { error: updateError } = await service
-          .from('listings')
-          .update({
-            status: 'active',
-            admin_flagged: false,
-            last_approved_at: now,
-            updated_at: now,
-          })
-          .eq('id', listingId)
-
-        if (updateError) {
-          return NextResponse.json({ error: updateError.message }, { status: 500 })
-        }
-
-        await service
-          .from('listing_flags')
-          .update({ resolved_at: new Date().toISOString() })
-          .eq('listing_id', listingId)
-          .is('resolved_at', null)
-
-        const { error: recUpdateError } = await service
-          .from('agent_recommendations')
-          .update({ status: 'accepted', updated_at: new Date().toISOString() })
-          .eq('id', recommendation_id)
-
-        if (recUpdateError) {
-          return NextResponse.json({ error: recUpdateError.message }, { status: 500 })
+        const publishResult = await publishListingFromVerificationApprove(service, listingId, {
+          recommendationId: recommendation_id,
+        })
+        if (!publishResult.ok) {
+          return NextResponse.json({ error: publishResult.error }, { status: publishResult.status })
         }
 
         await updateVerificationLogOutcome(service, listingId, 'approved')
-
-        const seller = listing.users as unknown as { email: string } | null
-        if (seller?.email) {
-          await dispatchListingApprovedEmail({
-            sellerEmail: seller.email,
-            listingId,
-            listingTitle: listing.title,
-            listingSlug: listing.slug,
-          })
-        }
 
         return NextResponse.json({ success: true })
       }

@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  LISTING_VERIFIER_AGENT_NAME,
+  publishListingFromVerificationApprove,
+  shouldAutoApproveListing,
+} from '@/lib/agents/listingVerificationPublish'
 import { verifyPaperclipSecret } from '@/lib/agents/verifyPaperclipSecret'
 import { createServiceClient } from '@/lib/rigburrito/service'
 
-const AGENT_NAME = 'Listing Verifier'
+const AGENT_NAME = LISTING_VERIFIER_AGENT_NAME
 
 interface ScoreBreakdown {
   title: number
@@ -87,6 +92,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    const autoApprove = shouldAutoApproveListing(recommended_action, confidence_score)
+
     const { data: recommendation, error: recError } = await service
       .from('agent_recommendations')
       .insert({
@@ -97,7 +104,7 @@ export async function POST(req: NextRequest) {
         confidence_score,
         reasoning,
         flag_comment: flag_comment?.trim() ?? null,
-        status: 'pending',
+        status: autoApprove ? 'accepted' : 'pending',
       })
       .select('id')
       .single()
@@ -123,6 +130,50 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json({ error: recError?.message ?? 'Failed to save recommendation' }, { status: 500 })
+    }
+
+    if (autoApprove) {
+      const publishResult = await publishListingFromVerificationApprove(service, listing_id)
+      if (!publishResult.ok) {
+        return NextResponse.json({ error: publishResult.error }, { status: publishResult.status })
+      }
+
+      const { error: logError } = await service.from('agent_activity_log').insert({
+        agent_name: AGENT_NAME,
+        action: 'verification_complete',
+        entity_type: 'listing',
+        entity_id: listing_id,
+        outcome: 'auto_approved',
+        summary: `Auto-approved ${listing.title} (confidence: ${confidence_score}%)`,
+        overall_score: confidence_score,
+        score_breakdown: score_breakdown ?? null,
+        flag_comment: null,
+        reasoning,
+      })
+
+      if (logError) {
+        return NextResponse.json({ error: logError.message }, { status: 500 })
+      }
+
+      const { error: updateError } = await service
+        .from('listings')
+        .update({
+          ai_verification_score: confidence_score,
+          ai_verification_notes: reasoning,
+          ai_recommended_action: recommended_action,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', listing_id)
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        recommendation_id: recommendation.id,
+        auto_approved: true,
+      })
     }
 
     const actionLabel = recommended_action.toUpperCase()

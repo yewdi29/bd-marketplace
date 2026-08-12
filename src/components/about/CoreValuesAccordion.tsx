@@ -26,46 +26,47 @@ const VALUES = [
 ] as const
 
 export default function CoreValuesAccordion() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [openIndex, setOpenIndex] = useState<number | null>(0)
 
   return (
-    <div>
+    <div className="text-left w-full">
       {VALUES.map((value, index) => {
         const isOpen = openIndex === index
         return (
-          <div key={value.title} style={{ borderBottom: '1px solid #000' }}>
+          <div
+            key={value.title}
+            className="border-b border-[#E8E9EA]"
+          >
             <button
               type="button"
               onClick={() => setOpenIndex(isOpen ? null : index)}
               aria-expanded={isOpen}
-              style={{
-                display: 'flex',
-                width: '100%',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px',
-                textAlign: 'left',
-                background: 'transparent',
-                border: 'none',
-                padding: '16px 0',
-                cursor: 'pointer',
-                color: '#000',
-                fontSize: '18px',
-                fontWeight: 600,
-                lineHeight: 1.4,
-              }}
+              className="flex w-full items-center justify-between gap-4 text-left bg-transparent border-0 cursor-pointer py-5 px-0"
             >
-              <span>{value.title}</span>
-              <span aria-hidden="true" style={{ fontWeight: 400 }}>
+              <h1
+                className="font-sans text-ink m-0"
+                style={{
+                  fontSize: 'clamp(36px, 6vw, 44px)',
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.05,
+                }}
+              >
+                {value.title}
+              </h1>
+              <span
+                aria-hidden
+                className="font-sans text-ink-3 shrink-0 text-2xl leading-none"
+                style={{ fontWeight: 400 }}
+              >
                 {isOpen ? '−' : '+'}
               </span>
             </button>
             {isOpen && (
               <p
+                className="font-sans text-ink-2 m-0 pb-5"
                 style={{
-                  margin: '0 0 16px',
-                  color: '#000',
-                  fontSize: '16px',
+                  fontSize: '15px',
                   fontWeight: 400,
                   lineHeight: 1.7,
                 }}

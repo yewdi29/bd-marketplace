@@ -114,9 +114,9 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                Your Global Source
-                <br />
-                <span style={{ color: '#FF6B35' }}>for Heavy Equipment</span>
+                The World&apos;s Heavy{' '}
+                <span style={{ color: '#FF6B35' }}>Equipment</span> in One{' '}
+                <span style={{ color: '#FF6B35' }}>Marketplace</span>
               </h1>
 
               <div
@@ -160,8 +160,8 @@ export default function HomePage() {
                   fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
                 }}
               >
-                Connecting buyers and sellers of heavy equipment worldwide since 2009.
-                From oil fields to construction sites — find what your operation needs, fast.
+                List your equipment or browse listings from verified sellers across all industrial
+                sectors.
               </p>
 
               <div className={HERO_CTA_ROW}>

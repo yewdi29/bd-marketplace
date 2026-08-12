@@ -47,6 +47,7 @@ const NEUTRAL_PILL: PillColors = { text: '#6B7280', bg: '#F9FAFB', border: '#E5E
 const OUTCOME_PILL_COLORS: Record<string, PillColors> = {
   pending_review: { text: '#C2410C', bg: '#FFF7ED', border: '#FDBA74' },
   approved: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+  auto_approved: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   scored: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   alerted: { text: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
   flagged: { text: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },

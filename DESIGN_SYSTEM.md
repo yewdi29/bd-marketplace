@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: July 2026 — v2.39
+> Last updated: August 2026 — v2.42
 
 ---
 
@@ -609,6 +609,8 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.42 | August 2026 | **About — Why We Exist.** Left-aligned hero H1 (`clamp(36px, 6vw, 44px)` / 800) + 15px body copy, no section background, generous `py-20 md:py-28`. Right column: animated SVG `WhyWeExistIcon` (gray fragmented listing cards → orange connection lines → central verified node). About photo hero uses the same hero headline scale. |
+| v2.41 | August 2026 | **About page hero.** First section is a centered photo card (`rounded-[20px]`) with `ABOUT US` orange mono label, hero-scale white H1 (`clamp(32px, 5vw, 44px)` / 800), and 15px body subtext over a dark scrim. Temporary background: `/cat-d6t-mockup-listing.png` until a dedicated about hero asset is supplied. Remaining about sections stay mid-fi. |
 | v2.40 | August 2026 | **Email logo sharpness.** Transactional `EmailLayout` wordmark switched from SVG (`bd_logo-black.svg`) to a 4× retina PNG (`bd_logo-black-email.png`, 908×108 displayed at 227×27). SVG is blocked or poorly rasterized by major email clients, which caused a fuzzy logo. |
 | v2.39 | July 2026 | **Mobile menu signed-in layering.** Signed-in drawer shell `#F7F8F9`; account info + actions in a white card with rounded bottom corners and light drop shadow; site nav sits on the gray layer beneath. |
 | v2.38 | July 2026 | **Mobile menu nav refresh.** Logged-out: Create Account ghost pill + Sign In. Shared nav for all users (plain text rows): Browse Equipment, Business Directory, Pricing, About, Contact, separator, Feedback. Peeking feedback tab desktop-only; mobile Feedback opens from hamburger. |
