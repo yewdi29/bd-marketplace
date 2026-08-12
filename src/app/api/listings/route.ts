@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { buildTsQuery, stripMeasurements } from '@/lib/searchSynonyms'
 import { haversineMiles } from '@/lib/distance'
 import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
+import { scheduleListingVerification } from '@/lib/listings/scheduleListingVerification'
 
 // Columns that can be used as sort keys — prevents injecting arbitrary column names
 const ALLOWED_SORT_FIELDS = ['created_at', 'price'] as const
@@ -316,6 +317,10 @@ export async function POST(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // Legacy create-as-pending_review path (INSERT). App-side trigger is primary;
+  // Supabase DB webhooks only listen for UPDATE, so this is required here.
+  scheduleListingVerification(data.id, { previousStatus: null })
 
   return NextResponse.json({ listing: data }, { status: 201 })
 }

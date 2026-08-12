@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { dispatchListingApprovedEmail } from '@/lib/email/transactionalEmails'
+import { scheduleListingVerification } from '@/lib/listings/scheduleListingVerification'
 import { requireDashboardAccess } from '@/lib/organizations/auth'
 import {
   isAtActiveListingLimit,
@@ -48,7 +49,7 @@ export async function PATCH(
   const { data: listing } = await adminClient
     .from('listings')
     .select(`
-      seller_id, title, category, price, condition,
+      seller_id, title, category, price, condition, status,
       location_city, location_state,
       country_id, region_id, state_id,
       industry_id, category_id,
@@ -124,12 +125,19 @@ export async function PATCH(
     status = 'pending_review'
   }
 
+  const previousStatus = listing.status as string | null
+
   const { error } = await adminClient
     .from('listings')
     .update({ status, slug, updated_at: new Date().toISOString() })
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (status === 'pending_review' && previousStatus !== 'pending_review') {
+    // Primary path: fire-and-forget Paperclip Listing Verifier (mirrors inquiry trigger).
+    scheduleListingVerification(params.id, { previousStatus })
+  }
 
   if (status === 'active') {
     const { data: sellerProfile } = await adminClient

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { detectMajorChange, type ListingChangeSnapshot } from './detectMajorChange'
+import { scheduleListingVerification } from './scheduleListingVerification'
 
 export async function applyMajorChangeReview(
   adminClient: SupabaseClient,
@@ -16,10 +17,16 @@ export async function applyMajorChangeReview(
     updated_at: now,
   }
 
-  if (statusBeforeEdit === 'active') {
+  const enteringReview = statusBeforeEdit === 'active'
+  if (enteringReview) {
     update.status = 'pending_review'
   }
 
   await adminClient.from('listings').update(update).eq('id', listingId)
+
+  if (enteringReview) {
+    scheduleListingVerification(listingId, { previousStatus: statusBeforeEdit })
+  }
+
   return true
 }

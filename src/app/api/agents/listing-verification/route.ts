@@ -67,12 +67,36 @@ export async function POST(req: NextRequest) {
 
     const { data: listing, error: listingError } = await service
       .from('listings')
-      .select('id, title, users!listings_seller_id_fkey(email)')
+      .select('id, title, updated_at, users!listings_seller_id_fkey(email)')
       .eq('id', listing_id)
       .single()
 
     if (listingError || !listing) {
       return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+    }
+
+    // Idempotency: recommendation already exists for this review cycle
+    // (created at/after listing.updated_at when it entered pending_review).
+    const { data: existingForCycle } = await service
+      .from('agent_recommendations')
+      .select('id, status, created_at')
+      .eq('agent_name', AGENT_NAME)
+      .eq('entity_type', 'listing')
+      .eq('entity_id', listing_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (
+      existingForCycle
+      && listing.updated_at
+      && existingForCycle.created_at >= listing.updated_at
+    ) {
+      return NextResponse.json({
+        success: true,
+        recommendation_id: existingForCycle.id,
+        deduplicated: true,
+      })
     }
 
     const { data: existingPending } = await service
