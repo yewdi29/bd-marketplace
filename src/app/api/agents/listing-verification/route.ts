@@ -162,23 +162,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: publishResult.error }, { status: publishResult.status })
       }
 
-      const { error: logError } = await service.from('agent_activity_log').insert({
-        agent_name: AGENT_NAME,
-        action: 'verification_complete',
-        entity_type: 'listing',
-        entity_id: listing_id,
-        outcome: 'auto_approved',
-        summary: `Auto-approved ${listing.title} (confidence: ${confidence_score}%)`,
-        overall_score: confidence_score,
-        score_breakdown: score_breakdown ?? null,
-        flag_comment: null,
-        reasoning,
-      })
-
-      if (logError) {
-        return NextResponse.json({ error: logError.message }, { status: 500 })
-      }
-
       const { error: updateError } = await service
         .from('listings')
         .update({
@@ -191,6 +174,43 @@ export async function POST(req: NextRequest) {
 
       if (updateError) {
         return NextResponse.json({ error: updateError.message }, { status: 500 })
+      }
+
+      let logError = (
+        await service.from('agent_activity_log').insert({
+          agent_name: AGENT_NAME,
+          action: 'verification_complete',
+          entity_type: 'listing',
+          entity_id: listing_id,
+          outcome: 'auto_approved',
+          summary: `Auto-approved ${listing.title} (confidence: ${confidence_score}%)`,
+          overall_score: confidence_score,
+          score_breakdown: score_breakdown ?? null,
+          flag_comment: null,
+          reasoning,
+        })
+      ).error
+
+      // Older DBs may not allow auto_approved yet — fall back to approved.
+      if (logError?.message?.includes('agent_activity_log_outcome_check')) {
+        logError = (
+          await service.from('agent_activity_log').insert({
+            agent_name: AGENT_NAME,
+            action: 'verification_complete',
+            entity_type: 'listing',
+            entity_id: listing_id,
+            outcome: 'approved',
+            summary: `Auto-approved ${listing.title} (confidence: ${confidence_score}%)`,
+            overall_score: confidence_score,
+            score_breakdown: score_breakdown ?? null,
+            flag_comment: null,
+            reasoning,
+          })
+        ).error
+      }
+
+      if (logError) {
+        return NextResponse.json({ error: logError.message }, { status: 500 })
       }
 
       return NextResponse.json({
