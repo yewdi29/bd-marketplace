@@ -16,6 +16,7 @@ import {
   hasUnlimitedListings,
 } from '@/lib/planLimits'
 import ListingMediaSection from './ListingMediaSection'
+import ListingDescriptionVoiceField from '@/components/listings/ListingDescriptionVoiceField'
 import DozerAsciiLoader from '@/components/listings/DozerAsciiLoader'
 import type { ListingForm, PhotoState } from './NewListingModal'
 import type { GalleryItem } from '@/lib/listings/listingGallery'
@@ -437,34 +438,28 @@ export default function NewListingMobileFlow({
                     Just talk to us like you would a buyer. Our AI will extract all the details and build your listing.
                   </p>
 
-                  <div
-                    ref={promptContainerRef}
-                    className="relative flex-1 flex flex-col min-h-[200px]"
-                    style={{ borderRadius: '10px' }}
-                  >
-                    <canvas
-                      ref={promptCanvasRef}
-                      style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
-                    />
-                    <textarea
-                      value={prompt}
-                      onChange={e => setPrompt(e.target.value)}
-                      onFocus={onPromptFocus}
-                      onBlur={onPromptBlur}
-                      placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location."
-                      className={`${inputCls} flex-1 resize-none leading-relaxed min-h-[220px] focus:outline-none focus:ring-0`}
-                      style={{
-                        display: 'block',
-                        position: 'relative',
-                        zIndex: 1,
-                        borderColor: promptFocused ? 'transparent' : '#E8E9EA',
-                        transition: 'border-color 0.15s',
-                      }}
-                    />
-                    <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>
-                      {prompt.length}
-                    </span>
-                  </div>
+                  <ListingDescriptionVoiceField
+                    value={prompt}
+                    onChange={setPrompt}
+                    interactionMode="hold"
+                    onFocus={onPromptFocus}
+                    onBlur={onPromptBlur}
+                    placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location."
+                    className="flex-1 resize-none leading-relaxed min-h-[220px] focus:outline-none focus:ring-0"
+                    style={{
+                      display: 'block',
+                      borderColor: promptFocused ? 'transparent' : '#E8E9EA',
+                      transition: 'border-color 0.15s',
+                    }}
+                    glowContainerRef={promptContainerRef}
+                    glowContainerClassName="flex-1 flex flex-col min-h-[200px]"
+                    glowUnderlay={
+                      <canvas
+                        ref={promptCanvasRef}
+                        style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
+                      />
+                    }
+                  />
                 </>
               )}
             </div>

@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { ShareIcon } from '@/components/listings/ListingSharePopover'
+import { PUBLIC_SITE_URL } from '@/lib/site'
 
 const ListingSharePopover = dynamic(
   () => import('@/components/listings/ListingSharePopover').then(mod => ({ default: mod.ListingSharePopover })),
@@ -36,7 +37,7 @@ export default function ListingCardShareButton({
   const [listingUrl, setListingUrl] = useState('')
 
   useEffect(() => {
-    setListingUrl(`${window.location.origin}${listingHref}`)
+    setListingUrl(`${PUBLIC_SITE_URL}${listingHref}`)
   }, [listingHref])
 
   if (!listingUrl) {

@@ -1,11 +1,15 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import SellerPortalLink from '@/components/SellerPortalLink'
 
 const FOOTER_LINK_CLASS =
   'font-sans text-white/55 hover:text-white/90 transition-colors'
+
+const LEGAL_LINK_CLASS =
+  'font-sans text-white/35 hover:text-white/60 hover:underline transition-colors'
 
 const SITEMAP = [
   {
@@ -14,10 +18,11 @@ const SITEMAP = [
       { label: 'About', href: '/about' },
       { label: 'Contact', href: '/contact' },
       { label: 'Careers', href: '/careers' },
+      { label: 'Pricing', href: '/pricing' },
     ],
   },
   {
-    heading: 'Industries',
+    heading: 'Categories',
     links: [
       { label: 'Oil & Gas', href: '/search?industry=oil_gas' },
       { label: 'Construction', href: '/search?industry=construction' },
@@ -30,16 +35,10 @@ const SITEMAP = [
     heading: 'Resources',
     links: [
       { label: 'How It Works', href: '/how-it-works' },
-      { label: 'Pricing', href: '/pricing' },
-      { label: 'The Operator Journal', href: '/journal' },
-    ],
-  },
-  {
-    heading: 'Business',
-    links: [
       { label: 'List Your Equipment', sellerPortal: true },
       { label: 'Become a Seller', sellerPortal: true },
       { label: 'Business Directory', href: '/sellers' },
+      { label: 'The Operator Journal', href: '/journal' },
     ],
   },
 ] as const
@@ -123,126 +122,117 @@ function FooterNavLink({ link }: { link: FooterLink }) {
   )
 }
 
+function SectionHeading({ children }: { children: ReactNode }) {
+  return (
+    <h3
+      className="font-mono font-bold uppercase mb-4"
+      style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}
+    >
+      {children}
+    </h3>
+  )
+}
+
 export default function Footer() {
   const year = new Date().getFullYear()
 
   return (
-    <footer style={{ background: '#1A1D20' }}>
+    <footer className="overflow-hidden" style={{ background: '#1A1D20' }}>
       <div className="page-shell pt-14 pb-0">
 
-        {/* Sitemap — 1-col mobile, 2x2 tablet, 4-col desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pb-10">
-          {SITEMAP.map(col => (
-            <div key={col.heading}>
-              <h3
-                className="font-mono font-bold uppercase mb-4"
-                style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)' }}
-              >
-                {col.heading}
-              </h3>
-              <ul className="space-y-2.5">
-                {col.links.map(link => (
-                  <li key={link.label}>
-                    <FooterNavLink link={link} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        {/* Top row: rights (left) + link columns (right) */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-10 lg:gap-16 pb-10">
 
-        {/* Bottom bar — desktop (≥1024px): unchanged left/right split */}
-        <div
-          className="hidden lg:flex items-center justify-between gap-4 py-5"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          {/* Left: diamond + copyright + legal links */}
-          <div className="flex flex-wrap items-center gap-3">
-            <DiamondMark />
-            <p
-              className="font-sans"
-              style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}
-            >
-              &copy; {year} Black Diamond Marketplace. All rights reserved.
-            </p>
-            <Link
-              href="/privacy"
-              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
-              style={{ fontSize: '12px' }}
-            >
-              Privacy Policy
-            </Link>
-            <Link
-              href="/terms"
-              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
-              style={{ fontSize: '12px' }}
-            >
-              Terms of Service
-            </Link>
+          {/* All rights reserved — left, in line with link sections */}
+          <div className="flex flex-col items-start gap-4 text-left shrink-0 lg:max-w-[280px]">
+            <div className="flex flex-wrap items-center gap-3">
+              <DiamondMark />
+              <p
+                className="font-sans m-0"
+                style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}
+              >
+                &copy; {year} Black Diamond Marketplace. All rights reserved.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Link href="/privacy" className={LEGAL_LINK_CLASS} style={{ fontSize: '12px' }}>
+                Privacy Policy
+              </Link>
+              <span
+                aria-hidden
+                style={{
+                  width: 1,
+                  height: 12,
+                  background: 'rgba(255,255,255,0.2)',
+                }}
+              />
+              <Link href="/terms" className={LEGAL_LINK_CLASS} style={{ fontSize: '12px' }}>
+                Terms of Service
+              </Link>
+            </div>
           </div>
 
-          {/* Right: social icons */}
-          <div className="flex items-center gap-4">
-            {SOCIALS.map(social => (
-              <a
-                key={social.label}
-                href="#"
-                aria-label={social.label}
-                className="text-white/35 hover:text-white/80 transition-colors"
-              >
-                {social.icon}
-              </a>
+          {/* Link sections + Follow us — floated right */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 lg:ml-auto w-full lg:w-auto lg:min-w-0 lg:max-w-[860px]">
+            {SITEMAP.map(col => (
+              <div key={col.heading}>
+                <SectionHeading>{col.heading}</SectionHeading>
+                <ul className="space-y-2.5">
+                  {col.links.map(link => (
+                    <li key={link.label}>
+                      <FooterNavLink link={link} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
+
+            <div>
+              <SectionHeading>Follow us</SectionHeading>
+              <div className="flex items-center gap-4">
+                {SOCIALS.map(social => (
+                  <a
+                    key={social.label}
+                    href="#"
+                    aria-label={social.label}
+                    className="text-white/35 hover:text-white/80 transition-colors"
+                  >
+                    {social.icon}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Bottom bar — mobile/tablet (<1024px): legal row + copyright bar
-            stacked vertically, everything centered */}
+        {/* Bottom rule with vertical margins, then peeking wordmark */}
         <div
-          className="flex lg:hidden flex-col items-center gap-4 py-5 text-center"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          {/* Legal row */}
-          <div className="flex items-center justify-center gap-4">
-            <Link
-              href="/privacy"
-              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
-              style={{ fontSize: '12px' }}
-            >
-              Privacy Policy
-            </Link>
-            <Link
-              href="/terms"
-              className="font-sans text-white/35 hover:text-white/60 hover:underline transition-colors"
-              style={{ fontSize: '12px' }}
-            >
-              Terms of Service
-            </Link>
-          </div>
+          style={{
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            marginTop: 24,
+            marginBottom: 24,
+          }}
+        />
 
-          {/* Copyright bar: diamond + copyright text + social icons */}
-          <div className="flex items-center justify-center flex-wrap gap-3">
-            <DiamondMark />
-            <p
-              className="font-sans"
-              style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}
-            >
-              &copy; {year} Black Diamond Marketplace. All rights reserved.
-            </p>
-            <div className="flex items-center">
-              {SOCIALS.map(social => (
-                <a
-                  key={social.label}
-                  href="#"
-                  aria-label={social.label}
-                  className="flex items-center justify-center text-white/35 hover:text-white/80 transition-colors"
-                  style={{ width: 44, height: 44 }}
-                >
-                  {social.icon}
-                </a>
-              ))}
-            </div>
-          </div>
+        {/* Peeking full logo with diamond — slightly more than half revealed */}
+        <div
+          className="relative w-full overflow-hidden pointer-events-none select-none"
+          aria-hidden
+          style={{ aspectRatio: '244 / 18' }}
+        >
+          <Image
+            src="/bd_logo-black.svg"
+            alt=""
+            width={244}
+            height={29}
+            className="absolute left-0 bottom-0 w-full h-auto max-w-none"
+            style={{
+              opacity: 0.06,
+              filter: 'brightness(0) invert(1)',
+              transform: 'translateY(38%)',
+            }}
+          />
         </div>
 
       </div>

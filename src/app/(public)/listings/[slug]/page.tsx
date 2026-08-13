@@ -20,6 +20,7 @@ import {
   isPubliclyViewableListingStatus,
   PUBLICLY_VIEWABLE_LISTING_STATUSES,
 } from '@/lib/listings/publicVisibility'
+import { PUBLIC_SITE_URL } from '@/lib/site'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!data) return { title: 'Listing Not Found' }
 
-  const canonicalUrl = `https://blackdiamondmkt.com/listings/${slug}`
+  const canonicalUrl = `${PUBLIC_SITE_URL}/listings/${slug}`
 
   const imgs = (data.listing_images ?? []) as { url: string; sort_order: number }[]
   const firstImg = [...imgs].sort((a, b) => a.sort_order - b.sort_order)[0]
@@ -236,8 +237,7 @@ export default async function ListingDetailPage({ params }: Props) {
     ? 'No longer available'
     : formatPrice(l.price, l.price_unit ?? 'total', priceVisible)
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const listingUrl = `${appUrl}/listings/${slug}`
+  const listingUrl = `${PUBLIC_SITE_URL}/listings/${slug}`
   const listingLocation = [l.location_city, l.location_state, l.countries?.name].filter(Boolean).join(', ') || null
   const hasLocationPill = Boolean(l.location_city || l.location_state || l.countries?.name)
 

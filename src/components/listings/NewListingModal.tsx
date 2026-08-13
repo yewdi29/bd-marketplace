@@ -9,6 +9,7 @@ import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 import ListingTaxonomyFields, { FormField, inputCls, selectCls, SelectWrapper } from '@/components/listings/ListingTaxonomyFields'
 import ListingMediaSection from '@/components/listings/ListingMediaSection'
 import NewListingMobileFlow from '@/components/listings/NewListingMobileFlow'
+import ListingDescriptionVoiceField from '@/components/listings/ListingDescriptionVoiceField'
 import DozerAsciiLoader from '@/components/listings/DozerAsciiLoader'
 import { runGenerateWithDozerProgress } from '@/lib/listings/runGenerateWithDozerProgress'
 import { useListingVideos } from '@/hooks/useListingVideos'
@@ -493,7 +494,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     }
 
     setStepLoading(false)
-    onSuccess('Your listing is now live')
+    onSuccess('Your listing was submitted for approval')
     onClose()
   }
 
@@ -729,41 +730,28 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                   <p className="text-sm text-ink-2 mb-5 leading-relaxed">
                     Just talk to us like you would a buyer. Our AI will extract all the details and build your listing.
                   </p>
-                  {/*
-                   * Canvas glow: the container div IS the ref target and the positioning
-                   * context for the canvas. One div, no intermediate wrapper — eliminates
-                   * any offset between what the ResizeObserver measures and where the
-                   * canvas sits.
-                   */}
-                  <div
-                    ref={promptContainerRef}
-                    className="relative"
-                    style={{ borderRadius: '10px' }}
-                  >
-                    <canvas
-                      ref={promptCanvasRef}
-                      style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
-                    />
-                    <textarea
-                      value={prompt}
-                      onChange={e => setPrompt(e.target.value)}
-                      onFocus={handlePromptFocus}
-                      onBlur={handlePromptBlur}
-                      placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location. Just talk to us like you would a buyer."
-                      className={`${inputCls} resize-none leading-relaxed focus:outline-none focus:ring-0`}
-                      style={{
-                        minHeight: '200px',
-                        borderColor: promptFocused ? 'transparent' : '#E8E9EA',
-                        display: 'block',
-                        position: 'relative',
-                        zIndex: 1,
-                        transition: 'border-color 0.15s',
-                      }}
-                    />
-                    <span className="absolute bottom-3 right-3 text-xs font-mono text-ink-3" style={{ zIndex: 2 }}>
-                      {prompt.length}
-                    </span>
-                  </div>
+                  <ListingDescriptionVoiceField
+                    value={prompt}
+                    onChange={setPrompt}
+                    interactionMode="toggle"
+                    onFocus={handlePromptFocus}
+                    onBlur={handlePromptBlur}
+                    placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location. Just talk to us like you would a buyer."
+                    className="focus:outline-none focus:ring-0"
+                    style={{
+                      minHeight: '200px',
+                      borderColor: promptFocused ? 'transparent' : '#E8E9EA',
+                      display: 'block',
+                      transition: 'border-color 0.15s',
+                    }}
+                    glowContainerRef={promptContainerRef}
+                    glowUnderlay={
+                      <canvas
+                        ref={promptCanvasRef}
+                        style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none' }}
+                      />
+                    }
+                  />
                 </>
               )}
             </div>

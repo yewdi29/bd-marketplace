@@ -94,7 +94,7 @@ export const metadata: Metadata = {
       'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry.',
     images: [
       {
-        url: '/og-image.png',
+        url: '/main-share-img.png',
         width: 1200,
         height: 630,
         alt: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
@@ -106,7 +106,7 @@ export const metadata: Metadata = {
     title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
     description:
       'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry.',
-    images: ['/og-image.png'],
+    images: ['/main-share-img.png'],
   },
   alternates: {
     canonical: 'https://blackdiamondmkt.com',

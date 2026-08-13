@@ -25,6 +25,18 @@ export const metadata: Metadata = {
   openGraph: {
     url: 'https://blackdiamondmkt.com',
     title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+    images: [
+      {
+        url: '/main-share-img.png',
+        width: 1200,
+        height: 630,
+        alt: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: ['/main-share-img.png'],
   },
 }
 

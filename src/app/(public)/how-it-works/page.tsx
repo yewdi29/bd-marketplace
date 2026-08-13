@@ -294,32 +294,52 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section
-        className="text-center"
-        style={{ background: '#FF6B35', padding: '64px 32px' }}
-      >
-        <h2
-          className="font-sans text-white mb-8"
-          style={{ fontSize: '32px', fontWeight: 700, letterSpacing: '-0.02em' }}
-        >
-          Ready to get started?
-        </h2>
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <SellerPortalLink
-            className="font-sans font-bold text-sm text-ink bg-white rounded-pill px-8 py-3 transition-all duration-200 hover:bg-white/90 inline-flex items-center justify-center"
-            style={{ letterSpacing: '0.01em' }}
+      {/* Ready to Get Started — matches About page Join Us section */}
+      <section className="bg-bg">
+        <div className="max-w-[1450px] mx-auto page-shell-x py-12 md:py-16 text-center">
+          <h1
+            className="font-sans text-ink mx-auto"
+            style={{
+              margin: '0 auto 16px',
+              maxWidth: '720px',
+              fontSize: 'clamp(36px, 6vw, 44px)',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.05,
+              textAlign: 'center',
+            }}
           >
-            List Equipment
-          </SellerPortalLink>
-          <Link href="/search">
-            <button
-              className="font-sans font-bold text-sm text-white bg-transparent rounded-pill px-8 py-3 transition-all duration-200 hover:bg-white/10"
-              style={{ border: '2px solid rgba(255,255,255,0.6)', letterSpacing: '0.01em' }}
+            Join Us To Get Started!
+          </h1>
+          <p
+            className="font-sans text-ink-2 mx-auto"
+            style={{
+              margin: '0 auto 28px',
+              maxWidth: '540px',
+              fontSize: '15px',
+              fontWeight: 400,
+              lineHeight: 1.7,
+              textAlign: 'center',
+            }}
+          >
+            Ready to list your equipment or browse machinery on your radar? Become a member to get
+            started.
+          </p>
+          <div className="flex flex-col items-stretch gap-3 w-full max-w-sm mx-auto sm:max-w-none sm:flex-row sm:items-center sm:justify-center">
+            <Link
+              href="/search"
+              className="inline-flex items-center justify-center w-full min-h-12 px-6 py-3 text-sm font-bold rounded-pill font-sans no-underline transition-all duration-200 bg-transparent text-ink-2 border border-[#D4D5D7] hover:text-orange hover:border-orange sm:w-auto sm:min-h-0 sm:py-2.5"
             >
               Browse Equipment
-            </button>
-          </Link>
+            </Link>
+            <SellerPortalLink
+              newListing
+              className="inline-flex items-center justify-center w-full min-h-12 px-6 py-3 text-sm font-bold rounded-pill font-sans no-underline transition-all duration-200 bg-orange text-white hover:bg-orange-lt sm:w-auto sm:min-h-0 sm:py-2.5"
+              style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.30)' }}
+            >
+              List Equipment
+            </SellerPortalLink>
+          </div>
         </div>
       </section>
     </div>
