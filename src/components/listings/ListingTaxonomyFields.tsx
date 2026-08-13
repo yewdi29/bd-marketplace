@@ -68,13 +68,11 @@ export default function ListingTaxonomyFields({ values, onChange, required = fal
   }
 
   const countrySlug = taxonomy.getCountrySlug(values.country_id)
-  const showRegion = values.country_id && taxonomy.needsRegionStep(values.country_id)
   const showSubdivision = values.country_id && taxonomy.needsSubdivisionStep(values.country_id)
-  const subdivisionOptions = showRegion && values.region_id
-    ? taxonomy.statesForRegion(values.region_id)
-    : showSubdivision
-      ? taxonomy.statesForCountry(values.country_id)
-      : []
+  // Region is backend-only (AI / state-derived) — never shown as a user control.
+  const subdivisionOptions = showSubdivision
+    ? taxonomy.statesForCountry(values.country_id)
+    : []
   const categoryOptions = taxonomy.categoriesForIndustry(values.industry_id)
 
   return (
@@ -131,24 +129,6 @@ export default function ListingTaxonomyFields({ values, onChange, required = fal
         </SelectWrapper>
       </FormField>
 
-      {/* US Region */}
-      {showRegion && (
-        <FormField label="Region" required={required}>
-          <SelectWrapper>
-            <select
-              value={values.region_id}
-              onChange={e => update({ region_id: e.target.value })}
-              className={selectCls}
-            >
-              <option value="">Select region</option>
-              {taxonomy.regionsForCountry(values.country_id).map(r => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-          </SelectWrapper>
-        </FormField>
-      )}
-
       {/* City + State/Province */}
       <div className={showSubdivision ? 'grid grid-cols-2 gap-4' : ''}>
         <FormField label="City" required={required && countrySlug !== 'mexico'}>
@@ -168,12 +148,9 @@ export default function ListingTaxonomyFields({ values, onChange, required = fal
                 value={values.state_id}
                 onChange={e => update({ state_id: e.target.value })}
                 className={selectCls}
-                disabled={!!(showRegion && !values.region_id)}
               >
                 <option value="">
-                  {showRegion && !values.region_id
-                    ? 'Select region first'
-                    : `Select ${taxonomy.subdivisionLabel(values.country_id).toLowerCase()}`}
+                  {`Select ${taxonomy.subdivisionLabel(values.country_id).toLowerCase()}`}
                 </option>
                 {subdivisionOptions.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>

@@ -494,7 +494,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                 </SelectWrapper>
               </FormField>
 
-              {/* Industry, Category, Country, Region/State */}
+              {/* Industry, Category, Country, City, State */}
               <ListingTaxonomyFields
                 values={taxonomy}
                 onChange={setTaxonomy}
@@ -603,7 +603,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                   value={form.description}
                   onChange={e => setForm(f => f ? { ...f, description: e.target.value } : f)}
                   className={`${inputCls} resize-none leading-relaxed`}
-                  style={{ minHeight: '120px' }}
+                  style={{ minHeight: '200px' }}
                   placeholder="Detailed equipment description for buyers…"
                 />
               </FormField>

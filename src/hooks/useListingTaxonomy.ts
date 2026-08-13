@@ -184,6 +184,8 @@ export function applyTaxonomyChange(
   if ('state_id' in patch && patch.state_id !== prev.state_id) {
     const state = taxonomy.states.find(s => s.id === next.state_id)
     next.location_state = state ? (state.code ?? state.name) : ''
+    // Region is not user-editable — derive it from the selected state.
+    next.region_id = state?.region_id ?? ''
   }
 
   if ('industry_id' in patch && patch.industry_id !== prev.industry_id) {

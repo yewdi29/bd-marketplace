@@ -796,7 +796,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                 </SelectWrapper>
               </FormField>
 
-              {/* Industry, Category, Country, Region/State */}
+              {/* Industry, Category, Country, City, State */}
               <ListingTaxonomyFields
                 values={taxonomy}
                 onChange={setTaxonomy}

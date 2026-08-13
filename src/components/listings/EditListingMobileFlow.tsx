@@ -310,37 +310,6 @@ export default function EditListingMobileFlow({
             style={{ paddingBottom: `calc(88px + env(safe-area-inset-bottom) + ${keyboardOffset}px)` }}
           >
             {step === 1 && (
-              <div className="px-5 pt-6 pb-4">
-                <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">
-                  {isDraft ? 'Draft Listing' : 'Edit Listing'}
-                </p>
-                <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-5" style={{ letterSpacing: '-0.02em' }}>
-                  Media
-                </h1>
-
-                <ListingMediaSection
-                  listingId={listingId}
-                  photos={photos}
-                  galleryItems={galleryItems}
-                  uploadingPhoto={uploadingPhoto}
-                  canAddPhoto={canAddPhoto}
-                  canAddVideo={canAddVideo}
-                  activeVideoCount={activeVideoCount}
-                  rejectedVideos={rejectedVideos}
-                  videosLoading={videosLoading}
-                  layout="horizontal"
-                  onReorder={onReorder}
-                  onFileSelect={handleFileSelect}
-                  onAddVideo={onAddVideo}
-                  onRemovePhoto={(id) => { void handleDeletePhoto(id) }}
-                  onRemoveVideo={onRemoveVideo}
-                  onError={onVideoError}
-                  required
-                />
-              </div>
-            )}
-
-            {step === 2 && (
               <div className="px-5 pt-6 pb-4 space-y-4">
                 <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">
                   {isDraft ? 'Draft Listing' : 'Edit Listing'}
@@ -469,10 +438,41 @@ export default function EditListingMobileFlow({
                     value={form.description}
                     onChange={e => setForm(f => f ? { ...f, description: e.target.value } : f)}
                     className={`${inputCls} resize-none leading-relaxed`}
-                    style={{ minHeight: '120px' }}
+                    style={{ minHeight: '200px' }}
                     placeholder="Detailed equipment description for buyers…"
                   />
                 </FormField>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="px-5 pt-6 pb-4">
+                <p className="text-xs font-mono text-ink-3 uppercase tracking-wide mb-1">
+                  {isDraft ? 'Draft Listing' : 'Edit Listing'}
+                </p>
+                <h1 className="font-sans font-bold text-[26px] text-ink leading-tight mb-5" style={{ letterSpacing: '-0.02em' }}>
+                  Media
+                </h1>
+
+                <ListingMediaSection
+                  listingId={listingId}
+                  photos={photos}
+                  galleryItems={galleryItems}
+                  uploadingPhoto={uploadingPhoto}
+                  canAddPhoto={canAddPhoto}
+                  canAddVideo={canAddVideo}
+                  activeVideoCount={activeVideoCount}
+                  rejectedVideos={rejectedVideos}
+                  videosLoading={videosLoading}
+                  layout="horizontal"
+                  onReorder={onReorder}
+                  onFileSelect={handleFileSelect}
+                  onAddVideo={onAddVideo}
+                  onRemovePhoto={(id) => { void handleDeletePhoto(id) }}
+                  onRemoveVideo={onRemoveVideo}
+                  onError={onVideoError}
+                  required
+                />
               </div>
             )}
           </div>
