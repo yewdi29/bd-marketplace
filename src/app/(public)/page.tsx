@@ -111,7 +111,7 @@ export default function HomePage() {
                     letterSpacing: '0.08em',
                   }}
                 >
-                  Thousands of visitors globally
+                  For equipment buyers &amp; sellers
                 </span>
               </div>
 
@@ -126,7 +126,7 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                The World&apos;s Marketplace for Heavy Equipment
+                Verified Listings. Faster Matches. Real Deals.
               </h1>
 
               <div

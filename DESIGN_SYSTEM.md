@@ -469,8 +469,8 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 #### Section-specific notes
 - Hero on frosted glass card surface inside hero grid (see §8 glassmorphism exception)
-- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words
-- Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot
+- Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot — copy: “For equipment buyers & sellers”
+- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “Verified Listings. Faster Matches. Real Deals.”
 - **Hero CTAs:** below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, compact `py-2` / `text-[13px]` pills (`heroCtaClasses.ts`)
 - **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
 - **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
@@ -609,6 +609,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.44 | August 2026 | **Homepage hero copy.** Eyebrow set to “For equipment buyers & sellers”; H1 set to “Verified Listings. Faster Matches. Real Deals.” (all ink/black, no orange spans). |
 | v2.43 | August 2026 | **Homepage hero title.** Headline copy set to “The World's Marketplace for Heavy Equipment”; entire H1 uses ink/black (`#1A1D20`) with no orange emphasis spans. |
 | v2.42 | August 2026 | **About — Why We Exist.** Left-aligned hero H1 (`clamp(36px, 6vw, 44px)` / 800) + 15px body copy, no section background, generous `py-20 md:py-28`. Right column: animated SVG `WhyWeExistIcon` (gray fragmented listing cards → orange connection lines → central verified node). About photo hero uses the same hero headline scale. |
 | v2.41 | August 2026 | **About page hero.** First section is a centered photo card (`rounded-[20px]`) with `ABOUT US` orange mono label, hero-scale white H1 (`clamp(32px, 5vw, 44px)` / 800), and 15px body subtext over a dark scrim. Temporary background: `/cat-d6t-mockup-listing.png` until a dedicated about hero asset is supplied. Remaining about sections stay mid-fi. |
