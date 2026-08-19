@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
 import { applyTaxonomyFieldsToUpdates } from '@/lib/listingTaxonomyUpdate'
 import { applyMajorChangeReview } from '@/lib/listings/applyMajorChangeReview'
+import { canManageListing } from '@/lib/listings/canManageListing'
 import type { ListingChangeSnapshot } from '@/lib/listings/detectMajorChange'
 
 type Params = { params: { id: string } }
@@ -33,7 +34,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Ownership check — fetch fields needed for major-change detection
+  const canManage = await canManageListing(authClient, params.id, user.id)
+  if (!canManage) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Fetch fields needed for major-change detection
   const { data: listing } = await adminClient
     .from('listings')
     .select(`
@@ -44,8 +50,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     .eq('id', params.id)
     .single()
 
-  if (!listing || listing.seller_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!listing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const statusBeforeEdit = listing.status as string
@@ -77,7 +83,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   // Build listing update payload — only include known, safe fields
-  const allowed = [
+  const allowedFields = [
     'title', 'category', 'manufacturer', 'model', 'year', 'condition',
     'price', 'price_unit', 'price_visible', 'price_negotiable',
     'location_city', 'location_state',
@@ -87,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   ]
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
-  for (const key of allowed) {
+  for (const key of allowedFields) {
     if (key in fields) updates[key] = fields[key]
   }
 
@@ -191,14 +197,19 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const allowed = await canManageListing(authClient, params.id, user.id)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { data: listing } = await adminClient
     .from('listings')
     .select('seller_id, status')
     .eq('id', params.id)
     .single()
 
-  if (!listing || listing.seller_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!listing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   if (listing.status !== 'draft') {
     return NextResponse.json({ error: 'Only draft listings can be discarded' }, { status: 400 })

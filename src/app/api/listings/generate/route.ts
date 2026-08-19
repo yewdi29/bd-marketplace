@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { loadLocationTaxonomy } from '@/lib/locationResolver'
 import { resolveAiTaxonomy } from '@/lib/listingTaxonomyUpdate'
+import { canManageListing } from '@/lib/listings/canManageListing'
 import { mergeListingSpecs, sanitizeAiSpecs } from '@/lib/listings/listingSpecs'
 
 function buildSystemPrompt(taxonomy: {
@@ -170,6 +171,11 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const allowed = await canManageListing(authClient, listing_id, user.id)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -181,8 +187,8 @@ export async function POST(request: NextRequest) {
     .eq('id', listing_id)
     .single()
 
-  if (!listing || listing.seller_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!listing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   if (listing.status !== 'draft') {
     return NextResponse.json({ error: 'Can only generate for draft listings' }, { status: 400 })

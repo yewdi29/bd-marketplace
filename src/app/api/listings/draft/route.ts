@@ -7,6 +7,7 @@ import {
   isAtActiveListingLimit,
   markListingLimitReachedOnce,
 } from '@/lib/organizations/listingLimits'
+import { orgFieldsForNewListing } from '@/lib/listings/orgFieldsForNewListing'
 
 // POST /api/listings/draft
 // Creates an empty draft listing and returns its ID.
@@ -54,6 +55,7 @@ export async function POST() {
   let insertError: { message: string } | null = null
 
   try {
+    const orgFields = await orgFieldsForNewListing(user.id)
     const result = await adminClient
       .from('listings')
       .insert({
@@ -63,6 +65,7 @@ export async function POST() {
         price: 0,
         price_unit: 'total',
         status: 'draft',
+        ...orgFields,
       })
       .select('id')
       .single()

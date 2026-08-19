@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import { getListingLimit } from '@/lib/planLimits'
+import { getListingLimitForAccount } from '@/lib/planLimits'
 import type { MembershipPlan } from '@/lib/types/database'
 import { stripe } from '@/lib/rigburrito/stripe'
 
@@ -23,11 +23,17 @@ export async function GET(
 
   if (error || !user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const [{ count: activeListingCount }, { count: savedCount }, { data: membership }, { data: listings }] = await Promise.all([
+  const [{ count: activeListingCount }, { count: savedCount }, { data: membership }, { data: orgMembership }, { data: listings }] = await Promise.all([
     service.from('listings').select('*', { count: 'exact', head: true })
       .eq('seller_id', id).eq('status', 'active'),
     service.from('saved_listings').select('*', { count: 'exact', head: true }).eq('user_id', id),
     service.from('memberships').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    service
+      .from('org_members')
+      .select('role, is_primary_owner, organization_id, organizations(id, name)')
+      .eq('user_id', id)
+      .eq('status', 'active')
+      .maybeSingle(),
     service.from('listings')
       .select('id, title, slug, status, price, created_at, updated_at, location_city, location_state, listing_images(url, is_primary, sort_order)')
       .eq('seller_id', id)
@@ -35,6 +41,13 @@ export async function GET(
   ])
 
   const plan = user.plan as MembershipPlan
+  const orgEmbed = orgMembership?.organizations as
+    | { id: string; name: string }
+    | { id: string; name: string }[]
+    | null
+    | undefined
+  const organization = Array.isArray(orgEmbed) ? orgEmbed[0] ?? null : orgEmbed ?? null
+  const isEnterprise = Boolean(orgMembership)
 
   let stripeSubscription = null
   if (membership?.stripe_subscription_id) {
@@ -59,8 +72,13 @@ export async function GET(
     user: {
       ...user,
       listing_count: activeListingCount ?? 0,
-      listing_limit: getListingLimit(plan),
+      listing_limit: getListingLimitForAccount(plan, isEnterprise),
       saved_count: savedCount ?? 0,
+      is_enterprise: isEnterprise,
+      organization_id: orgMembership?.organization_id ?? null,
+      organization_name: organization?.name ?? null,
+      org_role: orgMembership?.role ?? null,
+      is_primary_owner: orgMembership?.is_primary_owner ?? false,
     },
     listings: (listings ?? []).map(l => {
       const images = (l.listing_images as unknown as { url: string; is_primary: boolean; sort_order: number }[]) ?? []

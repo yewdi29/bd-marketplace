@@ -609,7 +609,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
-| v2.43 | August 2026 | **Homepage hero title.** Headline copy set to “The world's marketplace for heavy equipment”; entire H1 uses ink/black (`#1A1D20`) with no orange emphasis spans. |
+| v2.43 | August 2026 | **Homepage hero title.** Headline copy set to “The World's Marketplace for Heavy Equipment”; entire H1 uses ink/black (`#1A1D20`) with no orange emphasis spans. |
 | v2.42 | August 2026 | **About — Why We Exist.** Left-aligned hero H1 (`clamp(36px, 6vw, 44px)` / 800) + 15px body copy, no section background, generous `py-20 md:py-28`. Right column: animated SVG `WhyWeExistIcon` (gray fragmented listing cards → orange connection lines → central verified node). About photo hero uses the same hero headline scale. |
 | v2.41 | August 2026 | **About page hero.** First section is a centered photo card (`rounded-[20px]`) with `ABOUT US` orange mono label, hero-scale white H1 (`clamp(32px, 5vw, 44px)` / 800), and 15px body subtext over a dark scrim. Temporary background: `/cat-d6t-mockup-listing.png` until a dedicated about hero asset is supplied. Remaining about sections stay mid-fi. |
 | v2.40 | August 2026 | **Email logo sharpness.** Transactional `EmailLayout` wordmark switched from SVG (`bd_logo-black.svg`) to a 4× retina PNG (`bd_logo-black-email.png`, 908×108 displayed at 227×27). SVG is blocked or poorly rasterized by major email clients, which caused a fuzzy logo. |

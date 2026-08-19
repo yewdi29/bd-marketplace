@@ -125,7 +125,15 @@ export function EnterpriseBadge() {
   )
 }
 
-export default function PlanBadge({ plan }: { plan: MembershipPlan }) {
+export default function PlanBadge({
+  plan,
+  isEnterprise = false,
+}: {
+  plan: MembershipPlan
+  isEnterprise?: boolean
+}) {
+  if (isEnterprise) return <EnterpriseBadge />
+
   const style = planStyle(plan)
 
   return (

@@ -649,7 +649,7 @@ export default function DashboardPage() {
   const [resumeListingId, setResumeListingId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null)
   const [showLimitModal, setShowLimitModal] = useState(false)
   const [sellerId, setSellerId] = useState<string | null>(null)
   const [posterTeamTagByUserId, setPosterTeamTagByUserId] = useState<Record<string, string | null>>({})
@@ -683,7 +683,7 @@ export default function DashboardPage() {
             : data.plan === 'max' ? 'Max'
             : data.plan.charAt(0).toUpperCase() + data.plan.slice(1))
           : 'Premium'
-        setToast(`You're now on ${planName}. Welcome to Black Diamond.`)
+        setToast({ message: `You're now on ${planName}. Welcome to Black Diamond.`, tone: 'success' })
         setTimeout(() => setToast(null), 5000)
       }, 800)
       return () => clearTimeout(timerId)
@@ -839,6 +839,7 @@ export default function DashboardPage() {
       if (!res.ok) {
         const json = await res.json() as { error?: string }
         console.error('Action failed:', json.error)
+        showToast(json.error ?? 'Action failed. Please try again.', 'error')
         return
       }
       await fetchData()
@@ -858,6 +859,7 @@ export default function DashboardPage() {
       if (!res.ok) {
         const json = await res.json() as { error?: string }
         console.error('Relist failed:', json.error)
+        showToast(json.error ?? 'Relist failed. Please try again.', 'error')
         await fetchData()
         return
       }
@@ -918,8 +920,8 @@ export default function DashboardPage() {
     }
   }
 
-  function showToast(message: string) {
-    setToast(message)
+  function showToast(message: string, tone: 'success' | 'error' = 'success') {
+    setToast({ message, tone })
     setTimeout(() => setToast(null), 4000)
   }
 
@@ -1216,10 +1218,16 @@ export default function DashboardPage() {
             className="flex items-center gap-2 bg-ink text-white text-sm font-sans px-5 py-3 rounded-pill"
             style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.25)' }}
           >
-            <svg className="w-4 h-4 text-[#A2FF9A] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            {toast}
+            {toast.tone === 'error' ? (
+              <svg className="w-4 h-4 text-[#FF8A80] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 text-[#A2FF9A] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+            {toast.message}
           </div>
         </div>
       )}

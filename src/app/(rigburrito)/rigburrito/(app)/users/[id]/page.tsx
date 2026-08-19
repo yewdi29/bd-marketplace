@@ -12,7 +12,7 @@ import ErrorState from '@/components/rigburrito/ErrorState'
 import PlanBadge from '@/components/rigburrito/PlanBadge'
 import StatusBadge from '@/components/rigburrito/StatusBadge'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
-import { formatActiveListingDisplay } from '@/lib/planLimits'
+import { formatActiveListingDisplayForAccount } from '@/lib/planLimits'
 import { formatCurrency, formatDate, formatUserLocation, getInitials } from '@/lib/rigburrito/utils'
 import type { AdminUserRow } from '@/lib/rigburrito/types'
 import type { ListingStatus } from '@/lib/types/database'
@@ -89,9 +89,21 @@ export default function UserDetailPage() {
           <h1 className="rigburrito-page-title" style={{ marginBottom: 4 }}>{user.full_name ?? '—'}</h1>
           <p className="rigburrito-caption" style={{ color: '#6B7280' }}>{user.email}</p>
           <div className="mt-2 flex items-center gap-2">
-            <PlanBadge plan={user.plan} />
+            <PlanBadge plan={user.plan} isEnterprise={Boolean(user.is_enterprise)} />
             {user.suspended && <span className="text-xs font-medium text-red-500">Suspended</span>}
           </div>
+          {user.organization_name && (
+            <p className="rigburrito-caption mt-2" style={{ color: '#004499' }}>
+              {user.organization_name}
+              {user.is_primary_owner
+                ? ' · Primary owner'
+                : user.org_role === 'owner'
+                  ? ' · Owner'
+                  : user.org_role === 'manager'
+                    ? ' · Manager'
+                    : ''}
+            </p>
+          )}
         </div>
       </div>
 
@@ -106,7 +118,7 @@ export default function UserDetailPage() {
         </AdminCard>
         <AdminCard>
           <p className="rigburrito-card-label">Company</p>
-          <p className="rigburrito-body mt-2 font-medium">{user.company_name ?? '—'}</p>
+          <p className="rigburrito-body mt-2 font-medium">{user.organization_name ?? user.company_name ?? '—'}</p>
         </AdminCard>
         <AdminCard>
           <p className="rigburrito-card-label">Joined</p>
@@ -114,7 +126,7 @@ export default function UserDetailPage() {
         </AdminCard>
         <AdminCard>
           <p className="rigburrito-card-label">Active Listings</p>
-          <p className="rigburrito-mono rigburrito-body mt-2">{formatActiveListingDisplay(user.plan, user.listing_count)}</p>
+          <p className="rigburrito-mono rigburrito-body mt-2">{formatActiveListingDisplayForAccount(user.plan, user.listing_count, Boolean(user.is_enterprise))}</p>
         </AdminCard>
         <AdminCard>
           <p className="rigburrito-card-label">Saved Listings</p>

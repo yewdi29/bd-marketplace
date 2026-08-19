@@ -126,7 +126,7 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                The world&apos;s marketplace for heavy equipment
+                The World&apos;s Marketplace for Heavy Equipment
               </h1>
 
               <div

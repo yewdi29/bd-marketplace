@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { dispatchListingApprovedEmail } from '@/lib/email/transactionalEmails'
+import { canManageListing } from '@/lib/listings/canManageListing'
 import { scheduleListingVerification } from '@/lib/listings/scheduleListingVerification'
 import { requireDashboardAccess } from '@/lib/organizations/auth'
 import {
@@ -41,6 +42,9 @@ export async function PATCH(
     )
   }
 
+  const allowed = await canManageListing(authClient, params.id, user.id)
+  if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -60,13 +64,13 @@ export async function PATCH(
     .eq('id', params.id)
     .single()
 
-  if (!listing || listing.seller_id !== user.id)
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!listing)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // ── Plan limit check — enforce active listing cap before publishing ──────────
-  const { atLimit, limit: planLimit } = await isAtActiveListingLimit(adminClient, user.id)
+  const { atLimit, limit: planLimit } = await isAtActiveListingLimit(adminClient, listing.seller_id)
   if (atLimit) {
-    await markListingLimitReachedOnce(adminClient, user.id)
+    await markListingLimitReachedOnce(adminClient, listing.seller_id)
     return NextResponse.json(
       { error: `You've reached your ${planLimit} active listing limit. Upgrade your membership for more listings.`, upgrade: true },
       { status: 403 },
@@ -143,7 +147,7 @@ export async function PATCH(
     const { data: sellerProfile } = await adminClient
       .from('users')
       .select('email')
-      .eq('id', user.id)
+      .eq('id', listing.seller_id)
       .single()
 
     if (sellerProfile?.email) {

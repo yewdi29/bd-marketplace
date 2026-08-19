@@ -80,6 +80,12 @@ export interface AdminUserRow {
   country: string | null
   avatar_url: string | null
   plan: MembershipPlan
+  /** True when the user has an active organization membership. */
+  is_enterprise?: boolean
+  organization_id?: string | null
+  organization_name?: string | null
+  org_role?: 'owner' | 'manager' | null
+  is_primary_owner?: boolean
   role: string
   suspended: boolean
   listing_count: number

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { buildTsQuery, stripMeasurements } from '@/lib/searchSynonyms'
 import { haversineMiles } from '@/lib/distance'
 import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
+import { orgFieldsForNewListing } from '@/lib/listings/orgFieldsForNewListing'
 import { scheduleListingVerification } from '@/lib/listings/scheduleListingVerification'
 
 // Columns that can be used as sort keys — prevents injecting arbitrary column names
@@ -291,6 +292,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { category_id, industry_id } = await resolveCategoryAndIndustryIds(supabase, title, category)
+  const orgFields = await orgFieldsForNewListing(user.id)
 
   const { data, error } = await supabase
     .from('listings')
@@ -310,6 +312,7 @@ export async function POST(request: NextRequest) {
       location_city,
       location_state,
       status: 'pending_review',
+      ...orgFields,
     })
     .select()
     .single()

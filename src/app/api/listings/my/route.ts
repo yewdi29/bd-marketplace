@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { getActiveOrgMembership } from '@/lib/organizations/auth'
 
@@ -21,7 +22,16 @@ export async function GET(_request: Request) {
 
   const membership = await getActiveOrgMembership(user.id)
 
-  let query = supabase
+  // Use service role for org dashboards so company listings are visible even when
+  // organization_id was never stamped (RLS org policies require organization_id).
+  const db = membership
+    ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
+    : supabase
+
+  let query = db
     .from('listings')
     .select(`
       id, title, category, price, price_unit, price_visible, status, slug,
@@ -32,11 +42,24 @@ export async function GET(_request: Request) {
     `)
     .neq('status', 'removed')
 
-  // Scope to the seller dashboard — do not rely on the public "active listings"
-  // RLS policy, which would otherwise include every live listing on the platform.
   if (membership) {
+    const { data: members } = await db
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', membership.organization_id)
+      .eq('status', 'active')
+
+    const memberIds = (members ?? [])
+      .map(m => m.user_id)
+      .filter((id): id is string => Boolean(id))
+
+    if (memberIds.length === 0) {
+      memberIds.push(user.id)
+    }
+
+    const memberFilter = memberIds.map(id => `seller_id.eq.${id}`).join(',')
     query = query.or(
-      `seller_id.eq.${user.id},organization_id.eq.${membership.organization_id}`,
+      `organization_id.eq.${membership.organization_id},${memberFilter}`,
     )
   } else {
     query = query.eq('seller_id', user.id)

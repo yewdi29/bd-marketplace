@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import AdminButton from '@/components/rigburrito/AdminButton'
 import HoldToConfirmButton from '@/components/rigburrito/HoldToConfirmButton'
-import { formatActiveListingDisplay } from '@/lib/planLimits'
+import { formatActiveListingDisplayForAccount } from '@/lib/planLimits'
 import type { AdminUserRow } from '@/lib/rigburrito/types'
 import type { MembershipPlan } from '@/lib/types/database'
 
@@ -133,7 +133,16 @@ export default function UserAdminActions({ user, onUpdated, onDeleted }: UserAdm
       <hr style={{ border: 'none', borderTop: '1px solid #F0F1F3', margin: 0 }} />
 
       <div>
-        <p className="rigburrito-card-label mb-2">Override Plan</p>
+        <p className="rigburrito-card-label mb-2">
+          {user.is_enterprise ? 'Personal plan override' : 'Override Plan'}
+        </p>
+        {user.is_enterprise && (
+          <p className="rigburrito-caption mb-2" style={{ color: '#004499' }}>
+            This user is on Enterprise
+            {user.organization_name ? ` · ${user.organization_name}` : ''}.
+            Listing limits follow Enterprise (unlimited). The select below only changes their personal plan field.
+          </p>
+        )}
         <select
           value={user.plan}
           onChange={e => updateUser('plan', e.target.value as MembershipPlan)}
@@ -146,7 +155,7 @@ export default function UserAdminActions({ user, onUpdated, onDeleted }: UserAdm
           <option value="max">Max</option>
         </select>
         <p className="rigburrito-caption mt-2" style={{ color: '#6B7280' }}>
-          {formatActiveListingDisplay(user.plan, user.listing_count)} active
+          {formatActiveListingDisplayForAccount(user.plan, user.listing_count, Boolean(user.is_enterprise))} active
         </p>
       </div>
 

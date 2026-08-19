@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { applyMajorChangeReview } from '@/lib/listings/applyMajorChangeReview'
+import { canManageListing } from '@/lib/listings/canManageListing'
 import type { ListingChangeSnapshot } from '@/lib/listings/detectMajorChange'
 
 type Params = { params: { id: string; image_id: string } }
@@ -21,20 +22,24 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const allowed = await canManageListing(authClient, params.id, user.id)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Ownership check via listing
   const { data: listing } = await adminClient
     .from('listings')
     .select('seller_id, status')
     .eq('id', params.id)
     .single()
 
-  if (!listing || listing.seller_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!listing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const statusBeforeEdit = listing.status as string
