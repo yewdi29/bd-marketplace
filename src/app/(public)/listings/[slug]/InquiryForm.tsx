@@ -167,11 +167,6 @@ export default function InquiryForm({ listingId, sellerId }: Props) {
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        <p className="text-xs font-sans text-ink-3 leading-relaxed">
-          Black Diamond does not facilitate payment via wire transfer or off-platform arrangements.
-          Exercise caution with unusual payment requests.
-        </p>
-
         <button
           type="submit"
           disabled={gated || loading || isLoggedIn === null}

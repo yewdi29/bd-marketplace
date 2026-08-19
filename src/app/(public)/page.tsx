@@ -126,9 +126,7 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                The World&apos;s Heavy{' '}
-                <span style={{ color: '#FF6B35' }}>Equipment</span> in One{' '}
-                <span style={{ color: '#FF6B35' }}>Marketplace</span>
+                The world&apos;s marketplace for heavy equipment
               </h1>
 
               <div
