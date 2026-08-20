@@ -370,6 +370,15 @@ Canonical newsletter signup block for all public pages. Do not build one-off new
 - Label below: active = orange, completed = ink, inactive = `#9A9DA2`
 - Connector line: 48px wide, ink for completed, `#E8E9EA` for incomplete
 
+**Voice dictation (Describe step — `ListingDescriptionVoiceField`):**
+- Mic control sits **below** the prompt textarea (right-aligned when idle), not inside the field; glow border still measures the textarea box only
+- Idle: orange-tint circle `48×48px` (`w-12`) with mic icon; hint “Tap the mic to dictate”
+- Activation: single tap/click to toggle on **both** mobile and desktop (no press-and-hold)
+- Recording — mobile/tablet (`<1024px`): button stretches to full field width, `min-h-[56px]` pill, `#DC2626` fill, live mic waveform + “Stop recording” label
+- Recording — desktop (`≥1024px`): circle grows to `56×56px` (`w-14`), `#DC2626` fill, compact live waveform inside the circle
+- Waveform is voice-reactive via Web Audio `AnalyserNode` on the same `getUserMedia` stream (`createDictationAnalyser` in `voiceDictation.ts`) — bar `scaleY` follows speech energy + frequency bands; quiet floor so bars don’t vanish on silence
+- Transitions: width/height/radius/color ~0.4–0.55s with `cubic-bezier(0.22, 1, 0.36, 1)`
+
 **Discard confirmation overlay:**
 - Semi-opaque white: `rgba(255,255,255,0.96)` + `backdrop-filter: blur(4px)` over the modal
 - Icon: red circle `bg-[#FEE2E2]`, trash SVG `text-[#DC2626]`
@@ -394,7 +403,7 @@ Canonical newsletter signup block for all public pages. Do not build one-off new
 - Fixed header on all steps: left = back chevron (steps 2–4) or close X (step 1); center = four-segment progress bar (active `#FF6B35`, completed `#D4D5D7`, upcoming `#E8E9EA`); right = close X
 - Step transitions: horizontal slide (`nl-step-forward` / `nl-step-back` keyframes in `globals.css`)
 - Exit confirmation: inline banner below header ("Are you sure you want to exit? Your progress will be lost") with Cancel / Exit — never `window.confirm`
-- Step 1: large heading + tall flex textarea + character counter; fixed bottom "Generate Listing →" with `visualViewport` keyboard inset
+- Step 1: large heading + tall flex textarea + voice dictation under field (tap to toggle) + character counter; fixed bottom "Generate Listing →" with `visualViewport` keyboard inset
 - Step 2: single-column scrollable fields (no side-by-side grids)
 - Step 3: full-width "Add Photos" tap zone; `accept="image/*"` (no `capture` — iOS shows Take Photo + Library); horizontal thumbnail strip with always-visible remove X
 - Step 4: compact summary card + membership line (`Starter plan · N of M listings remaining`) + "Back to Edit" text link (jumps to step 2) + fixed "Publish Listing" CTA
@@ -471,7 +480,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - Hero on frosted glass card surface inside hero grid (see §8 glassmorphism exception)
 - Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot — copy: “For equipment buyers & sellers”
 - Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “Verified Listings. Faster Matches. Real Deals.”
-- **Hero CTAs:** below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, compact `py-2` / `text-[13px]` pills (`heroCtaClasses.ts`)
+- **Hero CTAs:** below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, `px-6 py-2.5 text-sm` pills matching Button `md` (`heroCtaClasses.ts`)
 - **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
 - **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
 - **How It Works:** centered header with `HOW IT WORKS` orange label; step cards in 3-column desktop row
@@ -500,7 +509,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - Specs grid: 2-column, `font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3` label, `font-mono text-sm font-bold text-ink` value
 - Description: `font-sans text-ink-2 14px line-height: 1.8`
 - Related listings: 4-column fixed grid `repeat(4, 1fr) gap-4` — uses standard ListingCard
-- JSON-LD Product schema injected via `<script type="application/ld+json">`
+- JSON-LD Product schema injected via `<script type="application/ld+json">` — includes `image`, `brand`, `itemCondition`, `category`, `offers.url`; contact-for-price listings use Offer + `PriceSpecification` (`description: "Price on request"`) with **no** numeric `price`
 - Dynamic OG metadata via `generateMetadata`
 
 ### Login / Signup
@@ -526,8 +535,8 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - Card grid: `.listing-card-grid` / `ListingCardGrid` — fixed 1–5 columns by breakpoint, 225px card design base
 - Dashboard listing cards: shared `ListingCard` with status badge overlay + Manage footer, same 4:3 thumbnail
 - Status badge colors: Active = green, Draft = neutral gray, Unpublished = gold, Sold = red
-- "Manage" button below each card: outline pill `text-xs font-semibold text-ink-2`
-- On-card manage overlay: frosted white glass + action pills
+- "Manage" button below each card: outline pill — below 730px `min-h-12` (48px); tablet/desktop `px-6 py-2.5 text-sm font-semibold` matching Button `md` / hero CTAs
+- On-card manage overlay: frosted white glass + action pills — same mobile/desktop sizing as Manage
 - Skeleton loading: `animate-pulse` gray blocks at card proportions
 
 ### Knowledge Base / Operator Journal
@@ -609,6 +618,11 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.49 | August 2026 | **Structured data fixes.** Listing Product JSON-LD: never emit numeric `offers.price` for contact-for-price (`price_visible` false / zero); use Offer + `PriceSpecification` “Price on request”. Enrich with `image`, `brand`, `itemCondition`, `category`, `offers.url`. Operator Journal `/journal/[slug]` adds schema.org `Article` JSON-LD. |
+| v2.48 | August 2026 | **Voice-reactive dictation waveform.** Recording bars driven by Web Audio `AnalyserNode` on the live mic stream (RMS + speech-band frequency buckets) instead of a CSS loop. |
+| v2.47 | August 2026 | **Voice dictation redesign.** Mic control moved below the Describe prompt (outside the textarea). Idle circle larger (`48px`). Tap-to-toggle on mobile and desktop (hold-to-speak removed). Recording: red `#DC2626` active state with waveform — mobile stretches full-width with “Stop recording”; desktop grows the circle with an in-circle wave. Smooth width/color/radius transitions. |
+| v2.46 | August 2026 | **Hero + dashboard button sizing.** Homepage hero CTAs and dashboard Manage/action pills share the same breakpoint: below 730px = 48px tap targets; tablet/desktop = `px-6 py-2.5 text-sm` (Button `md`). |
+| v2.45 | August 2026 | **Listing UX polish.** Review-step optional fields show muted “optional” next to labels; listing share popover portals with viewport-aware fixed positioning (no thumbnail clip on mobile); dashboard Manage/action pills use 48px min-height on mobile and `py-2.5` desktop sizing to match other dashboard buttons. |
 | v2.44 | August 2026 | **Homepage hero copy.** Eyebrow set to “For equipment buyers & sellers”; H1 set to “Verified Listings. Faster Matches. Real Deals.” (all ink/black, no orange spans). |
 | v2.43 | August 2026 | **Homepage hero title.** Headline copy set to “The World's Marketplace for Heavy Equipment”; entire H1 uses ink/black (`#1A1D20`) with no orange emphasis spans. |
 | v2.42 | August 2026 | **About — Why We Exist.** Left-aligned hero H1 (`clamp(36px, 6vw, 44px)` / 800) + 15px body copy, no section background, generous `py-20 md:py-28`. Right column: animated SVG `WhyWeExistIcon` (gray fragmented listing cards → orange connection lines → central verified node). About photo hero uses the same hero headline scale. |

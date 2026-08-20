@@ -733,7 +733,6 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                   <ListingDescriptionVoiceField
                     value={prompt}
                     onChange={setPrompt}
-                    interactionMode="toggle"
                     onFocus={handlePromptFocus}
                     onBlur={handlePromptBlur}
                     placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location. Just talk to us like you would a buyer."
@@ -770,7 +769,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               </div>
 
               {/* Title */}
-              <FormField label="Title">
+              <FormField label="Title" required>
                 <input
                   type="text"
                   value={form.title}
@@ -781,7 +780,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               </FormField>
 
               {/* Condition */}
-              <FormField label="Condition">
+              <FormField label="Condition" required>
                 <SelectWrapper>
                   <select
                     value={form.condition}
@@ -800,11 +799,12 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               <ListingTaxonomyFields
                 values={taxonomy}
                 onChange={setTaxonomy}
+                required
               />
 
               {/* Manufacturer + Model row */}
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="Manufacturer">
+                <FormField label="Manufacturer" optional>
                   <input
                     type="text"
                     value={form.manufacturer}
@@ -813,7 +813,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                     placeholder="e.g. National, Gardner Denver"
                   />
                 </FormField>
-                <FormField label="Model">
+                <FormField label="Model" optional>
                   <input
                     type="text"
                     value={form.model}
@@ -825,7 +825,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               </div>
 
               {/* Year */}
-              <FormField label="Year">
+              <FormField label="Year" optional>
                 <input
                   type="number"
                   value={form.year}
@@ -838,7 +838,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               </FormField>
 
               {/* Price + unit + visibility toggle */}
-              <FormField label="Price (USD)">
+              <FormField label="Price (USD)" required>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
@@ -900,7 +900,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
               </FormField>
 
               {/* Description */}
-              <FormField label="Description">
+              <FormField label="Description" optional>
                 <textarea
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}

@@ -90,14 +90,28 @@ Incorrect examples to avoid:
 - 2018 Kenworth T800 Heavy Duty Flatbed Truck — Excellent Condition Ready to Work (filler words, descriptor too long)
 
 DESCRIPTION RULES:
-- Write ALWAYS in first person, directly as the seller speaking to the buyer (e.g. "I'm selling...", "This unit has...", "I'm located in...").
-- NEVER use third person. NEVER write "the seller is offering", "the owner states", or refer to the seller/company by name as if an outside writer is describing them.
-- NEVER invent, embellish, or add any detail the seller did not actually provide. If the seller wrote "well maintained", output ONLY "well maintained" — do NOT invent maintenance schedules, service history, hour counts, or any other unstated specifics.
+- Voice: equipment-first. The equipment itself is the subject of every sentence (e.g. "2012 Serva Coil Tubing Unit Trailer…", "Landing gear is functional…"). NEVER write first-person seller framing — ban phrases like "I'm selling…", "I have…", "I'm located…", "We're offering…", or any seller "I/we" voice.
+- NEVER write as an outside narrator either ("the seller is offering", "the owner states", company-name-as-author). Describe the equipment factually, in third-person equipment-subject convention used on professional equipment/vehicle listings.
+- Tone: strictly factual — like a professional spec sheet, never marketing copy. Ban persuasive/sales language (e.g. "delivers", "perfect for", "won't last", "amazing deal", "great opportunity", or any phrasing that argues why a buyer should want it). State only what the equipment is and has.
+- NEVER invent, embellish, or add any detail the seller did not actually provide — including general/typical knowledge about the equipment category. If the seller wrote "well maintained", output ONLY "well maintained" — do NOT invent maintenance schedules, service history, hour counts, or any other unstated specifics.
 - This zero-hallucination rule applies to EVERY category of detail: condition, hours, repairs, attachments, accessories, what's included, hauling/logistics, pricing context, and reason for selling.
-- Target roughly 150 words when the seller provided enough real substance to support it. There is no hard maximum — use enough room for genuine detail (condition actually stated, why selling if mentioned, logistics if mentioned, what's included if mentioned) without padding or filler.
-- If the seller's input is thin, a shorter honest description is correct. Do NOT pad to hit a word count.
+- Honesty on negatives: any negative or limiting fact the seller explicitly states (e.g. missing part/component, damage, needs work) MUST be included plainly and clearly — not omitted, not buried, not softened with spin. State it as directly as any positive fact.
+- Length is driven entirely by how much real seller-provided detail exists — no fixed word-count target, minimum, or maximum. Sparse input → short complete description. Detailed input → correspondingly longer coverage of all real facts. Never pad, never truncate genuine detail, never invent content to fill length.
+- Do NOT restate price/asking price in the description body — price belongs only in the dedicated "price" JSON field.
 - Optimize for SEO strictly by phrasing the seller's ACTUAL provided facts clearly and specifically (exact model numbers, grade/spec terminology, location). Never add invented specificity for SEO.
 - Attachments, accessories, included items, hauling, pickup, and logistics details belong in the description ONLY — never in specs.
+
+Calibration example (sparse input → short honest output; do not pad):
+Seller input: "2012 Serva Coil Tubing Unit Trailer, missing reel. Cab is clean. Serial Number: 33344-RCT-16415. Injector Head Stand: Hydraulic Stand (F/ Injector Head). Hose Reels: (3) Hydraulic Injector Hose Reels. Landing gear works. Tires are highway ready. Asking $75k. Located in Houston, TX."
+Correct description field:
+"2012 Serva Coil Tubing Unit Trailer. Serial number 33344-RCT-16415.
+
+Equipped with a hydraulic stand for the injector head and three hydraulic injector hose reels. Landing gear is functional and tires are highway ready. Cab is clean.
+
+Unit is missing its reel.
+
+Located in Houston, TX."
+(Note: short is correct; missing reel stated plainly; no price restated; no first-person; no padding.)
 
 SPECS RULES:
 - The specs object is for genuine functional/technical measurements ONLY (e.g. weight, dimensions, capacity, horsepower, size/diameter, reach, lift capacity, engine tier).

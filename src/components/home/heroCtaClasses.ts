@@ -1,6 +1,6 @@
-/** Shared homepage hero CTA sizing — stacked + 48px tap target below 730px only. */
+/** Shared homepage hero CTA sizing — 48px tap target below 730px; desktop matches Button md. */
 export const HERO_CTA_BASE =
-  'inline-flex items-center justify-center max-[729px]:w-full max-[729px]:min-h-12 max-[729px]:px-6 max-[729px]:py-3 max-[729px]:text-sm min-[730px]:px-[18px] min-[730px]:py-2 min-[730px]:text-[13px] rounded-pill font-bold no-underline whitespace-nowrap font-sans transition-all duration-200'
+  'inline-flex items-center justify-center max-[729px]:w-full max-[729px]:min-h-12 max-[729px]:px-6 max-[729px]:py-3 max-[729px]:text-sm min-[730px]:px-6 min-[730px]:py-2.5 min-[730px]:text-sm rounded-pill font-bold no-underline whitespace-nowrap font-sans transition-all duration-200'
 
 export const HERO_CTA_OUTLINE =
   `${HERO_CTA_BASE} bg-white text-ink border border-[#E8E9EA] hover:text-orange hover:border-orange`

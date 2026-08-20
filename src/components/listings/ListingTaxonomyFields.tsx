@@ -31,10 +31,13 @@ function SelectWrapper({ children }: { children: React.ReactNode }) {
 function FormField({
   label,
   required,
+  optional,
   children,
 }: {
   label: string
   required?: boolean
+  /** Shows a muted “optional” hint next to the label (non-required fields). */
+  optional?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -42,6 +45,9 @@ function FormField({
       <label className={labelCls}>
         {label}
         {required && <span className="ml-0.5 text-[#CC0000]">*</span>}
+        {optional && !required && (
+          <span className="ml-1.5 text-xs font-normal text-ink-3">optional</span>
+        )}
       </label>
       {children}
     </div>

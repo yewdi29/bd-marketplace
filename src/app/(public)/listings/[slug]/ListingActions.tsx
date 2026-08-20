@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ShareIcon,
   SharePopoverPanel,
@@ -18,8 +19,6 @@ interface Props {
   showShare?: boolean
 }
 
-// ─── Icons ──────────────────────────────────────────────────────────────────
-
 function HeartIcon({ filled }: { filled: boolean }) {
   return (
     <svg
@@ -33,8 +32,6 @@ function HeartIcon({ filled }: { filled: boolean }) {
     </svg>
   )
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ListingActions({
   listingId,
@@ -50,7 +47,9 @@ export default function ListingActions({
   const [savingLoading, setSavingLoading] = useState(false)
   const [popping, setPopping] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({})
   const shareRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const { shareOptions } = useListingShareOptions({
     listingUrl,
@@ -59,15 +58,58 @@ export default function ListingActions({
     listingLocation,
   })
 
-  // Close share popover on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (shareRef.current && !shareRef.current.contains(e.target as Node)) {
-        setShareOpen(false)
+      const target = e.target as Node
+      if (
+        shareRef.current?.contains(target)
+        || panelRef.current?.contains(target)
+      ) {
+        return
       }
+      setShareOpen(false)
     }
     if (shareOpen) document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
+  }, [shareOpen])
+
+  useEffect(() => {
+    if (!shareOpen || !shareRef.current) return
+
+    function updatePosition() {
+      if (!shareRef.current) return
+      const rect = shareRef.current.getBoundingClientRect()
+      const panelWidth = 200
+      const panelHeight = 280
+      const gap = 8
+      const margin = 8
+
+      let top = rect.bottom + gap
+      if (top + panelHeight > window.innerHeight - margin) {
+        top = Math.max(margin, rect.top - panelHeight - gap)
+      }
+
+      let left = rect.right - panelWidth
+      if (left < margin) left = margin
+      if (left + panelWidth > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - panelWidth - margin)
+      }
+
+      setPanelStyle({
+        position: 'fixed',
+        top,
+        left,
+        zIndex: 200,
+      })
+    }
+
+    updatePosition()
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
   }, [shareOpen])
 
   async function handleSave() {
@@ -96,6 +138,16 @@ export default function ListingActions({
     fontSize: '13px',
     fontWeight: 600,
   }
+
+  const sharePanel = shareOpen ? (
+    <div ref={panelRef}>
+      <SharePopoverPanel
+        shareOptions={shareOptions}
+        onSelect={() => setShareOpen(false)}
+        style={panelStyle}
+      />
+    </div>
+  ) : null
 
   return (
     <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
@@ -149,13 +201,9 @@ export default function ListingActions({
             </div>
           </button>
 
-          {shareOpen && (
-            <SharePopoverPanel
-              shareOptions={shareOptions}
-              onSelect={() => setShareOpen(false)}
-              className="absolute right-0"
-            />
-          )}
+          {sharePanel && typeof document !== 'undefined'
+            ? createPortal(sharePanel, document.body)
+            : null}
         </div>
       )}
     </div>

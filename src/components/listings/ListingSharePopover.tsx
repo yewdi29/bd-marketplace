@@ -176,19 +176,17 @@ export function useListingShareOptions({
 export function SharePopoverPanel({
   shareOptions,
   onSelect,
-  align = 'right',
   style,
   className = '',
 }: {
   shareOptions: ShareOption[]
   onSelect?: () => void
-  align?: 'left' | 'right'
   style?: CSSProperties
   className?: string
 }) {
   return (
     <div
-      className={`${align === 'right' ? 'right-0' : 'left-0'} mt-2 bg-white rounded-[16px] border border-[#E8E9EA] overflow-hidden z-30 ${className}`.trim()}
+      className={`bg-white rounded-[16px] border border-[#E8E9EA] overflow-hidden z-[200] ${className}`.trim()}
       style={{ width: '200px', boxShadow: '0 8px 28px rgba(0,0,0,0.12)', ...style }}
     >
       {shareOptions.map(opt =>
@@ -261,10 +259,27 @@ export function ListingSharePopover({
     function updatePosition() {
       if (!anchorRef.current) return
       const rect = anchorRef.current.getBoundingClientRect()
+      const panelWidth = 200
+      const panelHeight = 280
+      const gap = 8
+      const margin = 8
+
+      let top = rect.bottom + gap
+      if (top + panelHeight > window.innerHeight - margin) {
+        top = Math.max(margin, rect.top - panelHeight - gap)
+      }
+
+      let left = rect.right - panelWidth
+      if (left < margin) left = margin
+      if (left + panelWidth > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - panelWidth - margin)
+      }
+
       setPanelStyle({
         position: 'fixed',
-        top: rect.bottom + 8,
-        right: window.innerWidth - rect.right,
+        top,
+        left,
+        zIndex: 200,
       })
     }
 
@@ -294,7 +309,6 @@ export function ListingSharePopover({
         shareOptions={shareOptions}
         onSelect={() => setOpen(false)}
         style={panelStyle}
-        className="absolute"
       />
     </div>
   ) : null

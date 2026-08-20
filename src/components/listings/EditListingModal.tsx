@@ -503,7 +503,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
 
               {/* Manufacturer + Model */}
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="Manufacturer">
+                <FormField label="Manufacturer" optional>
                   <input
                     type="text"
                     value={form.manufacturer}
@@ -512,7 +512,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                     placeholder="e.g. National, Cameron"
                   />
                 </FormField>
-                <FormField label="Model">
+                <FormField label="Model" optional>
                   <input
                     type="text"
                     value={form.model}
@@ -524,7 +524,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
               </div>
 
               {/* Year */}
-              <FormField label="Year">
+              <FormField label="Year" optional>
                 <input
                   type="number"
                   value={form.year}
@@ -598,7 +598,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
               </FormField>
 
               {/* Description */}
-              <FormField label="Description">
+              <FormField label="Description" optional>
                 <textarea
                   value={form.description}
                   onChange={e => setForm(f => f ? { ...f, description: e.target.value } : f)}

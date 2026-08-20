@@ -441,7 +441,6 @@ export default function NewListingMobileFlow({
                   <ListingDescriptionVoiceField
                     value={prompt}
                     onChange={setPrompt}
-                    interactionMode="hold"
                     onFocus={onPromptFocus}
                     onBlur={onPromptBlur}
                     placeholder="Describe your equipment in your own words — what it is, condition, specs, price, and location."
@@ -476,7 +475,7 @@ export default function NewListingMobileFlow({
                 </p>
               </div>
 
-              <FormField label="Title">
+              <FormField label="Title" required>
                 <input
                   type="text"
                   value={form.title}
@@ -486,7 +485,7 @@ export default function NewListingMobileFlow({
                 />
               </FormField>
 
-              <FormField label="Price (USD)">
+              <FormField label="Price (USD)" required>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <div className="relative flex-1">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
@@ -539,7 +538,7 @@ export default function NewListingMobileFlow({
                 </label>
               </FormField>
 
-              <FormField label="Condition">
+              <FormField label="Condition" required>
                 <SelectWrapper>
                   <select
                     value={form.condition}
@@ -554,9 +553,9 @@ export default function NewListingMobileFlow({
                 </SelectWrapper>
               </FormField>
 
-              <ListingTaxonomyFields values={taxonomy} onChange={setTaxonomy} />
+              <ListingTaxonomyFields values={taxonomy} onChange={setTaxonomy} required />
 
-              <FormField label="Manufacturer">
+              <FormField label="Manufacturer" optional>
                 <input
                   type="text"
                   value={form.manufacturer}
@@ -566,7 +565,7 @@ export default function NewListingMobileFlow({
                 />
               </FormField>
 
-              <FormField label="Model">
+              <FormField label="Model" optional>
                 <input
                   type="text"
                   value={form.model}
@@ -576,7 +575,7 @@ export default function NewListingMobileFlow({
                 />
               </FormField>
 
-              <FormField label="Year">
+              <FormField label="Year" optional>
                 <input
                   type="number"
                   value={form.year}
@@ -588,7 +587,7 @@ export default function NewListingMobileFlow({
                 />
               </FormField>
 
-              <FormField label="Description">
+              <FormField label="Description" optional>
                 <textarea
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}

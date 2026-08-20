@@ -348,7 +348,7 @@ export default function EditListingMobileFlow({
 
                 <ListingTaxonomyFields values={taxonomy} onChange={setTaxonomy} required />
 
-                <FormField label="Manufacturer">
+                <FormField label="Manufacturer" optional>
                   <input
                     type="text"
                     value={form.manufacturer}
@@ -358,7 +358,7 @@ export default function EditListingMobileFlow({
                   />
                 </FormField>
 
-                <FormField label="Model">
+                <FormField label="Model" optional>
                   <input
                     type="text"
                     value={form.model}
@@ -368,7 +368,7 @@ export default function EditListingMobileFlow({
                   />
                 </FormField>
 
-                <FormField label="Year">
+                <FormField label="Year" optional>
                   <input
                     type="number"
                     value={form.year}
@@ -433,7 +433,7 @@ export default function EditListingMobileFlow({
                   </label>
                 </FormField>
 
-                <FormField label="Description">
+                <FormField label="Description" optional>
                   <textarea
                     value={form.description}
                     onChange={e => setForm(f => f ? { ...f, description: e.target.value } : f)}

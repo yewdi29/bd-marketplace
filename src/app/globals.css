@@ -422,3 +422,19 @@ select {
 .heart-pop {
   animation: heart-pop 0.35s ease;
 }
+
+/* ─── Voice dictation mic (New Listing describe step) ───────────────────────── */
+@keyframes dictation-rec-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%     { opacity: 0.35; transform: scale(0.85); }
+}
+@keyframes dictation-spin {
+  to { transform: rotate(360deg); }
+}
+.dictation-wave-bar {
+  display: inline-block;
+  transform-origin: center bottom;
+  will-change: transform, opacity;
+  /* Heights come from live mic AnalyserNode (scaleY) — no fake CSS loop */
+  transition: transform 55ms linear, opacity 55ms linear;
+}

@@ -289,7 +289,7 @@ function CardOverlay({
             onClick={action.disabled ? undefined : action.onClick}
             title={action.tooltip}
             disabled={action.disabled}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-semibold border transition-colors ${
+            className={`w-full flex items-center gap-2 px-6 max-[729px]:min-h-12 max-[729px]:py-3 min-[730px]:py-2.5 rounded-pill text-sm font-semibold border transition-colors ${
               action.disabled
                 ? 'opacity-40 cursor-not-allowed border-[#D4D5D7] bg-white text-ink-2'
                 : action.accent
@@ -305,7 +305,7 @@ function CardOverlay({
       <div className="w-full border-t border-[#E8E9EA] mt-2 pt-2">
         <button
           onClick={onClose}
-          className="w-full flex items-center justify-center px-3 py-2 rounded-pill text-sm font-semibold border border-[#E8E9EA] transition-colors hover:border-[#D4D5D7]"
+          className="w-full flex items-center justify-center px-6 max-[729px]:min-h-12 max-[729px]:py-3 min-[730px]:py-2.5 rounded-pill text-sm font-semibold border border-[#E8E9EA] transition-colors hover:border-[#D4D5D7]"
           style={{ background: '#F7F8F9', color: '#4A4D52' }}
         >
           Cancel
@@ -449,7 +449,7 @@ function HoldToDeleteButton({
         )}
 
         {/* Label — stays above progress fill */}
-        <span className="relative z-10 flex items-center gap-2 px-3 py-2">
+        <span className="relative z-10 flex items-center gap-2 px-6 max-[729px]:min-h-12 max-[729px]:py-3 min-[730px]:py-2.5">
           <span className="w-4 h-4 shrink-0">{icon}</span>
           {label}
         </span>
@@ -613,7 +613,7 @@ function MyListingCard({
               )}
               <button
                 onClick={e => { e.stopPropagation(); onManage(listing) }}
-                className="w-full py-1.5 text-xs font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
+                className="w-full inline-flex items-center justify-center px-6 max-[729px]:min-h-12 max-[729px]:py-3 min-[730px]:py-2.5 text-sm font-semibold text-ink-2 border border-[#E8E9EA] rounded-pill hover:border-[#D4D5D7] hover:text-ink transition-colors"
               >
                 Manage
               </button>

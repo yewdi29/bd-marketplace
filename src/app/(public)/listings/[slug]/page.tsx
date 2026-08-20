@@ -21,6 +21,7 @@ import {
   PUBLICLY_VIEWABLE_LISTING_STATUSES,
 } from '@/lib/listings/publicVisibility'
 import { PUBLIC_SITE_URL } from '@/lib/site'
+import { buildListingProductJsonLd } from '@/lib/listings/listingJsonLd'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -258,21 +259,19 @@ export default async function ListingDetailPage({ params }: Props) {
     ...functionalSpecs,
   ].filter((s): s is { label: string; value: string | number } => s !== null)
 
-  // JSON-LD Product schema
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: l.title,
-    description: l.description ?? undefined,
-    offers: {
-      '@type': 'Offer',
-      price: l.price,
-      priceCurrency: 'USD',
-      availability: isSold
-        ? 'https://schema.org/OutOfStock'
-        : 'https://schema.org/InStock',
-    },
-  }
+  // JSON-LD Product schema (price-on-request when UI shows Contact for price)
+  const jsonLd = buildListingProductJsonLd({
+    title: l.title,
+    description: l.description,
+    listingUrl,
+    price: l.price,
+    priceVisible,
+    isSold,
+    manufacturer: l.manufacturer,
+    condition: l.condition,
+    categoryLabel: categoryDisplayLabel,
+    images: l.listing_images ?? [],
+  })
 
   return (
     <>

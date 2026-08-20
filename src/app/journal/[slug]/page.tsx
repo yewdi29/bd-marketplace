@@ -9,6 +9,8 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import ArticleBodyContent from '@/components/journal/ArticleBodyContent'
 import { articleCaption } from '@/lib/journal/articleCaption'
+import { buildJournalArticleJsonLd } from '@/lib/journal/articleJsonLd'
+import { PUBLIC_SITE_URL } from '@/lib/site'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,9 +43,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!data) return { title: 'Article Not Found' }
 
-  const canonicalUrl = `https://blackdiamondmkt.com/journal/${slug}`
+  const canonicalUrl = `${PUBLIC_SITE_URL}/journal/${slug}`
   const description = data.meta_description ?? data.excerpt ?? undefined
-  const ogImage = data.featured_image ?? 'https://blackdiamondmkt.com/og-image.png'
+  const ogImage = data.featured_image ?? `${PUBLIC_SITE_URL}/og-image.png`
 
   return {
     title: `${data.title} | The Operator Journal`,
@@ -85,8 +87,21 @@ export default async function ArticlePage({ params }: Props) {
   const publishedLabel = formatPublishedDate(article.published_at)
   const caption = articleCaption(article)
 
+  const jsonLd = buildJournalArticleJsonLd({
+    title: article.title,
+    slug: article.slug,
+    description: article.meta_description ?? article.excerpt ?? caption,
+    featuredImage: article.featured_image,
+    datePublished: article.published_at,
+    dateModified: article.updated_at,
+  })
+
   return (
     <div className="min-h-screen flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar />
       <main className="flex-1 pt-[64px]">
         <div className="max-w-[720px] mx-auto px-6 py-12">
