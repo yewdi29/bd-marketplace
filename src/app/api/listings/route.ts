@@ -6,6 +6,8 @@ import { haversineMiles } from '@/lib/distance'
 import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
 import { orgFieldsForNewListing } from '@/lib/listings/orgFieldsForNewListing'
 import { scheduleListingVerification } from '@/lib/listings/scheduleListingVerification'
+import { applyActiveListingFilters } from '@/lib/search/listingFilters'
+import { parseSlugList } from '@/lib/search/searchTaxonomy'
 
 // Columns that can be used as sort keys — prevents injecting arbitrary column names
 const ALLOWED_SORT_FIELDS = ['created_at', 'price'] as const
@@ -46,11 +48,6 @@ export async function GET(request: NextRequest) {
   )
 
   // ── Resolve slug filters to ids ──────────────────────────────────────────────
-  function parseSlugList(raw: string | null): string[] {
-    if (!raw) return []
-    return raw.split(',').map(s => s.trim()).filter(Boolean)
-  }
-
   const industrySlugs = parseSlugList(industry)
   const catSlugs      = parseSlugList(cat)
   const countrySlugs  = parseSlugList(country)
@@ -70,6 +67,14 @@ export async function GET(request: NextRequest) {
   if (countrySlugs.length > 0) {
     const { data } = await supabase.from('countries').select('id').in('slug', countrySlugs)
     countryIds = (data ?? []).map(row => row.id)
+  }
+
+  const listingFilters = {
+    industryIds,
+    categoryIds,
+    countryIds,
+    legacyCategory: category,
+    tier,
   }
 
   // ── Sort params (shared by both search paths) ───────────────────────────────
@@ -92,19 +97,10 @@ export async function GET(request: NextRequest) {
   // making a truly generic helper impractical. We apply FTS on top externally.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function filteredBase(): any {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q: any = supabase
-      .from('listings')
-      .select(SELECT_COLUMNS)
-      .eq('status', 'active')
-
-    if (category)      q = q.eq('category', category)
-    if (industryIds.length) q = q.in('industry_id', industryIds)
-    if (categoryIds.length) q = q.in('category_id', categoryIds)
-    if (countryIds.length)  q = q.in('country_id', countryIds)
-    if (tier)       q = q.eq('tier', tier)
-
-    return q
+    return applyActiveListingFilters(
+      supabase.from('listings').select(SELECT_COLUMNS),
+      listingFilters,
+    )
   }
 
   // ── Resolve the user's coordinates for "Closest to Me" ───────────────────────
@@ -226,16 +222,10 @@ export async function GET(request: NextRequest) {
   }
 
   // ── No search query — single query with exact count + cursor pagination ──────
-  let query = supabase
-    .from('listings')
-    .select(SELECT_COLUMNS, { count: 'exact' })
-    .eq('status', 'active')
-
-  if (category)      query = query.eq('category', category)
-  if (industryIds.length) query = query.in('industry_id', industryIds)
-  if (categoryIds.length) query = query.in('category_id', categoryIds)
-  if (countryIds.length)  query = query.in('country_id', countryIds)
-  if (tier)       query = query.eq('tier', tier)
+  let query = applyActiveListingFilters(
+    supabase.from('listings').select(SELECT_COLUMNS, { count: 'exact' }),
+    listingFilters,
+  )
 
   // "Closest to Me" needs the full matching set in memory to sort by distance —
   // pagination is applied after sorting instead of via .range().

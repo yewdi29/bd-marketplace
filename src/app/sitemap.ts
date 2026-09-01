@@ -1,8 +1,7 @@
-import type { Metadata } from 'next'
-import { createClient } from '@supabase/supabase-js'
 import type { MetadataRoute } from 'next'
-
-const BASE_URL = 'https://blackdiamondmkt.com'
+import { createClient } from '@supabase/supabase-js'
+import { PUBLIC_SITE_URL } from '@/lib/site'
+import { loadSearchTaxonomy } from '@/lib/search/searchTaxonomy'
 
 function getAdminClient() {
   return createClient(
@@ -16,44 +15,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: BASE_URL,
+      url: PUBLIC_SITE_URL,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1.0,
     },
     {
-      url: `${BASE_URL}/search`,
+      url: `${PUBLIC_SITE_URL}/search`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/about`,
+      url: `${PUBLIC_SITE_URL}/about`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
-      url: `${BASE_URL}/careers`,
+      url: `${PUBLIC_SITE_URL}/careers`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
-      url: `${BASE_URL}/journal`,
+      url: `${PUBLIC_SITE_URL}/journal`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${BASE_URL}/sellers`,
+      url: `${PUBLIC_SITE_URL}/sellers`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
     },
   ]
 
-  const [{ data: articles }, { data: listings }, { data: sellers }] = await Promise.all([
+  const [{ data: articles }, { data: listings }, { data: sellers }, taxonomy] = await Promise.all([
     supabase
       .from('articles')
       .select('slug, updated_at, published_at')
@@ -67,28 +66,66 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('users')
       .select('company_slug, updated_at')
       .not('company_slug', 'is', null),
+    loadSearchTaxonomy(supabase),
   ])
 
   const articlePages: MetadataRoute.Sitemap = (articles ?? []).map(article => ({
-    url: `${BASE_URL}/journal/${article.slug}`,
+    url: `${PUBLIC_SITE_URL}/journal/${article.slug}`,
     lastModified: new Date(article.updated_at ?? article.published_at ?? new Date()),
     changeFrequency: 'monthly',
     priority: 0.7,
   }))
 
   const listingPages: MetadataRoute.Sitemap = (listings ?? []).map(listing => ({
-    url: `${BASE_URL}/listings/${listing.slug}`,
+    url: `${PUBLIC_SITE_URL}/listings/${listing.slug}`,
     lastModified: new Date(listing.updated_at ?? new Date()),
     changeFrequency: 'weekly',
     priority: 0.8,
   }))
 
   const sellerPages: MetadataRoute.Sitemap = (sellers ?? []).map(seller => ({
-    url: `${BASE_URL}/sellers/${seller.company_slug}`,
+    url: `${PUBLIC_SITE_URL}/sellers/${seller.company_slug}`,
     lastModified: new Date(seller.updated_at ?? new Date()),
     changeFrequency: 'monthly',
     priority: 0.6,
   }))
 
-  return [...staticPages, ...articlePages, ...listingPages, ...sellerPages]
+  // Industry / category filter URLs — whitelist from taxonomy only
+  const taxonomySearchPages: MetadataRoute.Sitemap = []
+  const now = new Date()
+
+  for (const industry of taxonomy.industries) {
+    taxonomySearchPages.push({
+      url: `${PUBLIC_SITE_URL}/search?industry=${encodeURIComponent(industry.slug)}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.85,
+    })
+  }
+
+  for (const category of taxonomy.categories) {
+    taxonomySearchPages.push({
+      url: `${PUBLIC_SITE_URL}/search?cat=${encodeURIComponent(category.slug)}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.85,
+    })
+
+    for (const industrySlug of category.industrySlugs) {
+      taxonomySearchPages.push({
+        url: `${PUBLIC_SITE_URL}/search?industry=${encodeURIComponent(industrySlug)}&cat=${encodeURIComponent(category.slug)}`,
+        lastModified: now,
+        changeFrequency: 'daily',
+        priority: 0.8,
+      })
+    }
+  }
+
+  return [
+    ...staticPages,
+    ...taxonomySearchPages,
+    ...articlePages,
+    ...listingPages,
+    ...sellerPages,
+  ]
 }
