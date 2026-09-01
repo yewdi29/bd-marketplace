@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import * as Tabs from '@radix-ui/react-tabs'
 import TableSkeleton from '@/components/rigburrito/TableSkeleton'
 import ErrorState from '@/components/rigburrito/ErrorState'
 import Pagination from '@/components/rigburrito/Pagination'
@@ -10,6 +11,8 @@ import PlanBadge from '@/components/rigburrito/PlanBadge'
 import { formatDate, formatUserLocation, getInitials } from '@/lib/rigburrito/utils'
 import { formatActiveListingDisplayForAccount } from '@/lib/planLimits'
 import type { AdminUserRow } from '@/lib/rigburrito/types'
+
+type VerificationTab = 'verified' | 'pending'
 
 function orgRoleLabel(u: AdminUserRow): string | null {
   if (!u.is_enterprise) return null
@@ -26,13 +29,17 @@ export default function UsersPage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [plan, setPlan] = useState('')
+  const [verification, setVerification] = useState<VerificationTab>('verified')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     setError('')
-    const params = new URLSearchParams({ page: String(page) })
+    const params = new URLSearchParams({
+      page: String(page),
+      verification,
+    })
     if (search) params.set('search', search)
     if (plan) params.set('plan', plan)
     try {
@@ -46,13 +53,27 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, plan])
+  }, [page, search, plan, verification])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
   return (
     <div>
       <h1 className="rigburrito-page-title">User Management</h1>
+
+      <Tabs.Root
+        value={verification}
+        onValueChange={v => { setVerification(v as VerificationTab); setPage(1) }}
+      >
+        <Tabs.List className="mb-4 flex gap-2">
+          <Tabs.Trigger value="verified" className="rigburrito-tab">
+            Verified
+          </Tabs.Trigger>
+          <Tabs.Trigger value="pending" className="rigburrito-tab">
+            Pending verification
+          </Tabs.Trigger>
+        </Tabs.List>
+      </Tabs.Root>
 
       <div className="mb-4 flex flex-wrap gap-3">
         <input
@@ -88,7 +109,15 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u, index) => {
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan={10} style={{ textAlign: 'center', color: '#6B7280', padding: '32px 16px' }}>
+                    {verification === 'pending'
+                      ? 'No users pending email verification.'
+                      : 'No verified users found.'}
+                  </td>
+                </tr>
+              ) : users.map((u, index) => {
                 const prev = users[index - 1]
                 const showOrgHeader = Boolean(
                   u.organization_id
@@ -146,7 +175,15 @@ export default function UsersPage() {
                       <td><PlanBadge plan={u.plan} isEnterprise={Boolean(u.is_enterprise)} /></td>
                       <td>{formatActiveListingDisplayForAccount(u.plan, u.listing_count, Boolean(u.is_enterprise))}</td>
                       <td style={{ color: '#6B7280' }}>{formatDate(u.created_at)}</td>
-                      <td>{u.suspended ? <span className="text-xs text-red-500">Suspended</span> : ''}</td>
+                      <td>
+                        {u.suspended ? (
+                          <span className="text-xs text-red-500">Suspended</span>
+                        ) : !u.email_verified_at ? (
+                          <span className="text-xs" style={{ color: '#D97706' }}>Pending verification</span>
+                        ) : (
+                          ''
+                        )}
+                      </td>
                     </tr>
                   </Fragment>
                 )

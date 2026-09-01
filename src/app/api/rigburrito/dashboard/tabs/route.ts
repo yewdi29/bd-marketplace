@@ -185,6 +185,7 @@ export async function GET(req: NextRequest) {
       service
         .from('users')
         .select('id, full_name, email, plan, created_at')
+        .not('email_verified_at', 'is', null)
         .gte('created_at', thirtyDaysAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(TAB_LIMIT),

@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { isSafeRedirectPath, resolveAuthRedirect } from '@/lib/authRedirect'
+import { markUserEmailVerified } from '@/lib/auth/markUserEmailVerified'
 import { dispatchWelcomeEmailOnceSafe } from '@/lib/email/welcomeEmail'
 import { createServiceClient } from '@/lib/rigburrito/service'
 
@@ -36,6 +37,12 @@ export async function GET(request: NextRequest) {
 
       // Branded welcome — once, after signup confirmation succeeds (supplements Supabase Auth mail).
       if (user?.id && user.email) {
+        try {
+          await markUserEmailVerified(user.id, user.email_confirmed_at ?? null)
+        } catch {
+          // Non-fatal
+        }
+
         let firstName: string | null = null
         try {
           const service = createServiceClient()

@@ -31,8 +31,9 @@ export async function GET() {
     service.from('listings').select('status'),
     service.from('listings').select('created_at, industry_id, industries(name)')
       .gte('created_at', eightWeeksAgo.toISOString()),
-    service.from('users').select('*', { count: 'exact', head: true }),
+    service.from('users').select('*', { count: 'exact', head: true }).not('email_verified_at', 'is', null),
     service.from('users').select('created_at, plan')
+      .not('email_verified_at', 'is', null)
       .gte('created_at', eightWeeksAgo.toISOString()),
     service.from('search_queries').select('query_text'),
     service.from('saved_listings').select('listing_id, listings(title, slug, users(full_name))'),
@@ -57,7 +58,7 @@ export async function GET() {
   }
 
   const usersByPlan: Record<string, number> = {}
-  const { data: allUsers } = await service.from('users').select('plan')
+  const { data: allUsers } = await service.from('users').select('plan').not('email_verified_at', 'is', null)
   for (const u of allUsers ?? []) {
     usersByPlan[u.plan] = (usersByPlan[u.plan] ?? 0) + 1
   }

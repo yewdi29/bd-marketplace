@@ -11,10 +11,11 @@ interface DashboardGeoBreakdownProps {
   title?: string
 }
 
-export default function DashboardGeoBreakdown({ locations, title = 'User Locations' }: DashboardGeoBreakdownProps) {
+export default function DashboardGeoBreakdown({ locations, title = 'Countries' }: DashboardGeoBreakdownProps) {
   useFlagIconsCss()
   const isBelowLg = useIsBelowLg()
   const [highlighted, setHighlighted] = useState<string | null>(null)
+  const countries = locations.filter(row => row.country !== 'Unknown')
 
   return (
     <div className="rigburrito-detail-region">
@@ -31,7 +32,11 @@ export default function DashboardGeoBreakdown({ locations, title = 'User Locatio
               </tr>
             </thead>
             <tbody>
-              {locations.map(row => {
+              {countries.length === 0 ? (
+                <tr>
+                  <td colSpan={2} style={{ color: '#6B7280' }}>No countries yet.</td>
+                </tr>
+              ) : countries.map(row => {
                 const flagClass = countryFlagClass(row.iso_code)
                 const isActive =
                   highlighted !== null &&
@@ -70,7 +75,7 @@ export default function DashboardGeoBreakdown({ locations, title = 'User Locatio
         </div>
         <div className="rigburrito-geo-map-wrap">
           <WorldChoroplethMap
-            locations={locations}
+            locations={countries}
             highlightedCountry={highlighted}
             onHighlight={setHighlighted}
           />

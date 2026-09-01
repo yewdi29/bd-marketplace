@@ -97,21 +97,25 @@ export async function GET() {
     { data: recentListings },
     { data: recentSignups },
   ] = await Promise.all([
-    service.from('users').select('*', { count: 'exact', head: true }),
+    service.from('users').select('*', { count: 'exact', head: true }).not('email_verified_at', 'is', null),
     service.from('listings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     service.from('listings').select('*', { count: 'exact', head: true }),
-    service.from('users').select('*', { count: 'exact', head: true }).gte('created_at', monthStart),
+    service.from('users').select('*', { count: 'exact', head: true })
+      .not('email_verified_at', 'is', null)
+      .gte('created_at', monthStart),
     service.from('listings').select('*', { count: 'exact', head: true }).gte('created_at', monthStart),
     service.from('users').select('*', { count: 'exact', head: true })
+      .not('email_verified_at', 'is', null)
       .gte('created_at', lastMonthStart).lt('created_at', lastMonthEnd),
     service.from('listings').select('*', { count: 'exact', head: true })
       .gte('created_at', lastMonthStart).lt('created_at', lastMonthEnd),
     service.from('listings').select('*', { count: 'exact', head: true })
       .eq('status', 'active').lt('created_at', monthStart),
     service.from('listings').select('*', { count: 'exact', head: true }).lt('created_at', monthStart),
-    service.from('users').select('created_at, country'),
+    service.from('users').select('created_at, country').not('email_verified_at', 'is', null),
     service.from('users')
       .select('id, full_name, email, plan, created_at')
+      .not('email_verified_at', 'is', null)
       .order('created_at', { ascending: false })
       .limit(5),
     service.from('listings')
@@ -119,11 +123,13 @@ export async function GET() {
       .eq('status', 'pending_review')
       .order('created_at', { ascending: false })
       .limit(5),
-    service.from('users').select('country'),
+    service.from('users').select('country').not('email_verified_at', 'is', null),
     service.from('countries').select('name, iso_code'),
     service.from('listings').select('created_at, status'),
     service.from('listings').select('created_at').gte('created_at', eightWeeksAgo.toISOString()),
-    service.from('users').select('created_at').gte('created_at', eightWeeksAgo.toISOString()),
+    service.from('users').select('created_at')
+      .not('email_verified_at', 'is', null)
+      .gte('created_at', eightWeeksAgo.toISOString()),
   ])
 
   let mrr = 0

@@ -88,6 +88,7 @@ export interface AdminUserRow {
   is_primary_owner?: boolean
   role: string
   suspended: boolean
+  email_verified_at: string | null
   listing_count: number
   listing_limit: number | null
   saved_count: number

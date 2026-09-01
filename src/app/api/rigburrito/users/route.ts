@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
   const search = searchParams.get('search') ?? ''
   const plan = searchParams.get('plan') ?? ''
+  const verification = searchParams.get('verification') ?? 'verified'
   const offset = (page - 1) * PAGE_SIZE
 
   const service = createServiceClient()
@@ -70,7 +71,14 @@ export async function GET(req: NextRequest) {
 
   let query = service
     .from('users')
-    .select('id, email, full_name, company_name, phone, city, state, country, avatar_url, plan, role, suspended, created_at')
+    .select('id, email, full_name, company_name, phone, city, state, country, avatar_url, plan, role, suspended, created_at, email_verified_at')
+
+  if (verification === 'pending') {
+    query = query.is('email_verified_at', null)
+  } else if (verification !== 'all') {
+    // Default: verified only
+    query = query.not('email_verified_at', 'is', null)
+  }
 
   if (search) {
     query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)

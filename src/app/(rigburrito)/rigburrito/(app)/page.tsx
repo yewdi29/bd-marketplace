@@ -92,7 +92,7 @@ interface FeedbackRow {
 const METRIC_LABELS: Record<MetricKey, string> = {
   total_users: 'Total Users',
   active_listings: 'Active Listings',
-  user_locations: 'User Locations',
+  user_locations: 'Countries',
   mrr: 'MRR',
   new_signups: 'New Signups This Month',
   new_listings: 'New Listings This Month',
@@ -210,8 +210,8 @@ export default function DashboardPage() {
     setSelectedMetric(key)
   }
 
-  const userLocationsTotal = useMemo(
-    () => userLocationsFull.reduce((sum, row) => sum + row.count, 0),
+  const userLocationsCountryCount = useMemo(
+    () => userLocationsFull.filter(row => row.country !== 'Unknown').length,
     [userLocationsFull],
   )
 
@@ -453,7 +453,7 @@ export default function DashboardPage() {
   const metrics: { key: MetricKey; value: string; trendPct: number | null }[] = [
     { key: 'total_users', value: String(stats?.total_users ?? 0), trendPct: stats?.users_trend_pct ?? null },
     { key: 'active_listings', value: String(stats?.active_listings ?? 0), trendPct: stats?.active_listings_trend_pct ?? null },
-    { key: 'user_locations', value: String(userLocationsTotal), trendPct: null },
+    { key: 'user_locations', value: String(userLocationsCountryCount), trendPct: null },
     { key: 'mrr', value: formatCurrency(stats?.mrr ?? 0), trendPct: stats?.mrr_trend_pct ?? null },
     { key: 'new_signups', value: String(stats?.new_signups_month ?? 0), trendPct: stats?.signups_trend_pct ?? null },
     { key: 'new_listings', value: String(stats?.new_listings_month ?? 0), trendPct: stats?.listings_trend_pct ?? null },

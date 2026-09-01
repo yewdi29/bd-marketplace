@@ -126,7 +126,10 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                The Trusted Marketplace For Heavy Equipment.
+                The Trusted Marketplace For
+                <br className="hidden min-[1000px]:inline" />
+                {' '}
+                <span className="min-[1000px]:whitespace-nowrap">Heavy Equipment.</span>
               </h1>
 
               <div

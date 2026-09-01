@@ -42,7 +42,8 @@ create table public.users (
   listing_limit_reached_at      timestamptz,
   listing_limit_upsell_sent_at  timestamptz,
   created_at          timestamptz not null default now(),
-  updated_at          timestamptz not null default now()
+  updated_at          timestamptz not null default now(),
+  email_verified_at   timestamptz
 );
 
 -- Auto-create user profile on signup

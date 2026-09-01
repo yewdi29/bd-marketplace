@@ -474,7 +474,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 #### Section-specific notes
 - Hero on frosted glass card surface inside hero grid (see §8 glassmorphism exception)
 - Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot — copy: “For equipment buyers & sellers”
-- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “The Trusted Marketplace For Heavy Equipment.”
+- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “The Trusted Marketplace For Heavy Equipment.” Desktop (`≥1000px`): forced line break before “Heavy Equipment.” with nowrap. Mobile/tablet: natural wrap, no forced break.
 - **Hero CTAs:** below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, `px-6 py-2.5 text-sm` pills matching Button `md` (`heroCtaClasses.ts`)
 - **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
 - **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
@@ -614,6 +614,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.53 | September 2026 | **Homepage hero title wrap.** Desktop (`≥1000px`): forced break before “Heavy Equipment.” with nowrap. Below 1000px: natural wrap only (no forced break) to avoid mobile overflow. |
 | v2.52 | September 2026 | **Dashboard sold sections.** My Listings (All) and Saved Equipment show sold listings in a separate section below Active/Drafts (or available saved), with a light gray `#E8E9EA` horizontal separator and a Sold heading + count chip. |
 | v2.51 | September 2026 | **Listing card type scale.** Card title `13px` → `14px`; price `14px` → `16px` (shared `ListingCardContent`). |
 | v2.50 | August 2026 | **Homepage hero title.** H1 set to “The Trusted Marketplace For Heavy Equipment.” (title case, all ink/black, no orange spans). |

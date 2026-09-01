@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/rigburrito/service'
+import { markUserEmailVerified } from '@/lib/auth/markUserEmailVerified'
 import { dispatchWelcomeEmailOnce } from '@/lib/email/welcomeEmail'
 
 /**
@@ -16,6 +17,12 @@ export async function POST() {
 
     if (!user?.id || !user.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    try {
+      await markUserEmailVerified(user.id, user.email_confirmed_at ?? null)
+    } catch {
+      // Non-fatal — welcome still sends; admin filter may lag until next confirm path
     }
 
     let firstName: string | null = null
