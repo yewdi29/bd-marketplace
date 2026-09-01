@@ -55,6 +55,7 @@ begin
     select * from (values
       ('oil_gas',        'Coiled Tubing Equipment'),
       ('oil_gas',        'Drilling Rigs'),
+      ('oil_gas',        'Drilling Rig Parts'),
       ('oil_gas',        'Drill Pipe & Tubulars'),
       ('oil_gas',        'Drill Bits'),
       ('oil_gas',        'Workover & Well Service Rigs'),

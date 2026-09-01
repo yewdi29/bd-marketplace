@@ -21,6 +21,7 @@ import DozerAsciiLoader from '@/components/listings/DozerAsciiLoader'
 import type { ListingForm, PhotoState } from './NewListingModal'
 import type { GalleryItem } from '@/lib/listings/listingGallery'
 import type { ListingVideoSlot } from '@/lib/listings/listingVideoUploadClient'
+import { formatPriceInputValue, parsePriceInputValue } from '@/lib/formatPrice'
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -304,6 +305,7 @@ export default function NewListingMobileFlow({
   const categorySlug = taxonomyData.categories.find(c => c.id === taxonomy.category_id)?.slug
     ?? form.category
     ?? 'other'
+  const categoryName = taxonomyData.categories.find(c => c.id === taxonomy.category_id)?.name ?? null
 
   const previewCountry = taxonomyData.countries.find(c => c.id === taxonomy.country_id)
 
@@ -490,15 +492,15 @@ export default function NewListingMobileFlow({
                   <div className="relative flex-1">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={form.price}
                       onChange={e => {
-                        setForm(f => ({ ...f, price: e.target.value }))
+                        setForm(f => ({ ...f, price: formatPriceInputValue(e.target.value) }))
                         if (priceError) setPriceError('')
                       }}
                       className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
                       placeholder="0"
-                      min={0}
                     />
                   </div>
                   <SelectWrapper>
@@ -591,7 +593,7 @@ export default function NewListingMobileFlow({
                 <textarea
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className={`${inputCls} resize-none leading-relaxed`}
+                  className={`${inputCls} resize-y leading-relaxed`}
                   style={{ minHeight: '120px' }}
                   placeholder="Detailed equipment description for buyers…"
                 />
@@ -638,7 +640,8 @@ export default function NewListingMobileFlow({
                   slug: null,
                   title: form.title || 'Untitled Draft',
                   category: categorySlug,
-                  price: parseFloat(form.price) || 0,
+                  category_name: categoryName,
+                  price: parsePriceInputValue(form.price),
                   price_unit: form.price_unit,
                   price_visible: form.price_visible,
                   location_city: taxonomy.location_city || null,

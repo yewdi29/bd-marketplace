@@ -38,6 +38,7 @@ export async function GET(_request: Request) {
       seller_id, organization_id, posted_by_user_id, created_at, updated_at,
       location_city, location_state, last_approved_at, specs,
       listing_images(url, is_primary, sort_order),
+      categories(name),
       poster:posted_by_user_id(full_name, email)
     `)
     .neq('status', 'removed')
@@ -74,11 +75,14 @@ export async function GET(_request: Request) {
     const primary = imgs.find(i => i.is_primary) ?? imgs.sort((a, b) => a.sort_order - b.sort_order)[0] ?? null
     const specs = listing.specs as Record<string, string> | null
     const poster = listing.poster as unknown as { full_name: string | null; email: string } | null
+    const categories = listing.categories as { name: string } | { name: string }[] | null
+    const categoryName = Array.isArray(categories) ? categories[0]?.name ?? null : categories?.name ?? null
 
     return {
       id: listing.id,
       title: listing.title,
       category: listing.category,
+      category_name: categoryName,
       price: listing.price,
       price_unit: listing.price_unit ?? 'total',
       price_visible: listing.price_visible,

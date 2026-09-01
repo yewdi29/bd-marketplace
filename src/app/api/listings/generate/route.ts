@@ -38,7 +38,7 @@ Use exactly these field names and value constraints:
 
 {
   "title": "Equipment title — see TITLE RULES below for the exact required structure.",
-  "category": "Legacy oilfield category slug — one of: drilling_rig | drill_pipe | drill_collar | blowout_preventer | wellhead | pumping_unit | artificial_lift | wireline | coiled_tubing | completion_equipment | production_equipment | compressor | separator | tank | flowline | electrical | safety | rental_tools | other. Use only as fallback when industry_slug/category_slug cannot be determined.",
+  "category": "Legacy oilfield category slug — one of: drilling_rig | drilling_rig_parts | drill_pipe | drill_collar | blowout_preventer | wellhead | pumping_unit | artificial_lift | wireline | coiled_tubing | completion_equipment | production_equipment | compressor | separator | tank | flowline | electrical | safety | rental_tools | other. Use only as fallback when industry_slug/category_slug cannot be determined.",
   "industry_slug": "One of the industry slugs below, or null if you cannot confidently classify the equipment.",
   "category_slug": "One of the category slugs below that belongs to the chosen industry, or null if you cannot confidently classify.",
   "manufacturer": "Manufacturer or brand name, or null if unknown",

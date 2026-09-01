@@ -25,6 +25,11 @@ import {
   type ListingTaxonomyFormValues,
 } from '@/hooks/useListingTaxonomy'
 import { useIsBelowLg } from '@/hooks/useIsBelowLg'
+import {
+  formatPriceInputValue,
+  formatPriceNumberForInput,
+  parsePriceInputValue,
+} from '@/lib/formatPrice'
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -297,7 +302,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         model: l.model ?? '',
         year: l.year != null ? String(l.year) : '',
         condition: l.condition ?? '',
-        price: l.price != null && l.price > 0 ? String(l.price) : '',
+        price: l.price != null && l.price > 0 ? formatPriceNumberForInput(l.price) : '',
         price_unit: (l as { price_unit?: string }).price_unit ?? 'total',
         price_visible: l.price_visible !== false,
         description: l.description ?? '',
@@ -323,7 +328,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
   // ── Step 2: Save fields ─────────────────────────────────────────────────────
 
   function validatePrice(): boolean {
-    if (!form.price || parseFloat(form.price) <= 0) {
+    if (!form.price || parsePriceInputValue(form.price) <= 0) {
       setPriceError('Price is required to publish your listing.')
       return false
     }
@@ -344,7 +349,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         body: JSON.stringify({
           ...form,
           ...taxonomy,
-          price: parseFloat(form.price) || 0,
+          price: parsePriceInputValue(form.price),
           year: form.year ? parseInt(form.year) : null,
         }),
       })
@@ -548,9 +553,8 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
     stepLoading
 
   const previewListing = useMemo((): ListingCardListing => {
-    const categorySlug = taxonomyData.categories.find(c => c.id === taxonomy.category_id)?.slug
-      ?? form.category
-      ?? 'other'
+    const categoryRow = taxonomyData.categories.find(c => c.id === taxonomy.category_id)
+    const categorySlug = categoryRow?.slug ?? form.category ?? 'other'
     const previewCountry = taxonomyData.countries.find(c => c.id === taxonomy.country_id)
 
     return {
@@ -558,7 +562,8 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
       slug: null,
       title: form.title || 'Untitled Draft',
       category: categorySlug,
-      price: parseFloat(form.price) || 0,
+      category_name: categoryRow?.name ?? null,
+      price: parsePriceInputValue(form.price),
       price_unit: form.price_unit,
       price_visible: form.price_visible,
       location_city: taxonomy.location_city || null,
@@ -843,15 +848,15 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                   <div className="relative flex-1">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 text-sm font-sans pointer-events-none">$</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={form.price}
                       onChange={e => {
-                        setForm(f => ({ ...f, price: e.target.value }))
+                        setForm(f => ({ ...f, price: formatPriceInputValue(e.target.value) }))
                         if (priceError) setPriceError('')
                       }}
                       className={`${inputCls} pl-7 font-mono ${priceError ? 'border-orange focus:ring-orange/20' : ''}`}
                       placeholder="0"
-                      min={0}
                     />
                   </div>
                   <SelectWrapper>
@@ -904,7 +909,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                 <textarea
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className={`${inputCls} resize-none leading-relaxed`}
+                  className={`${inputCls} resize-y leading-relaxed`}
                   style={{ minHeight: '120px' }}
                   placeholder="Detailed equipment description for buyers…"
                 />

@@ -78,10 +78,32 @@ const SOLD_STATUS_PILL = (
   </span>
 )
 
-function sortSavedListings(listings: SavedListingItem[]): SavedListingItem[] {
-  const active = listings.filter(l => l.status !== 'sold')
-  const sold = listings.filter(l => l.status === 'sold')
-  return [...active, ...sold]
+function DashboardSoldSectionDivider() {
+  return (
+    <div
+      role="separator"
+      className="border-t border-[#E8E9EA]"
+      style={{ marginTop: '32px', marginBottom: '28px' }}
+    />
+  )
+}
+
+function DashboardSoldSectionHeading({ count }: { count: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <h2
+        className="font-sans font-bold text-ink"
+        style={{ fontSize: '16px', letterSpacing: '-0.01em' }}
+      >
+        Sold
+      </h2>
+      {count > 0 && (
+        <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded-full bg-[#F0F0F0] text-ink-3">
+          {count}
+        </span>
+      )}
+    </div>
+  )
 }
 
 type FilterTab = 'all' | 'active' | 'draft' | 'sold'
@@ -958,10 +980,13 @@ export default function DashboardPage() {
   const unlimitedListings = hasUnlimitedListings(plan, hasOrganization)
 
   const filtered = activeFilter === 'all'
-    ? [...activeListings, ...unpublishedListings, ...soldListings]
+    ? [...activeListings, ...unpublishedListings]
     : activeFilter === 'draft'
       ? unpublishedListings
       : listings.filter(l => l.status === activeFilter)
+
+  const showSoldSection = activeFilter === 'all' && soldListings.length > 0
+  const primaryEmpty = filtered.length === 0 && !showSoldSection
 
   const filterTabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: listings.length },
@@ -969,6 +994,52 @@ export default function DashboardPage() {
     { key: 'draft', label: 'Drafts', count: draftCount },
     { key: 'sold', label: 'Sold', count: soldCount },
   ]
+
+  function renderMyListingCard(listing: MyListing) {
+    return (
+      <MyListingCard
+        key={listing.id}
+        listing={listing}
+        onManage={setManageListing}
+        isManaging={manageListing?.id === listing.id}
+        onCloseManage={() => setManageListing(null)}
+        onAction={handleAction}
+        onRelist={handleRelist}
+        onDelete={handleDelete}
+        onEdit={() => handleEditListing(listing)}
+        atLimit={!unlimitedListings && activeCount >= listingLimit}
+        onLimitReached={() => setShowLimitModal(true)}
+        isDeleting={deletingIds.has(listing.id)}
+        actionLoadingKey={actionLoading}
+        showPosterAttribution={hasOrgListings}
+        posterTeamTag={
+          listing.posted_by_user_id
+            ? (posterTeamTagByUserId[listing.posted_by_user_id] ?? null)
+            : null
+        }
+      />
+    )
+  }
+
+  const savedAvailable = savedListings.filter(l => l.status !== 'sold')
+  const savedSold = savedListings.filter(l => l.status === 'sold')
+
+  function renderSavedCard(listing: SavedListingItem) {
+    const isSold = listing.status === 'sold'
+    return (
+      <ListingCardLink
+        key={listing.id}
+        listing={listing}
+        isLoggedIn
+        initialSaved
+        onUnsave={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
+        statusPill={isSold ? SOLD_STATUS_PILL : undefined}
+        priceText={isSold ? 'No longer available' : undefined}
+        imageClassName={isSold ? 'grayscale' : undefined}
+        showShare={!isSold}
+      />
+    )
+  }
 
   return (
     <div className="page-shell py-8">
@@ -1044,7 +1115,7 @@ export default function DashboardPage() {
             <ListingCardGrid gap="dashboard">
               {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
             </ListingCardGrid>
-          ) : filtered.length === 0 ? (
+          ) : primaryEmpty ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-14 h-14 rounded-[14px] bg-[#F0F0F0] flex items-center justify-center mb-4">
                 <svg className="w-7 h-7 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1073,31 +1144,23 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <ListingCardGrid gap="dashboard">
-              {filtered.map(listing => (
-                <MyListingCard
-                  key={listing.id}
-                  listing={listing}
-                  onManage={setManageListing}
-                  isManaging={manageListing?.id === listing.id}
-                  onCloseManage={() => setManageListing(null)}
-                  onAction={handleAction}
-                  onRelist={handleRelist}
-                  onDelete={handleDelete}
-                  onEdit={() => handleEditListing(listing)}
-                  atLimit={!unlimitedListings && activeCount >= listingLimit}
-                  onLimitReached={() => setShowLimitModal(true)}
-                  isDeleting={deletingIds.has(listing.id)}
-                  actionLoadingKey={actionLoading}
-                  showPosterAttribution={hasOrgListings}
-                  posterTeamTag={
-                    listing.posted_by_user_id
-                      ? (posterTeamTagByUserId[listing.posted_by_user_id] ?? null)
-                      : null
-                  }
-                />
-              ))}
-            </ListingCardGrid>
+            <>
+              {filtered.length > 0 && (
+                <ListingCardGrid gap="dashboard">
+                  {filtered.map(renderMyListingCard)}
+                </ListingCardGrid>
+              )}
+
+              {showSoldSection && (
+                <>
+                  {filtered.length > 0 && <DashboardSoldSectionDivider />}
+                  <DashboardSoldSectionHeading count={soldListings.length} />
+                  <ListingCardGrid gap="dashboard">
+                    {soldListings.map(renderMyListingCard)}
+                  </ListingCardGrid>
+                </>
+              )}
+            </>
           )}
 
           {/* Click-outside backdrop — dismisses the card manage overlay */}
@@ -1143,24 +1206,23 @@ export default function DashboardPage() {
               </Link>
             </div>
           ) : (
-            <ListingCardGrid gap="dashboard" className="listing-card-grid--saved">
-              {sortSavedListings(savedListings).map(listing => {
-                const isSold = listing.status === 'sold'
-                return (
-                  <ListingCardLink
-                    key={listing.id}
-                    listing={listing}
-                    isLoggedIn
-                    initialSaved
-                    onUnsave={id => setSavedListings(prev => prev.filter(l => l.id !== id))}
-                    statusPill={isSold ? SOLD_STATUS_PILL : undefined}
-                    priceText={isSold ? 'No longer available' : undefined}
-                    imageClassName={isSold ? 'grayscale' : undefined}
-                    showShare={!isSold}
-                  />
-                )
-              })}
-            </ListingCardGrid>
+            <>
+              {savedAvailable.length > 0 && (
+                <ListingCardGrid gap="dashboard" className="listing-card-grid--saved">
+                  {savedAvailable.map(renderSavedCard)}
+                </ListingCardGrid>
+              )}
+
+              {savedSold.length > 0 && (
+                <>
+                  {savedAvailable.length > 0 && <DashboardSoldSectionDivider />}
+                  <DashboardSoldSectionHeading count={savedSold.length} />
+                  <ListingCardGrid gap="dashboard" className="listing-card-grid--saved">
+                    {savedSold.map(renderSavedCard)}
+                  </ListingCardGrid>
+                </>
+              )}
+            </>
           )}
         </>
       )}

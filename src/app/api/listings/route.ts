@@ -84,8 +84,8 @@ export async function GET(request: NextRequest) {
   // other sort/filter keeps working unchanged on a database that hasn't been
   // migrated yet.
   const SELECT_COLUMNS = isClosest
-    ? '*, listing_images(*), countries(name, iso_code), states(latitude, longitude)'
-    : '*, listing_images(*), countries(name, iso_code)'
+    ? '*, listing_images(*), countries(name, iso_code), categories(name), states(latitude, longitude)'
+    : '*, listing_images(*), countries(name, iso_code), categories(name)'
 
   // ── Helper: base query with all non-FTS filters applied ─────────────────────
   // Returns 'any' because each Supabase chain call narrows the TS return type,

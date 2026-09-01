@@ -126,7 +126,7 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                Verified Listings. Faster Matches. Real Deals.
+                The Trusted Marketplace For Heavy Equipment.
               </h1>
 
               <div

@@ -5,6 +5,10 @@ export interface ListingCardListing {
   slug: string | null
   title: string
   category: string
+  /** Preferred display name from taxonomy (preserves ampersands). */
+  category_name?: string | null
+  /** Nested taxonomy join from Supabase selects. */
+  categories?: { name: string } | null
   price: number
   price_unit: string
   price_visible: boolean | null
@@ -28,6 +32,7 @@ export function toListingCardListing(input: {
   slug: string | null
   title: string
   category: string
+  category_name?: string | null
   price: number
   price_unit: string
   price_visible: boolean | null
@@ -37,12 +42,15 @@ export function toListingCardListing(input: {
   primary_image_url?: string | null
   listing_images?: ListingCardListing['listing_images']
   countries?: ListingCardListing['countries']
+  categories?: { name: string } | null
 }): ListingCardListing {
   return {
     id: input.id,
     slug: input.slug,
     title: input.title,
     category: input.category,
+    category_name: input.category_name ?? input.categories?.name ?? null,
+    categories: input.categories ?? null,
     price: input.price,
     price_unit: input.price_unit,
     price_visible: input.price_visible,

@@ -2,6 +2,7 @@ import Image from 'next/image'
 import type { ReactNode } from 'react'
 import { formatPrice } from '@/lib/formatPrice'
 import { countryFlagClass, isNewListing } from '@/lib/listingUtils'
+import { formatListingCategoryLabel } from '@/lib/categoryResolver'
 import ListingLocationPill from '@/components/listings/ListingLocationPill'
 import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 
@@ -122,12 +123,15 @@ export default function ListingCardContent({
 
       <div style={{ padding: '17px' }}>
         <p className="font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3 mb-1.5">
-          {listing.category.replace(/_/g, ' ')}
+          {formatListingCategoryLabel(
+            listing.category,
+            listing.category_name ?? listing.categories?.name,
+          )}
         </p>
 
         <h3
           className="font-sans text-ink line-clamp-2 mb-1.5"
-          style={{ fontSize: '13px', fontWeight: 500, lineHeight: 1.35 }}
+          style={{ fontSize: '14px', fontWeight: 500, lineHeight: 1.35 }}
         >
           {listing.title}
         </h3>
@@ -135,7 +139,7 @@ export default function ListingCardContent({
         <p
           className={`font-mono mb-3${priceMuted ? ' text-ink-3' : ''}`}
           style={{
-            fontSize: '14px',
+            fontSize: '16px',
             fontWeight: 500,
             color: priceMuted ? undefined : '#FF6B35',
           }}

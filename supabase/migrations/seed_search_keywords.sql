@@ -38,6 +38,11 @@ from (values
   ('Metso',          'Crushers',                    null),
   ('NOV',            'Drilling Rigs',               null),
   ('Cameron',        'Wellhead Equipment',          null),
+  ('drawworks',      'Drilling Rig Parts',          null),
+  ('brake bands',    'Drilling Rig Parts',          null),
+  ('rig parts',      'Drilling Rig Parts',          null),
+  ('mast',           'Drilling Rig Parts',          null),
+  ('top drive',      'Drilling Rig Parts',          null),
 
   -- ── Nicknames / shorthand ─────────────────────────────────────────────────
   ('dozer',          'Crawler Dozers',              null),

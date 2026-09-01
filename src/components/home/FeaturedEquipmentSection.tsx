@@ -67,13 +67,17 @@ function toFeaturedListing(row: {
   seller_id: string
   listing_images?: ListingCardListing['listing_images']
   countries?: { name: string; iso_code: string | null } | { name: string; iso_code: string | null }[] | null
+  categories?: { name: string } | { name: string }[] | null
 }): ListingCardListing {
   const countries = Array.isArray(row.countries) ? row.countries[0] ?? null : row.countries ?? null
+  const categories = Array.isArray(row.categories) ? row.categories[0] ?? null : row.categories ?? null
   return {
     id: row.id,
     slug: row.slug,
     title: row.title,
     category: row.category,
+    category_name: categories?.name ?? null,
+    categories,
     price: row.price,
     price_unit: row.price_unit,
     price_visible: row.price_visible,
@@ -108,7 +112,7 @@ export default async function FeaturedEquipmentSection() {
     const { data: eligibleListings } = await adminClient
       .from('listings')
       .select(
-        'id, title, category, price, price_unit, price_visible, status, slug, seller_id, created_at, location_city, location_state, listing_images(url, is_primary, alt_text, sort_order), countries(name, iso_code)',
+        'id, title, category, price, price_unit, price_visible, status, slug, seller_id, created_at, location_city, location_state, listing_images(url, is_primary, alt_text, sort_order), countries(name, iso_code), categories(name)',
       )
       .eq('status', 'active')
       .order('created_at', { ascending: false })

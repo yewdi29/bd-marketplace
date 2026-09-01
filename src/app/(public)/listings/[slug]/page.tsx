@@ -14,6 +14,7 @@ import { ListingGalleryNavProvider } from './ListingGalleryNavContext'
 import MessageSellerStickyButton from './MessageSellerStickyButton'
 import ListingCard from '@/components/ListingCard'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
+import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 import ListingLocationPill from '@/components/listings/ListingLocationPill'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 import {
@@ -22,32 +23,9 @@ import {
 } from '@/lib/listings/publicVisibility'
 import { PUBLIC_SITE_URL } from '@/lib/site'
 import { buildListingProductJsonLd } from '@/lib/listings/listingJsonLd'
+import { formatListingCategoryLabel } from '@/lib/categoryResolver'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const CATEGORY_LABELS: Record<string, string> = {
-  drilling_rig: 'Drilling Rig',
-  drill_pipe: 'Drill Pipe',
-  drill_collar: 'Drill Collar',
-  blowout_preventer: 'Blowout Preventer (BOP)',
-  wellhead: 'Wellhead Equipment',
-  pumping_unit: 'Pumping Unit',
-  artificial_lift: 'Artificial Lift',
-  wireline: 'Wireline Equipment',
-  coiled_tubing: 'Coiled Tubing',
-  completion_equipment: 'Completion Equipment',
-  production_equipment: 'Production Equipment',
-  compressor: 'Compressor',
-  separator: 'Separator',
-  tank: 'Tank',
-  flowline: 'Flowline & Piping',
-  electrical: 'Electrical Equipment',
-  safety: 'Safety Equipment',
-  rental_tools: 'Rental Tools',
-  rig: 'Drilling Rig',
-  mud_pump: 'Mud Pump',
-  other: 'Other',
-}
 
 const CONDITION_LABELS: Record<string, string> = {
   new: 'New',
@@ -55,10 +33,6 @@ const CONDITION_LABELS: Record<string, string> = {
   good: 'Good',
   fair: 'Fair',
   parts_only: 'Parts Only',
-}
-
-function catLabel(val: string) {
-  return CATEGORY_LABELS[val] ?? val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 function listingCategorySearchHref(listing: {
@@ -206,7 +180,7 @@ export default async function ListingDetailPage({ params }: Props) {
   // Related listings (same category, limit 3)
   const { data: related } = await supabase
     .from('listings')
-    .select('*, listing_images(*), countries(name, iso_code)')
+    .select('*, listing_images(*), countries(name, iso_code), categories(name)')
     .eq('category', l.category)
     .eq('status', 'active')
     .neq('id', l.id)
@@ -242,7 +216,7 @@ export default async function ListingDetailPage({ params }: Props) {
   const listingLocation = [l.location_city, l.location_state, l.countries?.name].filter(Boolean).join(', ') || null
   const hasLocationPill = Boolean(l.location_city || l.location_state || l.countries?.name)
 
-  const categoryDisplayLabel = l.categories?.name ?? catLabel(l.category)
+  const categoryDisplayLabel = formatListingCategoryLabel(l.category, l.categories?.name)
   const categorySearchHref = listingCategorySearchHref(l)
 
   // Build specs array — dedicated columns first, then functional specs from JSON blob
@@ -255,7 +229,7 @@ export default async function ListingDetailPage({ params }: Props) {
     l.manufacturer? { label: 'Manufacturer', value: l.manufacturer }                                          : null,
     l.model       ? { label: 'Model',        value: l.model }                                                  : null,
     l.condition   ? { label: 'Condition',    value: condLabel(l.condition) }                                   : null,
-    { label: 'Category', value: catLabel(l.category) },
+    // Category is shown as the label above the title — never in the specs grid.
     ...functionalSpecs,
   ].filter((s): s is { label: string; value: string | number } => s !== null)
 
@@ -285,7 +259,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
         <ListingGalleryNavProvider itemCount={galleryItems.length}>
         {/* Breadcrumb (desktop) / Back + View All row (mobile, tablet) */}
-        <ListingBreadcrumb category={l.category} categoryLabel={catLabel(l.category)} title={l.title} />
+        <ListingBreadcrumb category={l.category} categoryLabel={categoryDisplayLabel} title={l.title} />
 
         {/* ── Two-column grid — gallery fills remaining space, info column fluid between 450–550px ── */}
         <div
@@ -536,7 +510,7 @@ export default async function ListingDetailPage({ params }: Props) {
               Related Listings
             </p>
             <ListingCardGrid>
-              {(related as Listing[]).map(rel => (
+              {(related as ListingCardListing[]).map(rel => (
                 <ListingCard key={rel.id} listing={rel} isLoggedIn={!!user} openInNewTab />
               ))}
             </ListingCardGrid>

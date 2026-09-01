@@ -18,11 +18,10 @@ export const SPECS_RESERVED_FIELD_KEYS = new Set([
   'model',
   'condition',
   'category',
-])
-
-const SPECS_EXCLUDED_FROM_DISPLAY = new Set([
-  ...Array.from(SPECS_INTERNAL_KEYS),
-  ...Array.from(SPECS_RESERVED_FIELD_KEYS),
+  'equipment category',
+  'listing category',
+  'product category',
+  'category name',
 ])
 
 function normalizeSpecKey(key: string): string {
@@ -30,7 +29,11 @@ function normalizeSpecKey(key: string): string {
 }
 
 export function isReservedSpecKey(key: string): boolean {
-  return SPECS_RESERVED_FIELD_KEYS.has(normalizeSpecKey(key))
+  const normalized = normalizeSpecKey(key)
+  if (SPECS_RESERVED_FIELD_KEYS.has(normalized)) return true
+  // Catch "Category", "Equipment Category", etc. even with punctuation
+  const compact = normalized.replace(/[^a-z0-9]/g, '')
+  return compact === 'category' || compact.endsWith('category')
 }
 
 export function isInternalSpecKey(key: string): boolean {
@@ -50,7 +53,7 @@ export function sanitizeAiSpecs(
       cleaned[key] = String(value)
       continue
     }
-    if (SPECS_RESERVED_FIELD_KEYS.has(normalized)) continue
+    if (isReservedSpecKey(key)) continue
     const trimmed = value != null ? String(value).trim() : ''
     if (!trimmed) continue
     cleaned[key] = trimmed
@@ -87,7 +90,7 @@ export function getFunctionalSpecsEntries(
 
   return Object.entries(specs)
     .filter(([key, value]) => {
-      if (SPECS_EXCLUDED_FROM_DISPLAY.has(normalizeSpecKey(key))) return false
+      if (isReservedSpecKey(key) || isInternalSpecKey(key)) return false
       return value != null && String(value).trim() !== ''
     })
     .map(([key, value]) => ({ label: key, value: String(value) }))

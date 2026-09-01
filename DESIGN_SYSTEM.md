@@ -272,19 +272,14 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Card: `border-radius: 12px`, `overflow: hidden`, design base width `225px`
 - Thumbnail: height = 60% of card width (`padding-bottom: 60%`, 135px at base), `border-radius: 12px 12px 0 0`, `object-cover`
 - Content padding: `10px` all sides
-- Title: `13px`, `font-weight: 500`, `line-height: 1.35`
-- Price: `14px`, `font-weight: 500`, `#FF6B35`
+- Title: `14px`, `font-weight: 500`, `line-height: 1.35`
+- Price: `16px`, `font-weight: 500`, `#FF6B35`
 - Category label + location pill + save button: unchanged (location pill flag: `20×20px` circle, `5px` gap to text)
 - Grid wrapper: `ListingCardGrid` → `.listing-card-grid` in `globals.css`
 - **Save/heart button:** top-right of image, `w-8 h-8` white circle — browse cards only (`showSave` prop)
 - Badges overlay top-left of image: only "BD Verified" badge appears (when `listing.featured = true`), using orange badge styling
 - **No "New Listing" badge on public listing cards** — it appears on the detail page only
 - Category label: `font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3`
-- Title: `font-sans text-[15px] font-semibold text-ink` — note semibold not bold
-- Price: `font-mono text-[15px] font-medium text-ink` — in `--text` (dark), not orange
-- "Contact for price": `text-[12px] font-sans text-ink-3 italic`
-- Location + Condition: `text-[13px] font-sans text-ink-3`, separated by `·` divider in `#E8E9EA`
-- Tags row: `px-2 py-0.5 bg-bg border border-[#E8E9EA] rounded-pill text-[11px] font-sans text-ink-3` — shows manufacturer, year, "Negotiable"
 
 ### Badges
 
@@ -479,7 +474,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 #### Section-specific notes
 - Hero on frosted glass card surface inside hero grid (see §8 glassmorphism exception)
 - Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot — copy: “For equipment buyers & sellers”
-- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “Verified Listings. Faster Matches. Real Deals.”
+- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “The Trusted Marketplace For Heavy Equipment.”
 - **Hero CTAs:** below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, `px-6 py-2.5 text-sm` pills matching Button `md` (`heroCtaClasses.ts`)
 - **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
 - **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
@@ -532,6 +527,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - Header: H2 `font-bold text-2xl -0.02em` + orange "New Listing" button right
 - Plan usage line (free plan only): `font-mono` fraction in `text-ink-3`
 - Filter tab pills row (All / Active / Drafts / Sold) with count chips
+- **All / Saved sectioning:** Active + Drafts (or available saved) first; light gray hairline (`border-[#E8E9EA]`) then a **Sold** section with count chip when sold listings exist
 - Card grid: `.listing-card-grid` / `ListingCardGrid` — fixed 1–5 columns by breakpoint, 225px card design base
 - Dashboard listing cards: shared `ListingCard` with status badge overlay + Manage footer, same 4:3 thumbnail
 - Status badge colors: Active = green, Draft = neutral gray, Unpublished = gold, Sold = red
@@ -618,6 +614,9 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.52 | September 2026 | **Dashboard sold sections.** My Listings (All) and Saved Equipment show sold listings in a separate section below Active/Drafts (or available saved), with a light gray `#E8E9EA` horizontal separator and a Sold heading + count chip. |
+| v2.51 | September 2026 | **Listing card type scale.** Card title `13px` → `14px`; price `14px` → `16px` (shared `ListingCardContent`). |
+| v2.50 | August 2026 | **Homepage hero title.** H1 set to “The Trusted Marketplace For Heavy Equipment.” (title case, all ink/black, no orange spans). |
 | v2.49 | August 2026 | **Structured data fixes.** Listing Product JSON-LD: never emit numeric `offers.price` for contact-for-price (`price_visible` false / zero); use Offer + `PriceSpecification` “Price on request”. Enrich with `image`, `brand`, `itemCondition`, `category`, `offers.url`. Operator Journal `/journal/[slug]` adds schema.org `Article` JSON-LD. |
 | v2.48 | August 2026 | **Voice-reactive dictation waveform.** Recording bars driven by Web Audio `AnalyserNode` on the live mic stream (RMS + speech-band frequency buckets) instead of a CSS loop. |
 | v2.47 | August 2026 | **Voice dictation redesign.** Mic control moved below the Describe prompt (outside the textarea). Idle circle larger (`48px`). Tap-to-toggle on mobile and desktop (hold-to-speak removed). Recording: red `#DC2626` active state with waveform — mobile stretches full-width with “Stop recording”; desktop grows the circle with an in-circle wave. Smooth width/color/radius transitions. |

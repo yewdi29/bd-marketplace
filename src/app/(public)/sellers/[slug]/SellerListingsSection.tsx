@@ -21,18 +21,23 @@ const PAGE_SIZE = 9
 
 type SellerListing = Listing & {
   countries?: ListingCardListing['countries'] | ListingCardListing['countries'][] | null
+  categories?: { name: string } | { name: string }[] | null
 }
 
 function toSellerListingCard(listing: SellerListing): ListingCardListing {
   const countries = Array.isArray(listing.countries)
     ? listing.countries[0] ?? null
     : listing.countries ?? null
+  const categories = Array.isArray(listing.categories)
+    ? listing.categories[0] ?? null
+    : listing.categories ?? null
 
   return toListingCardListing({
     id: listing.id,
     slug: listing.slug,
     title: listing.title,
     category: listing.category,
+    categories,
     price: listing.price,
     price_unit: listing.price_unit,
     price_visible: listing.price_visible,
