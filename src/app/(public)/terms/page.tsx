@@ -6,7 +6,7 @@ import {
 } from '@/lib/organizations/enterpriseTerms'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — Black Diamond Marketplace',
+  title: 'Terms of Service',
   description: 'The terms and conditions governing your use of Black Diamond Marketplace.',
 }
 

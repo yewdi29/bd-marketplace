@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
+import { generateUniqueUserCompanySlug } from '@/lib/sellers/companySlug'
 
 function makeClients(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   const authClient = createServerClient(
@@ -14,41 +15,6 @@ function makeClients(cookieStore: Awaited<ReturnType<typeof cookies>>) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
   return { authClient, adminClient }
-}
-
-// Convert a company name to a URL-safe slug
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-// Generate a unique company slug — appends a random 4-char suffix if taken
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function generateUniqueSlug(
-  adminClient: any,
-  companyName: string,
-  currentUserId: string
-): Promise<string> {
-  const base = slugify(companyName)
-  if (!base) return ''
-
-  const { data: existing } = await adminClient
-    .from('users')
-    .select('id')
-    .eq('company_slug', base)
-    .neq('id', currentUserId)
-    .maybeSingle()
-
-  if (!existing) return base
-
-  // Collision — append a short random suffix
-  const suffix = Math.random().toString(36).slice(2, 6)
-  return `${base}-${suffix}`
 }
 
 // ─── GET /api/users/me ────────────────────────────────────────────────────────
@@ -89,16 +55,35 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
+  // Enterprise members use Organization Company Profile for public brand
+  if ('company_name' in body) {
+    const { data: membership } = await adminClient
+      .from('org_members')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (membership) {
+      return NextResponse.json(
+        { error: 'Company profile is managed in Organization settings for enterprise accounts' },
+        { status: 403 },
+      )
+    }
+  }
+
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   for (const field of ALLOWED_FIELDS) {
     if (field in body) updates[field] = body[field] ?? null
   }
 
-  // Auto-generate company_slug whenever company_name is updated
   if ('company_name' in body && typeof body.company_name === 'string' && body.company_name.trim()) {
-    updates.company_slug = await generateUniqueSlug(adminClient, body.company_name.trim(), user.id)
+    updates.company_slug = await generateUniqueUserCompanySlug(
+      adminClient,
+      body.company_name.trim(),
+      user.id,
+    )
   } else if ('company_name' in body && !body.company_name) {
-    // Company name cleared — also clear the slug
     updates.company_slug = null
   }
 

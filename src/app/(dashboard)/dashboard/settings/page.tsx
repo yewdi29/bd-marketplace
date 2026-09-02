@@ -9,6 +9,9 @@ import { useRouter } from 'next/navigation'
 import type { MembershipPlan } from '@/lib/types/database'
 import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
 import { DashboardSettingsShell } from '@/components/dashboard/DashboardSettingsShell'
+import PasswordStrengthField from '@/components/auth/PasswordStrengthField'
+import PasswordInput from '@/components/auth/PasswordInput'
+import { passwordMeetsRequirements } from '@/lib/auth/passwordRequirements'
 import type { OrgMembership } from '@/lib/organizations/auth'
 import {
   managerHasBillingAccess,
@@ -173,6 +176,13 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+
+  const canUpdatePassword =
+    currentPassword.length > 0 &&
+    passwordMeetsRequirements(newPassword) &&
+    confirmPassword.length > 0 &&
+    newPassword === confirmPassword &&
+    newPassword !== currentPassword
 
   useEffect(() => {
     async function load() {
@@ -348,25 +358,26 @@ export default function SettingsPage() {
       setPasswordError('New passwords do not match')
       return
     }
-    if (newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters')
+    if (!passwordMeetsRequirements(newPassword)) {
+      setPasswordError(
+        'Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol.',
+      )
       return
     }
 
     setSavingPassword(true)
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: profile?.email ?? '',
-        password: currentPassword,
+      const res = await fetch('/api/users/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
       })
-      if (signInError) {
-        setPasswordError('Current password is incorrect')
-        return
-      }
-
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
-      if (updateError) {
-        setPasswordError(updateError.message)
+      const data = await res.json() as { error?: string }
+      if (!res.ok) {
+        setPasswordError(data.error ?? 'Failed to update password')
         return
       }
 
@@ -481,15 +492,15 @@ export default function SettingsPage() {
                       <Image
                         src={orgOrganization.logo_url}
                         alt=""
-                        width={72}
-                        height={72}
-                        className="rounded-[12px] object-cover"
+                        width={112}
+                        height={112}
+                        className="rounded-[14px] object-cover"
                       />
                     ) : (
                       <CompanyAvatar
                         logoUrl={null}
                         companyName={orgOrganization.name}
-                        size={72}
+                        size={112}
                       />
                     )}
                   </div>
@@ -539,8 +550,8 @@ export default function SettingsPage() {
                 <div className="relative shrink-0">
                   {logoUploading ? (
                     <div
-                      className="w-[72px] h-[72px] bg-[#F7F8F9] border border-[#E8E9EA] flex items-center justify-center"
-                      style={{ borderRadius: '12px' }}
+                      className="w-[112px] h-[112px] bg-[#F7F8F9] border border-[#E8E9EA] flex items-center justify-center"
+                      style={{ borderRadius: '14px' }}
                     >
                       <svg className="w-5 h-5 animate-spin text-orange" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -551,7 +562,7 @@ export default function SettingsPage() {
                     <CompanyAvatar
                       logoUrl={logoUrl}
                       companyName={companyName || null}
-                      size={72}
+                      size={112}
                     />
                   )}
                 </div>
@@ -662,44 +673,45 @@ export default function SettingsPage() {
           </p>
 
           <div className="mb-4">
-            <label className={labelClass}>Current Password</label>
-            <input
-              type="password"
+            <PasswordInput
+              id="current-password"
+              label="Current Password"
               value={currentPassword}
-              onChange={e => setCurrentPassword(e.target.value)}
+              onChange={setCurrentPassword}
               placeholder="Enter your current password"
-              className={inputClass}
               autoComplete="current-password"
             />
           </div>
 
           <div className="mb-4">
-            <label className={labelClass}>New Password</label>
-            <input
-              type="password"
+            <PasswordStrengthField
+              id="new-password"
+              label="New Password"
               value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              placeholder="Min. 8 characters"
-              className={inputClass}
+              onChange={setNewPassword}
+              placeholder="Create a strong password"
               autoComplete="new-password"
             />
           </div>
 
           <div className="mb-6">
-            <label className={labelClass}>Confirm New Password</label>
-            <input
-              type="password"
+            <PasswordInput
+              id="confirm-new-password"
+              label="Confirm New Password"
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              onChange={setConfirmPassword}
               placeholder="Re-enter new password"
-              className={inputClass}
               autoComplete="new-password"
             />
           </div>
 
           {passwordError && <ErrorBanner message={passwordError} />}
 
-          <SaveButton loading={savingPassword} label="Update Password" />
+          <SaveButton
+            loading={savingPassword}
+            disabled={!canUpdatePassword}
+            label="Update Password"
+          />
         </section>
       </form>
 

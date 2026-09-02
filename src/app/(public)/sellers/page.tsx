@@ -1,34 +1,17 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
-
-export const dynamic = 'force-dynamic'
-import type { MembershipPlan } from '@/lib/types/database'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 import BusinessDirectoryGate from '@/components/sellers/BusinessDirectoryGate'
 import { getDirectoryAccess } from '@/lib/directoryAccess'
+import { loadDirectorySellerEntries, type DirectorySellerEntry } from '@/lib/sellers/directoryEntries'
 
-// ─── Metadata ─────────────────────────────────────────────────────────────────
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Business Directory | Black Diamond Marketplace',
+  title: 'Business Directory',
   description: 'Browse verified equipment sellers on Black Diamond Marketplace — oil and gas equipment dealers, rental companies, and rig operators.',
 }
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface SellerRow {
-  id: string
-  company_name: string | null
-  company_logo_url: string | null
-  company_slug: string | null
-  city: string | null
-  state: string | null
-  plan: MembershipPlan
-  active_count: number
-}
-
-// ─── Admin client ─────────────────────────────────────────────────────────────
 
 function getAdminClient() {
   return createClient(
@@ -37,8 +20,6 @@ function getAdminClient() {
     { global: { fetch: (url, opts = {}) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name: string | null): string {
   if (!name) return '?'
@@ -49,9 +30,7 @@ function getInitials(name: string | null): string {
     .join('')
 }
 
-// ─── Seller Card ──────────────────────────────────────────────────────────────
-
-function SellerCard({ seller }: { seller: SellerRow }) {
+function SellerCard({ seller }: { seller: DirectorySellerEntry }) {
   const locationText = [seller.city, seller.state].filter(Boolean).join(', ')
   const initials = getInitials(seller.company_name)
 
@@ -62,7 +41,6 @@ function SellerCard({ seller }: { seller: SellerRow }) {
       style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
     >
       <div className="flex items-center gap-4 mb-4">
-        {/* Logo / initials */}
         {seller.company_logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -82,7 +60,6 @@ function SellerCard({ seller }: { seller: SellerRow }) {
           </div>
         )}
 
-        {/* Name + badge */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
             <p
@@ -102,7 +79,6 @@ function SellerCard({ seller }: { seller: SellerRow }) {
         </div>
       </div>
 
-      {/* Active listing count */}
       <div
         className="flex items-center justify-between pt-3"
         style={{ borderTop: '1px solid #F0F1F2' }}
@@ -118,8 +94,6 @@ function SellerCard({ seller }: { seller: SellerRow }) {
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default async function SellersDirectoryPage() {
   const access = await getDirectoryAccess()
   if (!access.allowed) {
@@ -127,73 +101,12 @@ export default async function SellersDirectoryPage() {
   }
 
   const admin = getAdminClient()
-
-  // Fetch all users who have at least one active listing and a company_slug
-  // We join via a subquery-style approach: get sellers with active listings
-  const { data: sellers } = await admin
-    .from('users')
-    .select('id, company_name, company_logo_url, company_slug, city, state, plan')
-    .not('company_slug', 'is', null)
-    .not('company_name', 'is', null)
-    .order('company_name', { ascending: true })
-
-  if (!sellers || sellers.length === 0) {
-    return (
-      <div className="bg-bg min-h-screen pb-20">
-        <div className="page-shell py-12 text-center">
-          <p className="font-sans text-ink-3">No sellers found.</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Fetch active listing counts for each seller in one query
-  const { data: listingCounts } = await admin
-    .from('listings')
-    .select('seller_id')
-    .eq('status', 'active')
-    .in('seller_id', sellers.map(s => s.id))
-
-  const countMap: Record<string, number> = {}
-  for (const row of listingCounts ?? []) {
-    countMap[row.seller_id] = (countMap[row.seller_id] ?? 0) + 1
-  }
-
-  // Priority map — max first, free last. premium kept for legacy rows.
-  const planPriority: Record<string, number> = {
-    max: 1,
-    pro: 2,
-    premium: 2, // legacy
-    starter: 3,
-    free: 4,
-  }
-
-  // Filter to sellers who have at least 1 active listing, then sort by tier → active count
-  const sellerRows: SellerRow[] = sellers
-    .filter(s => (countMap[s.id] ?? 0) > 0 && s.company_slug)
-    .map(s => ({
-      id: s.id,
-      company_name: s.company_name,
-      company_logo_url: s.company_logo_url,
-      company_slug: s.company_slug,
-      city: s.city,
-      state: s.state,
-      plan: s.plan as MembershipPlan,
-      active_count: countMap[s.id] ?? 0,
-    }))
-    .sort((a, b) => {
-      const tierDiff = (planPriority[a.plan] ?? 4) - (planPriority[b.plan] ?? 4)
-      if (tierDiff !== 0) return tierDiff
-      return b.active_count - a.active_count
-    })
-
-  const totalListings = Object.values(countMap).reduce((s, n) => s + n, 0)
+  const sellerRows = await loadDirectorySellerEntries(admin)
+  const totalListings = sellerRows.reduce((sum, row) => sum + row.active_count, 0)
 
   return (
     <div className="bg-bg min-h-screen pb-20">
       <div className="page-shell py-8">
-
-        {/* ── Page header ── */}
         <div className="mb-8">
           <p
             className="font-mono uppercase text-ink-3 mb-2"
@@ -212,7 +125,6 @@ export default async function SellersDirectoryPage() {
           </p>
         </div>
 
-        {/* ── Grid ── */}
         {sellerRows.length === 0 ? (
           <div
             className="bg-white border border-[#E8E9EA] rounded-[16px] py-20 text-center"
@@ -232,12 +144,11 @@ export default async function SellersDirectoryPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sellerRows.map(seller => (
-              <SellerCard key={seller.id} seller={seller} />
+              <SellerCard key={`${seller.kind}-${seller.id}`} seller={seller} />
             ))}
           </div>
         )}
 
-        {/* ── CTA: Browse listings ── */}
         <div className="mt-10 text-center">
           <Link
             href="/search"
@@ -249,7 +160,6 @@ export default async function SellersDirectoryPage() {
             Browse all equipment
           </Link>
         </div>
-
       </div>
     </div>
   )

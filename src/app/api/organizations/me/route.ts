@@ -28,7 +28,7 @@ export async function GET() {
 
   const { data: organization, error } = await supabase
     .from('organizations')
-    .select('id, name, logo_url, description, base_seat_count, preferred_payment_method, stripe_customer_id, stripe_subscription_id, billing_interval, last_billing_failure_at, last_billing_failure_message')
+    .select('id, name, slug, logo_url, description, base_seat_count, preferred_payment_method, stripe_customer_id, stripe_subscription_id, billing_interval, last_billing_failure_at, last_billing_failure_message')
     .eq('id', membership.organization_id)
     .single()
 

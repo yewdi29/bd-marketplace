@@ -38,6 +38,7 @@ interface Membership {
 interface Organization {
   id: string
   name: string
+  slug?: string | null
   logo_url: string | null
   description: string | null
   base_seat_count: number
@@ -511,6 +512,11 @@ export default function OrganizationPageClient() {
     || searchParams.get('payment_setup') === 'success'
   const managerLocations = normalizeTeamLocations(membership?.team_tag)
 
+  const profileIsDirty = organization != null && (
+    profileName !== organization.name ||
+    profileDescription !== (organization.description ?? '')
+  )
+
   const existingLocations = useMemo(
     () => collectDistinctLocations(members),
     [members],
@@ -843,12 +849,12 @@ export default function OrganizationPageClient() {
                   <Image
                     src={organization.logo_url}
                     alt=""
-                    width={72}
-                    height={72}
-                    className="rounded-[12px] object-cover"
+                    width={112}
+                    height={112}
+                    className="rounded-[14px] object-cover"
                   />
                 ) : (
-                  <div className="w-[72px] h-[72px] rounded-[12px] bg-[#F7F8F9] border border-[#E8E9EA]" />
+                  <div className="w-[112px] h-[112px] rounded-[14px] bg-[#F7F8F9] border border-[#E8E9EA]" />
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
@@ -885,12 +891,12 @@ export default function OrganizationPageClient() {
 
             <button
               type="submit"
-              disabled={savingProfile}
+              disabled={savingProfile || !profileIsDirty}
               className="px-6 py-2.5 text-sm font-bold text-white rounded-pill transition-colors disabled:cursor-not-allowed"
               style={{
-                background: savingProfile ? '#E8E9EA' : '#FF6B35',
-                color: savingProfile ? '#9A9DA2' : '#FFFFFF',
-                boxShadow: savingProfile ? 'none' : '0 4px 16px rgba(255,107,53,0.25)',
+                background: savingProfile || !profileIsDirty ? '#E8E9EA' : '#FF6B35',
+                color: savingProfile || !profileIsDirty ? '#9A9DA2' : '#FFFFFF',
+                boxShadow: savingProfile || !profileIsDirty ? 'none' : '0 4px 16px rgba(255,107,53,0.25)',
               }}
             >
               {savingProfile ? 'Saving…' : 'Save profile'}

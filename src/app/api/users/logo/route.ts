@@ -24,6 +24,20 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: membership } = await adminClient
+    .from('org_members')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (membership) {
+    return NextResponse.json(
+      { error: 'Company logo is managed in Organization settings for enterprise accounts' },
+      { status: 403 },
+    )
+  }
+
   // Parse multipart form
   let formData: FormData
   try {
@@ -97,6 +111,20 @@ export async function DELETE() {
 
   const { data: { user } } = await authClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: membership } = await adminClient
+    .from('org_members')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (membership) {
+    return NextResponse.json(
+      { error: 'Company logo is managed in Organization settings for enterprise accounts' },
+      { status: 403 },
+    )
+  }
 
   // Clear the URL from the users table
   const { error } = await adminClient

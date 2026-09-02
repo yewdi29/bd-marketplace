@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Black Diamond Marketplace',
+  title: 'Privacy Policy',
   description: 'How Black Diamond Marketplace collects, uses, and protects your information.',
 }
 

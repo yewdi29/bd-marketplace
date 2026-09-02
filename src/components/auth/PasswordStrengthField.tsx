@@ -16,6 +16,7 @@ type PasswordStrengthFieldProps = {
   placeholder?: string
   autoComplete?: string
   required?: boolean
+  disabled?: boolean
 }
 
 export default function PasswordStrengthField({
@@ -26,6 +27,7 @@ export default function PasswordStrengthField({
   placeholder = 'Create a strong password',
   autoComplete = 'new-password',
   required = true,
+  disabled = false,
 }: PasswordStrengthFieldProps) {
   const checks = getPasswordChecks(value)
   const strength = getPasswordStrength(value)
@@ -43,6 +45,7 @@ export default function PasswordStrengthField({
         autoComplete={autoComplete}
         required={required}
         minLength={8}
+        disabled={disabled}
       />
 
       {showHints && (

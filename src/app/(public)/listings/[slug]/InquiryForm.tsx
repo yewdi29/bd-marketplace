@@ -176,10 +176,6 @@ export default function InquiryForm({ listingId, sellerId }: Props) {
           {loading ? 'Sending…' : 'Send Inquiry'}
         </button>
       </fieldset>
-
-      <p className="text-center font-sans text-ink-3" style={{ fontSize: '11px' }}>
-        Your info is only shared with the seller
-      </p>
     </form>
   )
 }

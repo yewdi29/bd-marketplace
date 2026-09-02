@@ -503,7 +503,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 - Pills row (detail title card): Condition = green badge, Location = blue badge, New Listing = green badge
 - Specs grid: 2-column, `font-mono text-[12px] uppercase tracking-[0.08em] text-ink-3` label, `font-mono text-sm font-bold text-ink` value
 - Description: `font-sans text-ink-2 14px line-height: 1.8`
-- Related listings: 4-column fixed grid `repeat(4, 1fr) gap-4` — uses standard ListingCard
+- Related listings: same public grid as Featured / Search / Seller (`.listing-card-grid--related` — 1 / 2 / 3 columns) so card dimensions match the global listing card design
 - JSON-LD Product schema injected via `<script type="application/ld+json">` — includes `image`, `brand`, `itemCondition`, `category`, `offers.url`; contact-for-price listings use Offer + `PriceSpecification` (`description: "Price on request"`) with **no** numeric `price`
 - Dynamic OG metadata via `generateMetadata`
 
@@ -614,6 +614,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.54 | September 2026 | **Related listings card size.** Product-page Related Listings uses `.listing-card-grid--related` (same 1/2/3-column breakpoints as Featured / Search / Seller) so cards match global listing card dimensions instead of the denser default 4–5 column grid. |
 | v2.53 | September 2026 | **Homepage hero title wrap.** Desktop (`≥1000px`): forced break before “Heavy Equipment.” with nowrap. Below 1000px: natural wrap only (no forced break) to avoid mobile overflow. |
 | v2.52 | September 2026 | **Dashboard sold sections.** My Listings (All) and Saved Equipment show sold listings in a separate section below Active/Drafts (or available saved), with a light gray `#E8E9EA` horizontal separator and a Sold heading + count chip. |
 | v2.51 | September 2026 | **Listing card type scale.** Card title `13px` → `14px`; price `14px` → `16px` (shared `ListingCardContent`). |

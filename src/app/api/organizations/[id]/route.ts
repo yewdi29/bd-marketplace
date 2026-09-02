@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { requireOrgProfileEdit } from '@/lib/organizations/auth'
+import { generateUniqueOrganizationSlug } from '@/lib/sellers/companySlug'
+
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -23,6 +32,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Organization name is required' }, { status: 400 })
     }
     updates.name = name
+    updates.slug = await generateUniqueOrganizationSlug(getServiceClient(), name, params.id)
   }
   if (body.description !== undefined) {
     updates.description = body.description?.trim() || null
@@ -32,12 +42,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'No updates provided' }, { status: 400 })
   }
 
+  updates.updated_at = new Date().toISOString()
+
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('organizations')
     .update(updates)
     .eq('id', params.id)
-    .select('id, name, logo_url, description, base_seat_count, preferred_payment_method')
+    .select('id, name, slug, logo_url, description, base_seat_count, preferred_payment_method')
     .single()
 
   if (error) {

@@ -21,6 +21,7 @@ export type EmailTemplateType =
   | 'Welcome'
   | 'AuthConfirmation'
   | 'AuthPasswordReset'
+  | 'PasswordChanged'
   | 'ListingLimitUpsell'
   | 'SubscriptionConfirmed'
   | 'PaymentFailed'

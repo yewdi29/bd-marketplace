@@ -2,33 +2,20 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
-import type { Listing, MembershipPlan } from '@/lib/types/database'
 import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 import CompanyAvatar from '@/components/ui/CompanyAvatar'
 import NewsletterSection from '@/components/NewsletterSection'
 import SellerListingsSection from './SellerListingsSection'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface SellerProfile {
-  id: string
-  company_name: string | null
-  company_logo_url: string | null
-  company_slug: string | null
-  city: string | null
-  state: string | null
-  country: string | null
-  plan: MembershipPlan
-  created_at: string
-}
+import {
+  loadPublicSellerListings,
+  resolvePublicSellerBySlug,
+} from '@/lib/sellers/publicSellerProfile'
 
 interface Props {
   params: Promise<{ slug: string }>
 }
 
 export const dynamic = 'force-dynamic'
-
-// ─── Admin client (server-side only) ─────────────────────────────────────────
 
 function getAdminClient() {
   return createClient(
@@ -38,100 +25,55 @@ function getAdminClient() {
   )
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function formatMemberSince(createdAt: string): string {
   return new Date(createdAt)
     .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     .toUpperCase()
 }
 
-function getInitials(companyName: string | null): string {
-  if (!companyName) return '?'
-  return companyName
-    .split(/\s+/)
-    .slice(0, 2)
-    .map(w => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-// ─── Metadata ─────────────────────────────────────────────────────────────────
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const admin = getAdminClient()
-  const { data } = await admin
-    .from('users')
-    .select('company_name, city, state, company_logo_url')
-    .eq('company_slug', slug)
-    .maybeSingle()
+  const profile = await resolvePublicSellerBySlug(admin, slug)
 
-  if (!data?.company_name) return { title: 'Seller Not Found | Black Diamond Marketplace' }
+  if (!profile?.company_name) return { title: 'Seller Not Found' }
 
-  const location = [data.city, data.state].filter(Boolean).join(', ')
+  const location = [profile.city, profile.state].filter(Boolean).join(', ')
   const description = location
-    ? `Browse equipment listings from ${data.company_name} on Black Diamond Marketplace — ${location}.`
-    : `Browse equipment listings from ${data.company_name} on Black Diamond Marketplace.`
+    ? `Browse equipment listings from ${profile.company_name} on Black Diamond Marketplace — ${location}.`
+    : `Browse equipment listings from ${profile.company_name} on Black Diamond Marketplace.`
 
   return {
-    title: `${data.company_name} | Black Diamond Marketplace`,
+    title: profile.company_name,
     description,
     openGraph: {
-      title: data.company_name,
+      title: profile.company_name,
       description,
-      images: data.company_logo_url ? [{ url: data.company_logo_url }] : [],
+      images: profile.company_logo_url ? [{ url: profile.company_logo_url }] : [],
       type: 'website',
     },
   }
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default async function SellerProfilePage({ params }: Props) {
   const { slug } = await params
   const admin = getAdminClient()
 
-  // Fetch seller by company_slug — never expose user ID in the URL
-  const { data: seller } = await admin
-    .from('users')
-    .select('id, company_name, company_logo_url, company_slug, city, state, country, plan, created_at')
-    .eq('company_slug', slug)
-    .maybeSingle()
+  const profile = await resolvePublicSellerBySlug(admin, slug)
+  if (!profile) notFound()
 
-  if (!seller) notFound()
+  const { active: activeListings, sold: soldListings } = await loadPublicSellerListings(admin, profile)
 
-  const profile = seller as SellerProfile
-
-  // Fetch active and sold listings in parallel
-  const [{ data: activeListings }, { data: soldListings }] = await Promise.all([
-    admin
-      .from('listings')
-      .select('*, listing_images(*), countries(name, iso_code), categories(name)')
-      .eq('seller_id', profile.id)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false }),
-    admin
-      .from('listings')
-      .select('*, listing_images(*), countries(name, iso_code), categories(name)')
-      .eq('seller_id', profile.id)
-      .eq('status', 'sold')
-      .order('updated_at', { ascending: false }),
-  ])
-
-  // Require at least one active listing to show the profile publicly
-  if (!activeListings || activeListings.length === 0) notFound()
+  if (activeListings.length === 0) notFound()
 
   const activeCount = activeListings.length
-  const soldCount = soldListings?.length ?? 0
+  const soldCount = soldListings.length
   const locationText = [profile.city, profile.state].filter(Boolean).join(', ')
-  const initials = getInitials(profile.company_name)
   const memberSince = formatMemberSince(profile.created_at)
 
   return (
     <div className="bg-bg min-h-screen pb-20">
       <div className="page-shell py-6">
-
-        {/* ── Breadcrumb ── */}
         <div className="flex items-center gap-2 mb-6" style={{ fontSize: '12px' }}>
           <Link href="/sellers" className="text-ink-3 hover:text-ink transition-colors font-sans">
             Business Directory
@@ -142,25 +84,19 @@ export default async function SellerProfilePage({ params }: Props) {
           </span>
         </div>
 
-        {/* ── Profile header card ── */}
         <div
           className="bg-white border border-[#E8E9EA] rounded-[20px] mb-6"
           style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.05)', padding: '28px 32px' }}
         >
           <div className="flex items-start justify-between gap-6 flex-wrap">
-
-            {/* Left: logo + info */}
             <div className="flex items-center gap-5 min-w-0">
-              {/* 80px rounded-rect logo / initials */}
               <CompanyAvatar
                 logoUrl={profile.company_logo_url}
                 companyName={profile.company_name}
-                size={80}
+                size={112}
               />
 
-              {/* Info */}
               <div className="min-w-0">
-                {/* Company name + BD Verified badge */}
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <h1
                     className="font-sans font-bold text-ink leading-tight"
@@ -171,14 +107,18 @@ export default async function SellerProfilePage({ params }: Props) {
                   <BDVerifiedBadge plan={profile.plan} size="md" />
                 </div>
 
-                {/* Location */}
                 {locationText && (
                   <p className="font-sans mb-1.5" style={{ fontSize: '13px', color: '#9A9DA2' }}>
                     {locationText}
                   </p>
                 )}
 
-                {/* Member since */}
+                {profile.description && (
+                  <p className="font-sans mb-1.5 max-w-2xl" style={{ fontSize: '13px', color: '#5C5F66' }}>
+                    {profile.description}
+                  </p>
+                )}
+
                 <p
                   className="font-mono uppercase"
                   style={{ fontSize: '11px', color: '#B0B0B8', letterSpacing: '0.06em' }}
@@ -187,10 +127,8 @@ export default async function SellerProfilePage({ params }: Props) {
                 </p>
               </div>
             </div>
-
           </div>
 
-          {/* Stats strip */}
           <div className="flex items-center gap-8 mt-6 pt-5 border-t border-[#F0F1F2]">
             <div>
               <p className="font-mono font-bold text-ink" style={{ fontSize: '20px' }}>{activeCount}</p>
@@ -205,14 +143,12 @@ export default async function SellerProfilePage({ params }: Props) {
           </div>
         </div>
 
-        {/* ── Listings section (client — tabs, sort, pagination) ── */}
         <SellerListingsSection
-          activeListings={activeListings as Listing[]}
-          soldListings={(soldListings ?? []) as Listing[]}
+          activeListings={activeListings}
+          soldListings={soldListings}
         />
 
         <NewsletterSection source="seller_profile" className="!pb-0" />
-
       </div>
     </div>
   )

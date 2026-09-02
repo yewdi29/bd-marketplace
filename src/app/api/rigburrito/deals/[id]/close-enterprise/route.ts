@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAdminApi } from '@/lib/rigburrito/auth'
 import { createOrganizationStripeCustomer } from '@/lib/stripe/enterpriseSubscription'
+import { generateUniqueOrganizationSlug } from '@/lib/sellers/companySlug'
 import { createPrimaryOwnerInvite } from '@/lib/organizations/createPrimaryOwnerInvite'
 import { parseEnterpriseMetadata } from '@/lib/organizations/enterpriseDealMetadata'
 
@@ -71,10 +72,12 @@ export async function POST(
     return NextResponse.json({ error: 'Deal is already linked to an organization' }, { status: 400 })
   }
 
+  const orgSlug = await generateUniqueOrganizationSlug(service, organizationName)
+
   const { data: orgRow, error: orgError } = await service
     .from('organizations')
-    .insert({ name: organizationName })
-    .select('id, name')
+    .insert({ name: organizationName, slug: orgSlug })
+    .select('id, name, slug')
     .single()
 
   if (orgError || !orgRow) {

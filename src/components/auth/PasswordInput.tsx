@@ -11,6 +11,7 @@ type PasswordInputProps = {
   autoComplete?: string
   required?: boolean
   minLength?: number
+  disabled?: boolean
 }
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -48,6 +49,7 @@ export default function PasswordInput({
   autoComplete = 'current-password',
   required = true,
   minLength,
+  disabled = false,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false)
 
@@ -67,14 +69,16 @@ export default function PasswordInput({
           required={required}
           autoComplete={autoComplete}
           minLength={minLength}
-          className="w-full bg-white border border-[#D4D5D7] text-ink placeholder:text-ink-3 pl-4 pr-11 py-2.5 text-sm font-sans rounded-[10px] focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors duration-150"
+          disabled={disabled}
+          className="w-full bg-white border border-[#D4D5D7] text-ink placeholder:text-ink-3 pl-4 pr-11 py-2.5 text-sm font-sans rounded-[10px] focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors duration-150 disabled:bg-[#F7F8F9] disabled:cursor-not-allowed"
         />
         <button
           type="button"
           onClick={() => setVisible(v => !v)}
+          disabled={disabled}
           aria-label={visible ? 'Hide password' : 'Show password'}
           aria-pressed={visible}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-colors p-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-orange/30"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-colors p-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-orange/30 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <EyeIcon open={visible} />
         </button>

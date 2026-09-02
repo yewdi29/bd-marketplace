@@ -3,7 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Listing, MembershipPlan } from '@/lib/types/database'
+import type { Listing } from '@/lib/types/database'
 import { formatPrice } from '@/lib/formatPrice'
 import PhotoGallery from './PhotoGallery'
 import { buildPublicGalleryItems } from '@/lib/listings/publicGallery'
@@ -24,6 +24,8 @@ import {
 import { PUBLIC_SITE_URL } from '@/lib/site'
 import { buildListingProductJsonLd } from '@/lib/listings/listingJsonLd'
 import { formatListingCategoryLabel } from '@/lib/categoryResolver'
+import { generateUniqueUserCompanySlug } from '@/lib/sellers/companySlug'
+import { resolveListingSellerDisplay } from '@/lib/sellers/publicSellerProfile'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,7 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = `${data.title} ${lead} Black Diamond Marketplace.${location ? ` Located in ${location}.` : ''} ${priceDisplay}.`
 
   return {
-    title: `${data.title} | Black Diamond Marketplace`,
+    title: data.title,
     description,
     alternates: { canonical: canonicalUrl },
     openGraph: {
@@ -124,56 +126,44 @@ export default async function ListingDetailPage({ params }: Props) {
     categories?: { slug: string; name: string } | null
   }
 
-  // Fetch seller profile — service role for users table access.
-  // Only safe, non-PII fields selected.
+  // Fetch public seller brand — org company profile for enterprise listings
   const adminClient = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { global: { fetch: (url, opts = {}) => fetch(url, { ...opts, cache: 'no-store' }) } }
   )
-  const { data: sellerData } = await adminClient
-    .from('users')
-    .select('company_name, company_logo_url, company_slug, plan, created_at')
-    .eq('id', l.seller_id)
-    .maybeSingle()
+  const seller = await resolveListingSellerDisplay(adminClient, {
+    seller_id: l.seller_id,
+    organization_id: l.organization_id ?? null,
+  })
 
-  const seller = sellerData as {
-    company_name: string | null
-    company_logo_url: string | null
-    company_slug: string | null
-    plan: MembershipPlan
-    created_at: string
-  } | null
+  // Lazy-generate personal company_slug for solo sellers who pre-date the migration.
+  if (
+    seller
+    && !l.organization_id
+    && seller.company_name
+    && !seller.company_slug
+  ) {
+    const { data: membership } = await adminClient
+      .from('org_members')
+      .select('id')
+      .eq('user_id', l.seller_id)
+      .eq('status', 'active')
+      .maybeSingle()
 
-  // Lazy-generate company_slug for sellers who pre-date the migration.
-  // Runs once; after writing, the slug is stored and this branch is skipped.
-  if (seller && seller.company_name && !seller.company_slug) {
-    const base = seller.company_name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .trim()
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-
-    if (base) {
-      const { data: conflict } = await adminClient
-        .from('users')
-        .select('id')
-        .eq('company_slug', base)
-        .neq('id', l.seller_id)
-        .maybeSingle()
-
-      const slug = conflict
-        ? `${base}-${Math.random().toString(36).slice(2, 6)}`
-        : base
-
-      await adminClient
-        .from('users')
-        .update({ company_slug: slug, updated_at: new Date().toISOString() })
-        .eq('id', l.seller_id)
-
-      seller.company_slug = slug
+    if (!membership) {
+      const slug = await generateUniqueUserCompanySlug(
+        adminClient,
+        seller.company_name,
+        l.seller_id,
+      )
+      if (slug) {
+        await adminClient
+          .from('users')
+          .update({ company_slug: slug, updated_at: new Date().toISOString() })
+          .eq('id', l.seller_id)
+        seller.company_slug = slug
+      }
     }
   }
 
@@ -509,7 +499,7 @@ export default async function ListingDetailPage({ params }: Props) {
             <p className="font-sans font-bold text-ink mb-5" style={{ fontSize: '16px' }}>
               Related Listings
             </p>
-            <ListingCardGrid>
+            <ListingCardGrid className="listing-card-grid--related">
               {(related as ListingCardListing[]).map(rel => (
                 <ListingCard key={rel.id} listing={rel} isLoggedIn={!!user} openInNewTab />
               ))}

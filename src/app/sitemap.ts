@@ -52,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
-  const [{ data: articles }, { data: listings }, { data: sellers }, taxonomy] = await Promise.all([
+  const [{ data: articles }, { data: listings }, { data: sellers }, { data: orgs }, taxonomy] = await Promise.all([
     supabase
       .from('articles')
       .select('slug, updated_at, published_at')
@@ -64,10 +64,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .not('slug', 'is', null),
     supabase
       .from('users')
-      .select('company_slug, updated_at')
+      .select('id, company_slug, updated_at')
       .not('company_slug', 'is', null),
+    supabase
+      .from('organizations')
+      .select('slug, updated_at')
+      .not('slug', 'is', null),
     loadSearchTaxonomy(supabase),
   ])
+
+  const { data: orgMembers } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('status', 'active')
+    .not('user_id', 'is', null)
+
+  const orgMemberIds = new Set(
+    (orgMembers ?? []).map(m => m.user_id as string).filter(Boolean),
+  )
 
   const articlePages: MetadataRoute.Sitemap = (articles ?? []).map(article => ({
     url: `${PUBLIC_SITE_URL}/journal/${article.slug}`,
@@ -83,12 +97,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  const sellerPages: MetadataRoute.Sitemap = (sellers ?? []).map(seller => ({
-    url: `${PUBLIC_SITE_URL}/sellers/${seller.company_slug}`,
-    lastModified: new Date(seller.updated_at ?? new Date()),
-    changeFrequency: 'monthly',
-    priority: 0.6,
-  }))
+  const sellerPages: MetadataRoute.Sitemap = [
+    ...(orgs ?? [])
+      .filter(org => org.slug)
+      .map(org => ({
+        url: `${PUBLIC_SITE_URL}/sellers/${org.slug}`,
+        lastModified: new Date(org.updated_at ?? new Date()),
+        changeFrequency: 'monthly' as const,
+        priority: 0.6,
+      })),
+    ...(sellers ?? [])
+      .filter(seller => seller.company_slug && !orgMemberIds.has(seller.id))
+      .map(seller => ({
+        url: `${PUBLIC_SITE_URL}/sellers/${seller.company_slug}`,
+        lastModified: new Date(seller.updated_at ?? new Date()),
+        changeFrequency: 'monthly' as const,
+        priority: 0.6,
+      })),
+  ]
 
   // Industry / category filter URLs — whitelist from taxonomy only
   const taxonomySearchPages: MetadataRoute.Sitemap = []

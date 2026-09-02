@@ -55,6 +55,7 @@ export interface User {
 export interface Organization {
   id: string
   name: string
+  slug: string
   logo_url: string | null
   description: string | null
   stripe_customer_id: string | null
