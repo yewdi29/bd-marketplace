@@ -1,7 +1,17 @@
 import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
-import { PUBLIC_SITE_URL } from '@/lib/site'
 import { loadSearchTaxonomy } from '@/lib/search/searchTaxonomy'
+
+/** Canonical host for sitemap <loc> values (www; apex redirects here). */
+const SITEMAP_SITE_URL = 'https://www.blackdiamondmkt.com'
+
+/**
+ * Next.js 14 MetadataRoute.Sitemap does not XML-escape `&` in <loc> (vercel/next.js#77340).
+ * Escape before returning so query-string URLs produce valid sitemap XML.
+ */
+function sitemapLoc(url: string): string {
+  return url.replace(/&/g, '&amp;')
+}
 
 function getAdminClient() {
   return createClient(
@@ -15,37 +25,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: PUBLIC_SITE_URL,
+      url: sitemapLoc(SITEMAP_SITE_URL),
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1.0,
     },
     {
-      url: `${PUBLIC_SITE_URL}/search`,
+      url: sitemapLoc(`${SITEMAP_SITE_URL}/search`),
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
     },
     {
-      url: `${PUBLIC_SITE_URL}/about`,
+      url: sitemapLoc(`${SITEMAP_SITE_URL}/about`),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
-      url: `${PUBLIC_SITE_URL}/careers`,
+      url: sitemapLoc(`${SITEMAP_SITE_URL}/careers`),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
-      url: `${PUBLIC_SITE_URL}/journal`,
+      url: sitemapLoc(`${SITEMAP_SITE_URL}/journal`),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${PUBLIC_SITE_URL}/sellers`,
+      url: sitemapLoc(`${SITEMAP_SITE_URL}/sellers`),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
@@ -84,14 +94,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   )
 
   const articlePages: MetadataRoute.Sitemap = (articles ?? []).map(article => ({
-    url: `${PUBLIC_SITE_URL}/journal/${article.slug}`,
+    url: sitemapLoc(`${SITEMAP_SITE_URL}/journal/${article.slug}`),
     lastModified: new Date(article.updated_at ?? article.published_at ?? new Date()),
     changeFrequency: 'monthly',
     priority: 0.7,
   }))
 
   const listingPages: MetadataRoute.Sitemap = (listings ?? []).map(listing => ({
-    url: `${PUBLIC_SITE_URL}/listings/${listing.slug}`,
+    url: sitemapLoc(`${SITEMAP_SITE_URL}/listings/${listing.slug}`),
     lastModified: new Date(listing.updated_at ?? new Date()),
     changeFrequency: 'weekly',
     priority: 0.8,
@@ -101,7 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(orgs ?? [])
       .filter(org => org.slug)
       .map(org => ({
-        url: `${PUBLIC_SITE_URL}/sellers/${org.slug}`,
+        url: sitemapLoc(`${SITEMAP_SITE_URL}/sellers/${org.slug}`),
         lastModified: new Date(org.updated_at ?? new Date()),
         changeFrequency: 'monthly' as const,
         priority: 0.6,
@@ -109,7 +119,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(sellers ?? [])
       .filter(seller => seller.company_slug && !orgMemberIds.has(seller.id))
       .map(seller => ({
-        url: `${PUBLIC_SITE_URL}/sellers/${seller.company_slug}`,
+        url: sitemapLoc(`${SITEMAP_SITE_URL}/sellers/${seller.company_slug}`),
         lastModified: new Date(seller.updated_at ?? new Date()),
         changeFrequency: 'monthly' as const,
         priority: 0.6,
@@ -122,7 +132,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const industry of taxonomy.industries) {
     taxonomySearchPages.push({
-      url: `${PUBLIC_SITE_URL}/search?industry=${encodeURIComponent(industry.slug)}`,
+      url: sitemapLoc(
+        `${SITEMAP_SITE_URL}/search?industry=${encodeURIComponent(industry.slug)}`,
+      ),
       lastModified: now,
       changeFrequency: 'daily',
       priority: 0.85,
@@ -131,7 +143,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const category of taxonomy.categories) {
     taxonomySearchPages.push({
-      url: `${PUBLIC_SITE_URL}/search?cat=${encodeURIComponent(category.slug)}`,
+      url: sitemapLoc(
+        `${SITEMAP_SITE_URL}/search?cat=${encodeURIComponent(category.slug)}`,
+      ),
       lastModified: now,
       changeFrequency: 'daily',
       priority: 0.85,
@@ -139,7 +153,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const industrySlug of category.industrySlugs) {
       taxonomySearchPages.push({
-        url: `${PUBLIC_SITE_URL}/search?industry=${encodeURIComponent(industrySlug)}&cat=${encodeURIComponent(category.slug)}`,
+        url: sitemapLoc(
+          `${SITEMAP_SITE_URL}/search?industry=${encodeURIComponent(industrySlug)}&cat=${encodeURIComponent(category.slug)}`,
+        ),
         lastModified: now,
         changeFrequency: 'daily',
         priority: 0.8,

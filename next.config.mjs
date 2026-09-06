@@ -22,6 +22,17 @@ const nextConfig = {
         destination: '/journal',
         permanent: true,
       },
+      // Legacy knowledge-base slugs that were renamed after the /journal move
+      {
+        source: '/knowledge-base/blowout-preventer-maintenance-checklist',
+        destination: '/journal/bop-maintenance-checklist',
+        permanent: true,
+      },
+      {
+        source: '/knowledge-base/valuing-used-drilling-rig-2025',
+        destination: '/journal/how-to-value-a-used-drill-rig-in-2026',
+        permanent: true,
+      },
       {
         source: '/knowledge-base/:slug',
         destination: '/journal/:slug',
