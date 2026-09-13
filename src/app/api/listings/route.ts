@@ -7,7 +7,7 @@ import { resolveCategoryAndIndustryIds } from '@/lib/categoryResolver'
 import { orgFieldsForNewListing } from '@/lib/listings/orgFieldsForNewListing'
 import { scheduleListingVerification } from '@/lib/listings/scheduleListingVerification'
 import { applyActiveListingFilters } from '@/lib/search/listingFilters'
-import { parseSlugList } from '@/lib/search/searchTaxonomy'
+import { categorySlugLookupVariants, parseSlugList } from '@/lib/search/searchTaxonomy'
 
 // Columns that can be used as sort keys — prevents injecting arbitrary column names
 const ALLOWED_SORT_FIELDS = ['created_at', 'price'] as const
@@ -61,7 +61,8 @@ export async function GET(request: NextRequest) {
     industryIds = (data ?? []).map(row => row.id)
   }
   if (catSlugs.length > 0) {
-    const { data } = await supabase.from('categories').select('id').in('slug', catSlugs)
+    const catLookup = [...new Set(catSlugs.flatMap(categorySlugLookupVariants))]
+    const { data } = await supabase.from('categories').select('id').in('slug', catLookup)
     categoryIds = (data ?? []).map(row => row.id)
   }
   if (countrySlugs.length > 0) {

@@ -17,8 +17,8 @@ export const GENERIC_SEARCH_DESCRIPTION =
   'Search thousands of verified heavy equipment listings across oil and gas, construction, mining, agriculture, forestry, and trucks and trailers.'
 
 export function buildSearchSeoTitle(filters: ResolvedSearchFilters): string {
-  if (filters.combined && filters.industry && filters.category) {
-    return `${filters.industry.name} ${filters.category.name} for sale`
+  if (filters.category && filters.industry) {
+    return `${filters.industry.name} ${filters.category.name} for Sale`
   }
   if (filters.category) {
     return `${filters.category.name} for Sale`
@@ -33,7 +33,7 @@ export function buildSearchSeoDescription(
   filters: ResolvedSearchFilters,
   count: number,
 ): string {
-  if (filters.combined && filters.industry && filters.category) {
+  if (filters.industry && filters.category) {
     return `We have ${count} ${filters.industry.name} ${filters.category.name} for sale — verified sellers, with new listings added daily.`
   }
   if (filters.category) {
@@ -104,11 +104,15 @@ export async function buildSearchMetadata(params: {
 
   const title = buildSearchSeoTitle(filters)
   const description = buildSearchSeoDescription(filters, count)
+  const emptyFiltered = count === 0
 
   return {
     title,
     description,
     alternates: { canonical },
+    robots: emptyFiltered
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
     openGraph: {
       title,
       description,

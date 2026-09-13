@@ -43,27 +43,42 @@ export async function loadSearchTaxonomy(
       .order('name'),
   ])
 
+  type IndustryRef = { slug: string } | { slug: string }[] | null
   type CatRow = {
     id: string
     name: string
     slug: string
     category_industries:
-      | { industry_id: string; industries: { slug: string } | null }[]
+      | { industry_id?: string; industries?: IndustryRef }[]
       | null
+  }
+
+  let categoryRows = (categories ?? []) as CatRow[]
+  if (categoryRows.length === 0) {
+    const { data: fallbackCats } = await supabase
+      .from('categories')
+      .select('id, name, slug')
+      .order('name')
+    categoryRows = (fallbackCats ?? []) as CatRow[]
   }
 
   return {
     industries: (industries ?? []) as TaxonomyIndustry[],
-    categories: ((categories ?? []) as CatRow[]).map(row => {
+    categories: categoryRows.map(row => {
       const links = row.category_industries ?? []
       return {
         id: row.id,
         name: row.name,
         slug: row.slug,
-        industryIds: links.map(l => l.industry_id).filter(Boolean),
+        industryIds: links.map(l => l.industry_id).filter((id): id is string => Boolean(id)),
         industrySlugs: links
-          .map(l => l.industries?.slug)
-          .filter((s): s is string => Boolean(s)),
+          .flatMap(l => {
+            const raw = l.industries
+            if (!raw) return []
+            return Array.isArray(raw) ? raw : [raw]
+          })
+          .map(i => i.slug)
+          .filter(Boolean),
       }
     }),
   }
@@ -72,6 +87,29 @@ export async function loadSearchTaxonomy(
 export function parseSlugList(raw: string | null | undefined): string[] {
   if (!raw) return []
   return raw.split(',').map(s => s.trim()).filter(Boolean)
+}
+
+/**
+ * Category slugs in the taxonomy are hyphenated (`coiled-tubing-equipment`).
+ * Industry slugs use underscores (`oil_gas`) and must not be rewritten.
+ * Accept `_` / `-` aliases for category lookup only.
+ */
+export function categorySlugLookupVariants(slug: string): string[] {
+  const trimmed = slug.trim()
+  if (!trimmed) return []
+  return [...new Set([trimmed, trimmed.replace(/_/g, '-'), trimmed.replace(/-/g, '_')])]
+}
+
+function lookupCategoryBySlug(
+  categoryBySlug: Map<string, TaxonomyCategory>,
+  slug: string | null,
+): TaxonomyCategory | null {
+  if (!slug) return null
+  for (const variant of categorySlugLookupVariants(slug)) {
+    const match = categoryBySlug.get(variant)
+    if (match) return match
+  }
+  return null
 }
 
 /**
@@ -106,7 +144,7 @@ export function resolveWhitelistedSearchTaxonomy(
     ?? null
 
   const industry = industrySlug ? industryBySlug.get(industrySlug) ?? null : null
-  const category = categorySlug ? categoryBySlug.get(categorySlug) ?? null : null
+  const category = lookupCategoryBySlug(categoryBySlug, categorySlug)
 
   const linked = Boolean(
     industry
@@ -120,13 +158,15 @@ export function resolveWhitelistedSearchTaxonomy(
 export type ResolvedSearchFilters = {
   industry: TaxonomyIndustry | null
   category: TaxonomyCategory | null
-  /** True when both are set and the category belongs to the industry. */
+  /** True when both a valid industry slug and a valid category slug are present. */
   combined: boolean
 }
 
 /**
- * Decide which taxonomy labels to use for SEO copy.
- * Unlinked industry+category pairs fall back to category-only (more specific).
+ * Decide which taxonomy labels to use for SEO copy and canonical URLs.
+ * Any valid industry + category pair is a distinct listing set (same AND
+ * filter as /api/listings) — do not strip `cat` or fall back to the industry
+ * parent, even if category_industries has not linked the pair.
  */
 export function resolveSearchSeoFilters(
   taxonomy: SearchTaxonomy,
@@ -136,9 +176,9 @@ export function resolveSearchSeoFilters(
     category?: string | null
   },
 ): ResolvedSearchFilters {
-  const { industry, category, linked } = resolveWhitelistedSearchTaxonomy(taxonomy, params)
+  const { industry, category } = resolveWhitelistedSearchTaxonomy(taxonomy, params)
 
-  if (industry && category && linked) {
+  if (industry && category) {
     return { industry, category, combined: true }
   }
   if (category) {
