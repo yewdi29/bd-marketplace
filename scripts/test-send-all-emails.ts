@@ -23,6 +23,7 @@ import React, { createElement, type ReactElement } from 'react'
 import ListingApproved from '../emails/templates/ListingApproved'
 import ListingNeedsChanges from '../emails/templates/ListingNeedsChanges'
 import ListingRemoved from '../emails/templates/ListingRemoved'
+import ListingVerificationAdminReview from '../emails/templates/ListingVerificationAdminReview'
 import NewInquirySeller from '../emails/templates/NewInquirySeller'
 import InquiryReceivedBuyer from '../emails/templates/InquiryReceivedBuyer'
 import PlanDowngradeListingOverflow from '../emails/templates/PlanDowngradeListingOverflow'
@@ -134,6 +135,20 @@ function buildJobs(): TestEmailJob[] {
       react: createElement(ListingRemoved, {
         listingTitle: FAKE.listingTitle,
         removalReason: FAKE.removalReason,
+      }),
+    },
+    {
+      templateType: 'ListingVerificationAdminReview',
+      subject: `[TEST] Listing needs review — ${FAKE.listingTitle}`,
+      relatedEntityType: 'listing',
+      react: createElement(ListingVerificationAdminReview, {
+        listingTitle: FAKE.listingTitle,
+        listingUrl: FAKE.listingUrl,
+        confidenceScore: 42,
+        reasoning: 'Description is too thin and photos do not show the equipment clearly.',
+        flagComment: FAKE.flagComment,
+        reviewUrl:
+          'https://blackdiamondmkt.com/rigburrito/listing-review?token_hash=sample-review-token',
       }),
     },
     {

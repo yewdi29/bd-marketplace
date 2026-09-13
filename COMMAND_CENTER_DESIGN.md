@@ -422,6 +422,7 @@ Centered in the content area.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.13 | 2026-09-13 | **Listing verification review.** New admin-only `/rigburrito/listing-review` page (email token, inert until a button is clicked). Two-column layout: listing details + agent score/reasoning, then three existing-flow actions (confirm flag, reject with 20+ character reason, optional-note override). |
 | 2.12 | 2026-08-19 | **User Management — Enterprise.** Plan filter includes Enterprise; Plan column shows Enterprise badge for active org members; table sorts enterprise users first and groups teammates under an `Enterprise · {org name}` header row; Company/Org + org role captions added. |
 | 2.11 | 2026-08-12 | Agent Activity: `auto_approved` outcome pill (same green success treatment as `approved`) for Listing Verifier auto-publish |
 | 2.10 | 2026-07-31 | Dashboard Feedback tab: ExpandableDataTable for site feedback; category/status pills; expand shows message, screenshot, page URL, tier/role; status actions (reviewed/resolved/dismiss) |

@@ -11,6 +11,7 @@ export type EmailTemplateType =
   | 'ListingApproved'
   | 'ListingNeedsChanges'
   | 'ListingRemoved'
+  | 'ListingVerificationAdminReview'
   | 'NewInquirySeller'
   | 'InquiryReceivedBuyer'
   | 'OrgInvite'

@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import ListingApproved from '../../../emails/templates/ListingApproved'
 import ListingNeedsChanges from '../../../emails/templates/ListingNeedsChanges'
 import ListingRemoved from '../../../emails/templates/ListingRemoved'
+import ListingVerificationAdminReview from '../../../emails/templates/ListingVerificationAdminReview'
 import NewInquirySeller from '../../../emails/templates/NewInquirySeller'
 import InquiryReceivedBuyer from '../../../emails/templates/InquiryReceivedBuyer'
 import PlanDowngradeListingOverflow from '../../../emails/templates/PlanDowngradeListingOverflow'
@@ -51,6 +52,41 @@ export async function dispatchListingNeedsChangesEmail(opts: {
       listingTitle: opts.listingTitle,
       flagComment: opts.flagComment,
       editUrl,
+    }),
+  })
+}
+
+export async function dispatchListingVerificationAdminReviewEmail(opts: {
+  listingId: string
+  listingTitle: string
+  listingSlug: string | null
+  confidenceScore: number
+  reasoning: string
+  flagComment: string
+  reviewToken: string
+}): Promise<void> {
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL
+  if (!adminEmail) {
+    console.warn('[email] ADMIN_ALERT_EMAIL not set — skipping listing verification admin review')
+    return
+  }
+
+  const params = new URLSearchParams({ token_hash: opts.reviewToken })
+  const reviewUrl = `${getEmailAppUrl()}/rigburrito/listing-review?${params.toString()}`
+
+  sendTransactionalEmailSafe({
+    templateType: 'ListingVerificationAdminReview',
+    recipientEmail: adminEmail,
+    relatedEntityType: 'listing',
+    relatedEntityId: opts.listingId,
+    subject: `Listing needs review — ${opts.listingTitle}`,
+    react: createElement(ListingVerificationAdminReview, {
+      listingTitle: opts.listingTitle,
+      listingUrl: opts.listingSlug ? listingPublicUrl(opts.listingSlug) : null,
+      confidenceScore: opts.confidenceScore,
+      reasoning: opts.reasoning,
+      flagComment: opts.flagComment,
+      reviewUrl,
     }),
   })
 }

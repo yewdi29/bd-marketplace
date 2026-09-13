@@ -6,6 +6,27 @@ export const LISTING_VERIFIER_AGENT_NAME = 'Listing Verifier'
 /** Minimum confidence_score required for agent auto-approve (independent of recommended_action). */
 export const LISTING_AUTO_APPROVE_SCORE = 75
 
+/** Flag recommendations below this score require admin review email (no seller email). */
+export const LISTING_ADMIN_REVIEW_BELOW_SCORE = 55
+
+export function shouldAutoFlagAndNotifySeller(
+  recommendedAction: 'approve' | 'flag',
+  confidenceScore: number,
+): boolean {
+  return (
+    recommendedAction === 'flag'
+    && confidenceScore >= LISTING_ADMIN_REVIEW_BELOW_SCORE
+    && confidenceScore < LISTING_AUTO_APPROVE_SCORE
+  )
+}
+
+export function shouldRequestAdminReview(
+  recommendedAction: 'approve' | 'flag',
+  confidenceScore: number,
+): boolean {
+  return recommendedAction === 'flag' && confidenceScore < LISTING_ADMIN_REVIEW_BELOW_SCORE
+}
+
 type ServiceClient = ReturnType<typeof createServiceClient>
 
 /**

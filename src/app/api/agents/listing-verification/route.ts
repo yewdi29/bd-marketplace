@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { acceptPendingFlagRecommendation } from '@/lib/agents/listingVerificationFlag'
 import {
   LISTING_VERIFIER_AGENT_NAME,
   publishListingFromVerificationApprove,
   shouldAutoApproveListing,
+  shouldAutoFlagAndNotifySeller,
+  shouldRequestAdminReview,
 } from '@/lib/agents/listingVerificationPublish'
+import { createListingReviewToken } from '@/lib/agents/listingVerificationReviewToken'
 import { verifyPaperclipSecret } from '@/lib/agents/verifyPaperclipSecret'
+import { dispatchListingVerificationAdminReviewEmail } from '@/lib/email/transactionalEmails'
 import { createServiceClient } from '@/lib/rigburrito/service'
 
 const AGENT_NAME = LISTING_VERIFIER_AGENT_NAME
@@ -67,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     const { data: listing, error: listingError } = await service
       .from('listings')
-      .select('id, title, updated_at, users!listings_seller_id_fkey(email)')
+      .select('id, title, slug, updated_at, users!listings_seller_id_fkey(email)')
       .eq('id', listing_id)
       .single()
 
@@ -220,6 +225,80 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    if (shouldAutoFlagAndNotifySeller(recommended_action, confidence_score)) {
+      const flagResult = await acceptPendingFlagRecommendation(service, {
+        recommendationId: recommendation.id,
+        listingId: listing_id,
+        flagComment: flag_comment?.trim() ?? '',
+        adminId: null,
+      })
+      if (!flagResult.ok) {
+        return NextResponse.json({ error: flagResult.error }, { status: flagResult.status })
+      }
+
+      const { error: updateError } = await service
+        .from('listings')
+        .update({
+          ai_verification_score: confidence_score,
+          ai_verification_notes: reasoning,
+          ai_recommended_action: recommended_action,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', listing_id)
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 })
+      }
+
+      const { error: logError } = await service.from('agent_activity_log').insert({
+        agent_name: AGENT_NAME,
+        action: 'verification_complete',
+        entity_type: 'listing',
+        entity_id: listing_id,
+        outcome: 'flagged',
+        summary: `Auto-flagged ${listing.title} (confidence: ${confidence_score}%) — seller notified`,
+        overall_score: confidence_score,
+        score_breakdown: score_breakdown ?? null,
+        flag_comment: flag_comment?.trim() ?? null,
+        reasoning,
+      })
+
+      if (logError) {
+        return NextResponse.json({ error: logError.message }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        recommendation_id: recommendation.id,
+        auto_flagged: true,
+      })
+    }
+
+    if (shouldRequestAdminReview(recommended_action, confidence_score)) {
+      const { token, tokenHash, expiresAt } = createListingReviewToken()
+      const { error: tokenError } = await service
+        .from('agent_recommendations')
+        .update({
+          review_token_hash: tokenHash,
+          review_token_expires_at: expiresAt,
+        })
+        .eq('id', recommendation.id)
+
+      if (tokenError) {
+        return NextResponse.json({ error: tokenError.message }, { status: 500 })
+      }
+
+      await dispatchListingVerificationAdminReviewEmail({
+        listingId: listing_id,
+        listingTitle: listing.title,
+        listingSlug: listing.slug,
+        confidenceScore: confidence_score,
+        reasoning,
+        flagComment: flag_comment?.trim() ?? '',
+        reviewToken: token,
+      })
+    }
+
     const actionLabel = recommended_action.toUpperCase()
     const summary = `Recommended ${actionLabel} for ${listing.title}`
 
@@ -254,11 +333,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Do NOT email the seller on raw agent flag recommendations.
-    // ListingNeedsChanges fires only after admin accept/override on /confirm
-    // (or via the separate manual admin flag route).
-
-    return NextResponse.json({ success: true, recommendation_id: recommendation.id })
+    return NextResponse.json({
+      success: true,
+      recommendation_id: recommendation.id,
+      admin_review: shouldRequestAdminReview(recommended_action, confidence_score),
+    })
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
