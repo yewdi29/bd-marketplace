@@ -97,7 +97,8 @@ export function parseSlugList(raw: string | null | undefined): string[] {
 export function categorySlugLookupVariants(slug: string): string[] {
   const trimmed = slug.trim()
   if (!trimmed) return []
-  return [...new Set([trimmed, trimmed.replace(/_/g, '-'), trimmed.replace(/-/g, '_')])]
+  const variants = [trimmed, trimmed.replace(/_/g, '-'), trimmed.replace(/-/g, '_')]
+  return variants.filter((value, index) => variants.indexOf(value) === index)
 }
 
 function lookupCategoryBySlug(

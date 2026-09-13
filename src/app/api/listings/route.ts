@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
     industryIds = (data ?? []).map(row => row.id)
   }
   if (catSlugs.length > 0) {
-    const catLookup = [...new Set(catSlugs.flatMap(categorySlugLookupVariants))]
+    const catLookup = catSlugs
+      .flatMap(categorySlugLookupVariants)
+      .filter((value, index, all) => all.indexOf(value) === index)
     const { data } = await supabase.from('categories').select('id').in('slug', catLookup)
     categoryIds = (data ?? []).map(row => row.id)
   }
