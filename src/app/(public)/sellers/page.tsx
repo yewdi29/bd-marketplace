@@ -5,12 +5,14 @@ import BDVerifiedBadge from '@/components/ui/BDVerifiedBadge'
 import BusinessDirectoryGate from '@/components/sellers/BusinessDirectoryGate'
 import { getDirectoryAccess } from '@/lib/directoryAccess'
 import { loadDirectorySellerEntries, type DirectorySellerEntry } from '@/lib/sellers/directoryEntries'
+import { canonicalUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Business Directory',
   description: 'Browse verified equipment sellers on Black Diamond Marketplace — oil and gas equipment dealers, rental companies, and rig operators.',
+  alternates: { canonical: canonicalUrl('/sellers') },
 }
 
 function getAdminClient() {

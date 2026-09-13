@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { canonicalUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Plans & Pricing',
   description:
     'Choose a Black Diamond Marketplace membership plan. List heavy equipment, reach verified buyers, and grow your business globally.',
-  alternates: { canonical: 'https://blackdiamondmkt.com/dashboard/upgrade' },
+  alternates: { canonical: canonicalUrl('/dashboard/upgrade') },
 }
 
 export default async function UpgradeLayout({ children }: { children: React.ReactNode }) {

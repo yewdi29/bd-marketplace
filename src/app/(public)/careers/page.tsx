@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
+import { canonicalUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Careers',
   description:
     'Black Diamond Marketplace is modernizing how oil and gas, construction, and mining companies buy, sell, and finance heavy equipment. Learn about future roles and how to get on our radar.',
-  alternates: { canonical: 'https://blackdiamondmkt.com/careers' },
+  alternates: { canonical: canonicalUrl('/careers') },
 }
 
 const CAREERS_MAILTO = `mailto:careers@blackdiamondmkt.com?subject=${encodeURIComponent(

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import ListingCardLink from '@/components/listings/ListingCardLink'
@@ -49,7 +49,7 @@ function getBrowserCoords(): Promise<{ lat: number; lng: number } | null> {
   })
 }
 
-function SearchContent() {
+function SearchContent({ heading }: { heading?: ReactNode }) {
   const searchParams = useSearchParams()
   const [listings, setListings]     = useState<Listing[]>([])
   const [total, setTotal]           = useState(0)
@@ -109,6 +109,7 @@ function SearchContent() {
 
   return (
     <div className="page-shell py-8">
+      {heading}
       <p className="font-sans font-bold text-sm text-ink mb-5">
         {loading
           ? <span className="inline-block h-4 w-32 bg-[#F0F0F0] rounded-full animate-pulse" />
@@ -154,7 +155,7 @@ function SearchContent() {
   )
 }
 
-export default function SearchPageClient() {
+export default function SearchPageClient({ children }: { children?: ReactNode }) {
   return (
     <div className="-mt-6">
       <Suspense fallback={<FilterBarFallback />}>
@@ -163,11 +164,12 @@ export default function SearchPageClient() {
 
       <Suspense fallback={
         <div className="page-shell py-8">
+          {children}
           <div className="h-4 w-32 bg-[#F0F0F0] rounded-full mb-5 animate-pulse" />
           <SkeletonGrid />
         </div>
       }>
-        <SearchContent />
+        <SearchContent heading={children} />
       </Suspense>
     </div>
   )

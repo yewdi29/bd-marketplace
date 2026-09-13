@@ -22,7 +22,7 @@ import {
   PUBLICLY_VIEWABLE_LISTING_STATUSES,
 } from '@/lib/listings/publicVisibility'
 import { PUBLIC_SITE_URL } from '@/lib/site'
-import { buildListingProductJsonLd } from '@/lib/listings/listingJsonLd'
+import { buildListingBreadcrumbJsonLd, buildListingProductJsonLd } from '@/lib/listings/listingJsonLd'
 import { formatListingCategoryLabel } from '@/lib/categoryResolver'
 import { generateUniqueUserCompanySlug } from '@/lib/sellers/companySlug'
 import { resolveListingSellerDisplay } from '@/lib/sellers/publicSellerProfile'
@@ -236,6 +236,12 @@ export default async function ListingDetailPage({ params }: Props) {
     categoryLabel: categoryDisplayLabel,
     images: l.listing_images ?? [],
   })
+  const breadcrumbJsonLd = buildListingBreadcrumbJsonLd({
+    listingUrl,
+    title: l.title,
+    categoryLabel: categoryDisplayLabel,
+    categoryPath: categorySearchHref,
+  })
 
   return (
     <>
@@ -243,13 +249,22 @@ export default async function ListingDetailPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
 
       <div className="bg-bg min-h-screen pb-20">
         <div className="page-shell">
 
         <ListingGalleryNavProvider itemCount={galleryItems.length}>
         {/* Breadcrumb (desktop) / Back + View All row (mobile, tablet) */}
-        <ListingBreadcrumb category={l.category} categoryLabel={categoryDisplayLabel} title={l.title} />
+        <ListingBreadcrumb
+          category={l.category}
+          categoryLabel={categoryDisplayLabel}
+          title={l.title}
+          categoryHref={categorySearchHref}
+        />
 
         {/* ── Two-column grid — gallery fills remaining space, info column fluid between 450–550px ── */}
         <div

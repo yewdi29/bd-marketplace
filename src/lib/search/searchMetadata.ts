@@ -12,9 +12,9 @@ import {
   type ResolvedSearchFilters,
 } from '@/lib/search/searchTaxonomy'
 
-export const GENERIC_SEARCH_TITLE = 'Browse Heavy Equipment'
+export const GENERIC_SEARCH_TITLE = 'Heavy Equipment for Sale'
 export const GENERIC_SEARCH_DESCRIPTION =
-  'Search thousands of verified heavy equipment listings across oil and gas, construction, mining, agriculture, forestry, and trucks and trailers.'
+  'Browse verified heavy equipment for sale across oil and gas, construction, mining, agriculture, forestry, and trucks and trailers.'
 
 export function buildSearchSeoTitle(filters: ResolvedSearchFilters): string {
   if (filters.category && filters.industry) {
@@ -33,19 +33,24 @@ export function buildSearchSeoDescription(
   filters: ResolvedSearchFilters,
   count: number,
 ): string {
-  if (filters.industry && filters.category) {
-    return `We have ${count} ${filters.industry.name} ${filters.category.name} for sale — verified sellers, with new listings added daily.`
+  const subject = filters.industry && filters.category
+    ? `${filters.industry.name} ${filters.category.name}`
+    : filters.category
+      ? filters.category.name
+      : filters.industry
+        ? `${filters.industry.name} equipment`
+        : 'heavy equipment'
+
+  if (count === 0) {
+    return `No ${subject} listings are live right now. Browse all equipment on Black Diamond Marketplace or check back soon.`
   }
-  if (filters.category) {
-    return `We have ${count} ${filters.category.name} for sale — verified sellers across industrial sectors, with new listings added daily.`
+  if (count === 1) {
+    return `1 ${subject} listing from a verified seller on Black Diamond Marketplace.`
   }
-  if (filters.industry) {
-    return `We have ${count} ${filters.industry.name} Equipment for sale — verified sellers in ${filters.industry.name}, with new listings added daily.`
-  }
-  return GENERIC_SEARCH_DESCRIPTION
+  return `${count} ${subject} listings from verified sellers on Black Diamond Marketplace.`
 }
 
-function filtersToListingIds(filters: ResolvedSearchFilters): ListingFilterIds {
+export function searchFiltersToListingIds(filters: ResolvedSearchFilters): ListingFilterIds {
   if (filters.combined && filters.industry && filters.category) {
     return {
       industryIds: [filters.industry.id],
@@ -61,11 +66,19 @@ function filtersToListingIds(filters: ResolvedSearchFilters): ListingFilterIds {
   return { industryIds: [], categoryIds: [] }
 }
 
-export async function buildSearchMetadata(params: {
+export type SearchSeoState = {
+  title: string
+  description: string
+  canonical: string
+  count: number
+  emptyFiltered: boolean
+}
+
+export async function resolveSearchSeoState(params: {
   industry?: string | string[] | undefined
   cat?: string | string[] | undefined
   category?: string | string[] | undefined
-}): Promise<Metadata> {
+}): Promise<SearchSeoState> {
   const first = (v: string | string[] | undefined): string | null => {
     if (Array.isArray(v)) return v[0] ?? null
     return v ?? null
@@ -85,11 +98,12 @@ export async function buildSearchMetadata(params: {
     return {
       title: GENERIC_SEARCH_TITLE,
       description: GENERIC_SEARCH_DESCRIPTION,
-      alternates: { canonical: `${PUBLIC_SITE_URL}/search` },
+      canonical: `${PUBLIC_SITE_URL}/search`,
+      count: -1,
+      emptyFiltered: false,
     }
   }
 
-  // Same active-listing filter path as /api/listings (status=active + taxonomy ids).
   const client = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -97,26 +111,38 @@ export async function buildSearchMetadata(params: {
 
   let count = 0
   try {
-    count = await countActiveListingsForFilters(client, filtersToListingIds(filters))
+    count = await countActiveListingsForFilters(client, searchFiltersToListingIds(filters))
   } catch {
     count = 0
   }
 
-  const title = buildSearchSeoTitle(filters)
-  const description = buildSearchSeoDescription(filters, count)
-  const emptyFiltered = count === 0
+  return {
+    title: buildSearchSeoTitle(filters),
+    description: buildSearchSeoDescription(filters, count),
+    canonical,
+    count,
+    emptyFiltered: count === 0,
+  }
+}
+
+export async function buildSearchMetadata(params: {
+  industry?: string | string[] | undefined
+  cat?: string | string[] | undefined
+  category?: string | string[] | undefined
+}): Promise<Metadata> {
+  const seo = await resolveSearchSeoState(params)
 
   return {
-    title,
-    description,
-    alternates: { canonical },
-    robots: emptyFiltered
+    title: seo.title,
+    description: seo.description,
+    alternates: { canonical: seo.canonical },
+    robots: seo.emptyFiltered
       ? { index: false, follow: true }
       : { index: true, follow: true },
     openGraph: {
-      title,
-      description,
-      url: canonical,
+      title: seo.title,
+      description: seo.description,
+      url: seo.canonical,
     },
   }
 }

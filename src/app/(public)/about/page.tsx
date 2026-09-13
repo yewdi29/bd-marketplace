@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { canonicalUrl } from '@/lib/site'
 import SellerPortalLink from '@/components/SellerPortalLink'
 import CoreValuesAccordion from '@/components/about/CoreValuesAccordion'
 import WhyWeExistIcon from '@/components/about/WhyWeExistIcon'
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   title: 'About Us',
   description:
     'Black Diamond Marketplace is the trusted marketplace for heavy equipment — built for oil and gas, construction, mining, agriculture, and forestry with AI verification and human care.',
-  alternates: { canonical: 'https://blackdiamondmkt.com/about' },
+  alternates: { canonical: canonicalUrl('/about') },
 }
 
 /** Shared vertical rhythm between About sections */

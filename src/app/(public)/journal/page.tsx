@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { canonicalUrl } from '@/lib/site'
 import { createClient } from '@/lib/supabase/server'
 import ArticleCard from '@/components/journal/ArticleCard'
 import { ARTICLE_CATEGORY_LABELS } from '@/lib/journal/categoryLabels'
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   title: 'The Operator Journal',
   description:
     'Field guides, maintenance checklists, market insights, and industry knowledge for heavy equipment operators and procurement professionals.',
-  alternates: { canonical: 'https://blackdiamondmkt.com/journal' },
+  alternates: { canonical: canonicalUrl('/journal') },
 }
 
 export default async function JournalPage() {

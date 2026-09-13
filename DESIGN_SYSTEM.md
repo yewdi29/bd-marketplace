@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: August 2026 — v2.42
+> Last updated: September 2026 — v2.55
 
 ---
 
@@ -614,6 +614,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.55 | September 2026 | **Search + public SEO headings.** `/search` adds a page H1 (`clamp(28px, 4vw, 36px)` / bold / ink) and 14px ink-3 description under the filter bar. How It Works bottom CTA heading is `h2` (same visual scale as before). Footer Categories includes Forestry. |
 | v2.54 | September 2026 | **Related listings card size.** Product-page Related Listings uses `.listing-card-grid--related` (same 1/2/3-column breakpoints as Featured / Search / Seller) so cards match global listing card dimensions instead of the denser default 4–5 column grid. |
 | v2.53 | September 2026 | **Homepage hero title wrap.** Desktop (`≥1000px`): forced break before “Heavy Equipment.” with nowrap. Below 1000px: natural wrap only (no forced break) to avoid mobile overflow. |
 | v2.52 | September 2026 | **Dashboard sold sections.** My Listings (All) and Saved Equipment show sold listings in a separate section below Active/Drafts (or available saved), with a light gray `#E8E9EA` horizontal separator and a Sold heading + count chip. |

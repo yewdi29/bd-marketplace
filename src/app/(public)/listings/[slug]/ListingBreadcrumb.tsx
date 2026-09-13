@@ -10,6 +10,7 @@ interface Props {
   category: string
   categoryLabel: string
   title: string
+  categoryHref?: string
 }
 
 function BackIcon() {
@@ -39,10 +40,10 @@ function canNavigateBack(): boolean {
 
 // Desktop (≥1024px): unchanged breadcrumb trail. Mobile/tablet (<1024px):
 // glossy pill Back (left) and View All (right) when gallery has items.
-export default function ListingBreadcrumb({ category, categoryLabel, title }: Props) {
+export default function ListingBreadcrumb({ category, categoryLabel, title, categoryHref }: Props) {
   const router = useRouter()
   const galleryNav = useListingGalleryNav()
-  const fallbackHref = `/search?category=${encodeURIComponent(category)}`
+  const fallbackHref = categoryHref ?? `/search?cat=${encodeURIComponent(category)}`
 
   const handleBack = useCallback(() => {
     if (galleryNav?.gridOpen) {
@@ -89,12 +90,12 @@ export default function ListingBreadcrumb({ category, categoryLabel, title }: Pr
       </div>
 
       <div className="hidden lg:flex items-center gap-2" style={{ fontSize: '12px' }}>
-        <Link href="/listings" className="text-ink-3 hover:text-ink transition-colors font-sans">
+        <Link href="/search" className="text-ink-3 hover:text-ink transition-colors font-sans">
           Browse
         </Link>
         <span className="text-ink-3">/</span>
         <Link
-          href={`/search?category=${category}`}
+          href={fallbackHref}
           className="text-ink-3 hover:text-ink transition-colors font-sans"
         >
           {categoryLabel}

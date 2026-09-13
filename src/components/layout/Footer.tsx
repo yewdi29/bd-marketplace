@@ -29,6 +29,7 @@ const SITEMAP = [
       { label: 'Mining', href: '/search?industry=mining' },
       { label: 'Agriculture', href: '/search?industry=agriculture' },
       { label: 'Trucks & Trailers', href: '/search?industry=trucks_trailers' },
+      { label: 'Forestry', href: '/search?industry=forestry' },
     ],
   },
   {

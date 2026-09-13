@@ -5,4 +5,4 @@ Disallow: /rigburrito/
 Disallow: /api/
 Disallow: /auth/
 
-Sitemap: https://blackdiamondmkt.com/sitemap.xml
+Sitemap: https://www.blackdiamondmkt.com/sitemap.xml

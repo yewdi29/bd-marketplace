@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import SearchPageClient from './SearchPageClient'
-import { buildSearchMetadata } from '@/lib/search/searchMetadata'
+import { buildSearchMetadata, resolveSearchSeoState } from '@/lib/search/searchMetadata'
 
 /** Always render from the live query string so industry+cat is never cached as industry-only. */
 export const dynamic = 'force-dynamic'
@@ -25,8 +25,26 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  // Read searchParams in the page as well so the route cannot be statically
-  // optimized without the industry/cat query that generateMetadata depends on.
-  await readSearchParams(searchParams)
-  return <SearchPageClient />
+  const params = await readSearchParams(searchParams)
+  const seo = await resolveSearchSeoState({
+    industry: params.industry,
+    cat: params.cat,
+    category: params.category,
+  })
+
+  return (
+    <SearchPageClient>
+      <header className="mb-5">
+        <h1
+          className="font-sans font-bold text-ink"
+          style={{ fontSize: 'clamp(28px, 4vw, 36px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
+        >
+          {seo.title}
+        </h1>
+        <p className="mt-2 font-sans text-ink-3 text-sm leading-relaxed max-w-2xl">
+          {seo.description}
+        </p>
+      </header>
+    </SearchPageClient>
+  )
 }

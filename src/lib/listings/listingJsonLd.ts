@@ -4,6 +4,8 @@
  * (matches visible UI + OG via formatPrice).
  */
 
+import { PUBLIC_SITE_URL } from '@/lib/site'
+
 export type ListingJsonLdImage = {
   url: string
   sort_order?: number | null
@@ -121,4 +123,40 @@ export function buildListingProductJsonLd(input: BuildListingProductJsonLdInput)
   }
 
   return product
+}
+
+export function buildListingBreadcrumbJsonLd(input: {
+  listingUrl: string
+  title: string
+  categoryLabel: string
+  categoryPath: string
+}) {
+  const categoryUrl = input.categoryPath.startsWith('http')
+    ? input.categoryPath
+    : `${PUBLIC_SITE_URL}${input.categoryPath}`
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Browse',
+        item: `${PUBLIC_SITE_URL}/search`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: input.categoryLabel,
+        item: categoryUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: input.title,
+        item: input.listingUrl,
+      },
+    ],
+  }
 }

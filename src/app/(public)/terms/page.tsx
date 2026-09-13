@@ -5,9 +5,12 @@ import {
   ENTERPRISE_TERMS_VERSION,
 } from '@/lib/organizations/enterpriseTerms'
 
+import { canonicalUrl } from '@/lib/site'
+
 export const metadata: Metadata = {
   title: 'Terms of Service',
   description: 'The terms and conditions governing your use of Black Diamond Marketplace.',
+  alternates: { canonical: canonicalUrl('/terms') },
 }
 
 const LAST_UPDATED = 'July 2026'

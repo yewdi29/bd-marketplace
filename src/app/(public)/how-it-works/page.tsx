@@ -297,7 +297,7 @@ export default function HowItWorksPage() {
       {/* Ready to Get Started — matches About page Join Us section */}
       <section className="bg-bg">
         <div className="max-w-[1450px] mx-auto page-shell-x py-12 md:py-16 text-center">
-          <h1
+          <h2
             className="font-sans text-ink mx-auto"
             style={{
               margin: '0 auto 16px',
@@ -310,7 +310,7 @@ export default function HowItWorksPage() {
             }}
           >
             Join Us To Get Started!
-          </h1>
+          </h2>
           <p
             className="font-sans text-ink-2 mx-auto"
             style={{

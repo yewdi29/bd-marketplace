@@ -10,6 +10,7 @@ import {
   loadPublicSellerListings,
   resolvePublicSellerBySlug,
 } from '@/lib/sellers/publicSellerProfile'
+import { canonicalUrl } from '@/lib/site'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -43,12 +44,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? `Browse equipment listings from ${profile.company_name} on Black Diamond Marketplace — ${location}.`
     : `Browse equipment listings from ${profile.company_name} on Black Diamond Marketplace.`
 
+  const canonical = canonicalUrl(`/sellers/${slug}`)
+
   return {
     title: profile.company_name,
     description,
+    alternates: { canonical },
     openGraph: {
       title: profile.company_name,
       description,
+      url: canonical,
       images: profile.company_logo_url ? [{ url: profile.company_logo_url }] : [],
       type: 'website',
     },

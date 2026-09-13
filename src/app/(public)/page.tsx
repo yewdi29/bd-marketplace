@@ -3,6 +3,7 @@ import HeroListEquipmentLink from '@/components/home/HeroListEquipmentLink'
 import { HERO_CTA_OUTLINE, HERO_CTA_ROW } from '@/components/home/heroCtaClasses'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { canonicalUrl } from '@/lib/site'
 import { Suspense } from 'react'
 import FeaturedEquipmentSection, { FeaturedCarouselSkeleton } from '@/components/home/FeaturedEquipmentSection'
 import CategoryBrowse from '@/components/home/CategoryBrowse'
@@ -18,13 +19,13 @@ import {
 } from '@/components/home/HomeSectionSkeletons'
 
 export const metadata: Metadata = {
-  title: "The World's Heavy Equipment Marketplace",
+  title: 'Oilfield & Heavy Equipment for Sale',
   description:
-    'Source heavy equipment from verified sellers across oil and gas, construction, mining, agriculture, and forestry. Buy and sell globally on Black Diamond Marketplace.',
-  alternates: { canonical: 'https://blackdiamondmkt.com' },
+    'Used oilfield and heavy equipment for sale from verified sellers. Browse listings across energy, construction, mining, agriculture, and forestry.',
+  alternates: { canonical: canonicalUrl() },
   openGraph: {
-    url: 'https://blackdiamondmkt.com',
-    title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+    url: canonicalUrl(),
+    title: 'Oilfield & Heavy Equipment for Sale | Black Diamond Marketplace',
     images: [
       {
         url: '/main-share-img.png',

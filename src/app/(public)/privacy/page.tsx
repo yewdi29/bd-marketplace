@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { canonicalUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'How Black Diamond Marketplace collects, uses, and protects your information.',
+  alternates: { canonical: canonicalUrl('/privacy') },
 }
 
 const LAST_UPDATED = 'June 2026'

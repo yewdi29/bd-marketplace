@@ -3,6 +3,7 @@ import Script from 'next/script'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { Inter } from 'next/font/google'
 import FeedbackWidget from '@/components/feedback/FeedbackWidget'
+import { PUBLIC_SITE_URL } from '@/lib/site'
 import './globals.css'
 
 const inter = Inter({
@@ -16,8 +17,8 @@ const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'Black Diamond Marketplace',
-  url: 'https://blackdiamondmkt.com',
-  logo: 'https://blackdiamondmkt.com/bd_logo-icon.svg',
+  url: PUBLIC_SITE_URL,
+  logo: `${PUBLIC_SITE_URL}/bd_logo-icon.svg`,
   description: "The World's Heavy Equipment Marketplace",
   sameAs: [],
 }
@@ -26,12 +27,12 @@ const websiteSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: 'Black Diamond Marketplace',
-  url: 'https://blackdiamondmkt.com',
+  url: PUBLIC_SITE_URL,
   potentialAction: {
     '@type': 'SearchAction',
     target: {
       '@type': 'EntryPoint',
-      urlTemplate: 'https://blackdiamondmkt.com/search?q={search_term_string}',
+      urlTemplate: `${PUBLIC_SITE_URL}/search?q={search_term_string}`,
     },
     'query-input': 'required name=search_term_string',
   },
@@ -40,17 +41,16 @@ const websiteSchema = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://blackdiamondmkt.com'),
+  metadataBase: new URL(PUBLIC_SITE_URL),
   title: {
-    default: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+    default: 'Oilfield & Heavy Equipment for Sale | Black Diamond Marketplace',
     template: '%s | Black Diamond Marketplace',
   },
   description:
-    'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry. Source equipment locally or globally.',
+    'Used oilfield and heavy equipment for sale from verified sellers. Browse listings across energy, construction, mining, agriculture, and forestry.',
   keywords: [
     'heavy equipment marketplace',
     'used heavy equipment for sale',
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     'heavy equipment buyers sellers',
     'Black Diamond Marketplace',
   ],
-  authors: [{ name: 'Black Diamond Marketplace', url: 'https://blackdiamondmkt.com' }],
+  authors: [{ name: 'Black Diamond Marketplace', url: PUBLIC_SITE_URL }],
   creator: 'Black Diamond Marketplace',
   publisher: 'Black Diamond Marketplace',
   icons: {
@@ -87,11 +87,11 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://blackdiamondmkt.com',
+    url: PUBLIC_SITE_URL,
     siteName: 'Black Diamond Marketplace',
-    title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+    title: 'Oilfield & Heavy Equipment for Sale | Black Diamond Marketplace',
     description:
-      'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry.',
+      'Used oilfield and heavy equipment for sale from verified sellers across energy, construction, mining, agriculture, and forestry.',
     images: [
       {
         url: '/main-share-img.png',
@@ -103,13 +103,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+    title: 'Oilfield & Heavy Equipment for Sale | Black Diamond Marketplace',
     description:
-      'Black Diamond Marketplace connects verified buyers and sellers of heavy equipment across oil and gas, construction, mining, agriculture, and forestry.',
+      'Used oilfield and heavy equipment for sale from verified sellers across energy, construction, mining, agriculture, and forestry.',
     images: ['/main-share-img.png'],
-  },
-  alternates: {
-    canonical: 'https://blackdiamondmkt.com',
   },
 }
 

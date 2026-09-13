@@ -1,9 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { loadSearchTaxonomy } from '@/lib/search/searchTaxonomy'
-
-/** Canonical host for sitemap <loc> values (www; apex redirects here). */
-const SITEMAP_SITE_URL = 'https://www.blackdiamondmkt.com'
+import { PUBLIC_SITE_URL } from '@/lib/site'
 
 /**
  * Next.js 14 MetadataRoute.Sitemap does not XML-escape `&` in <loc> (vercel/next.js#77340).
@@ -25,44 +23,69 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: sitemapLoc(SITEMAP_SITE_URL),
+      url: sitemapLoc(PUBLIC_SITE_URL),
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1.0,
     },
     {
-      url: sitemapLoc(`${SITEMAP_SITE_URL}/search`),
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/search`),
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
     },
     {
-      url: sitemapLoc(`${SITEMAP_SITE_URL}/about`),
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/about`),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
-      url: sitemapLoc(`${SITEMAP_SITE_URL}/careers`),
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/how-it-works`),
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/pricing`),
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/contact`),
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6,
     },
     {
-      url: sitemapLoc(`${SITEMAP_SITE_URL}/journal`),
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/careers`),
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/journal`),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: sitemapLoc(`${SITEMAP_SITE_URL}/sellers`),
+      url: sitemapLoc(`${PUBLIC_SITE_URL}/sellers`),
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,
     },
   ]
 
-  const [{ data: articles }, { data: listings }, { data: sellers }, { data: orgs }, taxonomy] = await Promise.all([
+  const [
+    { data: articles },
+    { data: listings },
+    { data: sellers },
+    { data: orgs },
+    { data: listingTaxonomyRows },
+    taxonomy,
+  ] = await Promise.all([
     supabase
       .from('articles')
       .select('slug, updated_at, published_at')
@@ -80,6 +103,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('organizations')
       .select('slug, updated_at')
       .not('slug', 'is', null),
+    supabase
+      .from('listings')
+      .select('industry_id, category_id')
+      .eq('status', 'active'),
     loadSearchTaxonomy(supabase),
   ])
 
@@ -93,15 +120,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     (orgMembers ?? []).map(m => m.user_id as string).filter(Boolean),
   )
 
+  const industryIdsWithStock = new Set<string>()
+  const categoryIdsWithStock = new Set<string>()
+  const pairKeys = new Set<string>()
+
+  for (const row of listingTaxonomyRows ?? []) {
+    const industryId = row.industry_id as string | null
+    const categoryId = row.category_id as string | null
+    if (industryId) industryIdsWithStock.add(industryId)
+    if (categoryId) categoryIdsWithStock.add(categoryId)
+    if (industryId && categoryId) pairKeys.add(`${industryId}::${categoryId}`)
+  }
+
   const articlePages: MetadataRoute.Sitemap = (articles ?? []).map(article => ({
-    url: sitemapLoc(`${SITEMAP_SITE_URL}/journal/${article.slug}`),
+    url: sitemapLoc(`${PUBLIC_SITE_URL}/journal/${article.slug}`),
     lastModified: new Date(article.updated_at ?? article.published_at ?? new Date()),
     changeFrequency: 'monthly',
     priority: 0.7,
   }))
 
   const listingPages: MetadataRoute.Sitemap = (listings ?? []).map(listing => ({
-    url: sitemapLoc(`${SITEMAP_SITE_URL}/listings/${listing.slug}`),
+    url: sitemapLoc(`${PUBLIC_SITE_URL}/listings/${listing.slug}`),
     lastModified: new Date(listing.updated_at ?? new Date()),
     changeFrequency: 'weekly',
     priority: 0.8,
@@ -111,7 +150,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(orgs ?? [])
       .filter(org => org.slug)
       .map(org => ({
-        url: sitemapLoc(`${SITEMAP_SITE_URL}/sellers/${org.slug}`),
+        url: sitemapLoc(`${PUBLIC_SITE_URL}/sellers/${org.slug}`),
         lastModified: new Date(org.updated_at ?? new Date()),
         changeFrequency: 'monthly' as const,
         priority: 0.6,
@@ -119,21 +158,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(sellers ?? [])
       .filter(seller => seller.company_slug && !orgMemberIds.has(seller.id))
       .map(seller => ({
-        url: sitemapLoc(`${SITEMAP_SITE_URL}/sellers/${seller.company_slug}`),
+        url: sitemapLoc(`${PUBLIC_SITE_URL}/sellers/${seller.company_slug}`),
         lastModified: new Date(seller.updated_at ?? new Date()),
         changeFrequency: 'monthly' as const,
         priority: 0.6,
       })),
   ]
 
-  // Industry / category filter URLs — whitelist from taxonomy only
+  // Only include industry/category URLs that have at least one active listing.
+  // Empty filter pages are noindex and must not be submitted in the sitemap.
   const taxonomySearchPages: MetadataRoute.Sitemap = []
   const now = new Date()
 
   for (const industry of taxonomy.industries) {
+    if (!industryIdsWithStock.has(industry.id)) continue
     taxonomySearchPages.push({
       url: sitemapLoc(
-        `${SITEMAP_SITE_URL}/search?industry=${encodeURIComponent(industry.slug)}`,
+        `${PUBLIC_SITE_URL}/search?industry=${encodeURIComponent(industry.slug)}`,
       ),
       lastModified: now,
       changeFrequency: 'daily',
@@ -142,9 +183,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const category of taxonomy.categories) {
+    if (!categoryIdsWithStock.has(category.id)) continue
+
     taxonomySearchPages.push({
       url: sitemapLoc(
-        `${SITEMAP_SITE_URL}/search?cat=${encodeURIComponent(category.slug)}`,
+        `${PUBLIC_SITE_URL}/search?cat=${encodeURIComponent(category.slug)}`,
       ),
       lastModified: now,
       changeFrequency: 'daily',
@@ -152,9 +195,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
 
     for (const industrySlug of category.industrySlugs) {
+      const industry = taxonomy.industries.find(i => i.slug === industrySlug)
+      if (!industry || !pairKeys.has(`${industry.id}::${category.id}`)) continue
       taxonomySearchPages.push({
         url: sitemapLoc(
-          `${SITEMAP_SITE_URL}/search?industry=${encodeURIComponent(industrySlug)}&cat=${encodeURIComponent(category.slug)}`,
+          `${PUBLIC_SITE_URL}/search?industry=${encodeURIComponent(industrySlug)}&cat=${encodeURIComponent(category.slug)}`,
         ),
         lastModified: now,
         changeFrequency: 'daily',
