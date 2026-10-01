@@ -3,6 +3,8 @@ import HeroListEquipmentLink from '@/components/home/HeroListEquipmentLink'
 import { HERO_CTA_OUTLINE, HERO_CTA_ROW } from '@/components/home/heroCtaClasses'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { DM_Mono } from 'next/font/google'
+import Image from 'next/image'
 import { canonicalUrl } from '@/lib/site'
 import { Suspense } from 'react'
 import FeaturedEquipmentSection, { FeaturedCarouselSkeleton } from '@/components/home/FeaturedEquipmentSection'
@@ -18,10 +20,16 @@ import {
   OperatorJournalSkeleton,
 } from '@/components/home/HomeSectionSkeletons'
 
+const dmMono = DM_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'Oilfield & Heavy Equipment for Sale',
   description:
-    'Used oilfield and heavy equipment for sale from verified sellers. Browse listings across energy, construction, mining, agriculture, and forestry.',
+    'Create a free account, list your equipment, and get in front of real buyers.',
   alternates: { canonical: canonicalUrl() },
   openGraph: {
     url: canonicalUrl(),
@@ -40,13 +48,6 @@ export const metadata: Metadata = {
     images: ['/main-share-img.png'],
   },
 }
-
-const INDUSTRY_TAGS = [
-  { label: 'Energy',       dotColor: '#E8E9EA' },
-  { label: 'Construction', dotColor: '#E8E9EA' },
-  { label: 'Mining',       dotColor: '#E8E9EA' },
-  { label: 'Agriculture',  dotColor: '#E8E9EA' },
-]
 
 export default function HomePage() {
   return (
@@ -79,47 +80,21 @@ export default function HomePage() {
                 boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
               }}
             >
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  background: 'rgba(255,107,53,0.07)',
-                  border: '1px solid rgba(255,107,53,0.18)',
-                  borderRadius: '100px',
-                  padding: '5px 13px',
-                  marginBottom: '28px',
-                }}
-              >
-                <span
-                  className="animate-pulse"
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: '#FF6B35',
-                    flexShrink: 0,
-                    display: 'inline-block',
-                  }}
+              <div className="mb-7 flex w-full justify-center min-[1000px]:justify-start">
+                <Image
+                  src="/bd_logo-wordmark.svg"
+                  alt="Black Diamond"
+                  width={244}
+                  height={29}
+                  priority
+                  style={{ height: '32px', width: 'auto' }}
                 />
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono, "Andale Mono", monospace)',
-                    fontSize: '10px',
-                    fontWeight: 500,
-                    color: '#FF6B35',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                  }}
-                >
-                  For equipment buyers &amp; sellers
-                </span>
               </div>
 
               <h1
                 style={{
                   fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
-                  fontSize: '58px',
+                  fontSize: 'clamp(36px, 5vw, 58px)',
                   fontWeight: 900,
                   letterSpacing: '-0.04em',
                   lineHeight: 1.02,
@@ -127,41 +102,8 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                The Trusted Marketplace For
-                <br className="hidden min-[1000px]:inline" />
-                {' '}
-                <span className="min-[1000px]:whitespace-nowrap">Heavy Equipment.</span>
+                Machinery Deals Made Easy.
               </h1>
-
-              <div
-                className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 min-[1000px]:justify-start"
-                style={{ marginBottom: '22px' }}
-              >
-                {INDUSTRY_TAGS.map(tag => (
-                  <div key={tag.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span
-                      style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: tag.dotColor,
-                        flexShrink: 0,
-                        display: 'inline-block',
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        color: '#9A9DA2',
-                        fontWeight: 500,
-                        fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
-                      }}
-                    >
-                      {tag.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
 
               <p
                 className="mx-auto min-[1000px]:mx-0"
@@ -174,16 +116,31 @@ export default function HomePage() {
                   fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
                 }}
               >
-                List your equipment or browse listings from verified sellers across all industrial
-                sectors.
+                Create a free account, list your equipment, and get in front of real buyers.
               </p>
 
               <div className={HERO_CTA_ROW}>
-                <Link href="/search" className={HERO_CTA_OUTLINE}>
-                  Browse Equipment
-                </Link>
                 <HeroListEquipmentLink />
+                <Link href="/search" className={HERO_CTA_OUTLINE}>
+                  Browse equipment
+                </Link>
               </div>
+
+              <p
+                className={`${dmMono.className} w-full text-center min-[1000px]:text-left`}
+                style={{
+                  marginTop: '28px',
+                  background: '#F7F8F9',
+                  color: '#1A1D20',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  lineHeight: 1.5,
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                }}
+              >
+                First 100 sellers get 3 months of Starter or Pro on us. Then full price.
+              </p>
             </div>
           </div>
 
@@ -195,7 +152,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Featured equipment (async server + small client islands per card) ─ */}
+      {/* ── How It Works (static header server; animation deferred client) ─── */}
+      <Suspense fallback={<HowItWorksSkeleton />}>
+        <section className="w-full py-16 lg:py-20">
+          <HowItWorksHeader />
+          <HowItWorksLazy />
+        </section>
+      </Suspense>
+
+      {/* ── Featured (thin) then industry browse ───────────────────────────── */}
       <div className="page-shell">
         <Suspense fallback={<FeaturedCarouselSkeleton />}>
           <FeaturedEquipmentSection />
@@ -207,14 +172,6 @@ export default function HomePage() {
 
         <hr className="border-0 border-t border-[#E8E9EA] m-0" />
       </div>
-
-      {/* ── How It Works (static header server; animation deferred client) ─── */}
-      <Suspense fallback={<HowItWorksSkeleton />}>
-        <section className="w-full py-16 lg:py-20">
-          <HowItWorksHeader />
-          <HowItWorksLazy />
-        </section>
-      </Suspense>
 
       {/* ── Operator Journal (async server, streams independently) ───────── */}
       <div className="page-shell">

@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: September 2026 — v2.55
+> Last updated: October 2026 — v2.56
 
 ---
 
@@ -207,7 +207,7 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Position: `fixed top-3 left-4 right-4` — floats 12px from top, 16px from sides (not flush to viewport edge)
 - Active nav link: white pill `bg-white shadow-card` with no border
 - Inactive nav link: `text-ink-2 hover:text-ink hover:bg-white/70` — transparent hover
-- Right side (logged out): ghost "Sign In" border-pill + orange "List Equipment" pill
+- Right side (logged out): text link "Sell With Us" (`/auth/signup`) + orange "Sign in" pill. On the homepage (`/`) the "Sell With Us" link is hidden so the header is wordmark, search, and Sign in.
 - Right side (logged in, desktop ≥1024px): `ProfileDropdown` component (avatar pill → dropdown panel)
 - **Mobile/tablet (<1024px), homepage (`/`):** full wordmark logo + search icon button (opens `MobileSearchTakeover`) + hamburger/avatar trigger (opens `MobileMenu`)
 - **Mobile/tablet (<1024px), every other page:** icon-only logo (`/bd_logo-icon.svg`, 28px) + full-width inline search bar look-alike (`SearchBarTrigger` — tapping it also opens `MobileSearchTakeover`, it never accepts typed input itself) + the same hamburger/avatar trigger
@@ -473,12 +473,15 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 #### Section-specific notes
 - Hero on frosted glass card surface inside hero grid (see §8 glassmorphism exception)
-- Hero badge: orange pill `bg-orange-bg border-orange-bdr` with pulsing dot — copy: “For equipment buyers & sellers”
-- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “The Trusted Marketplace For Heavy Equipment.” Desktop (`≥1000px`): forced line break before “Heavy Equipment.” with nowrap. Mobile/tablet: natural wrap, no forced break.
-- **Hero CTAs:** below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, `px-6 py-2.5 text-sm` pills matching Button `md` (`heroCtaClasses.ts`)
-- **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label)
+- Hero lockup: existing Black Diamond wordmark (`/bd_logo-wordmark.svg`, alt “Black Diamond”) — no “Marketplace” in the lockup. H1 stays Inter, not mono.
+- Hero headline is all black (`--ink` / `#1A1D20`) — no orange emphasis words; current copy: “Machinery Deals Made Easy.” Size `clamp(36px, 5vw, 58px)` so the line wraps cleanly on small screens.
+- Hero sub: “Create a free account, list your equipment, and get in front of real buyers.”
+- **Hero CTAs:** primary orange “List your equipment” first (signed out → `/auth/signup`; signed in → `/dashboard?new=true`), then outline “Browse equipment” → `/search`. Below 730px (mobile) — stacked full-width column, `min-h-12` (48px) tap targets, `text-sm`; tablet/desktop — side-by-side row, `px-6 py-2.5 text-sm` pills matching Button `md` (`heroCtaClasses.ts`)
+- **First 100 strip:** under the CTAs, off-white `#F7F8F9` band, dark `#1A1D20` type, DM Mono. Copy: “First 100 sellers get 3 months of Starter or Pro on us. Then full price.” Public name is First 100 — never “Founders”.
+- **Below the hero, in order:** How It Works (`List. Review. Match.`), Featured Equipment, Browse by Industry. Operator Journal and newsletter stay after those sections.
+- **Featured Equipment:** 3-column listing grid (`.listing-card-grid--featured`), up to 9 cards; header uses shared section header pattern (no orange label). Paid-plan listings only — free listings are not labeled BD Verified here.
 - **Browse by Industry:** 3×2 grid of horizontal industry cards (`md:grid-cols-2 lg:grid-cols-3`); 55×55px orange-tint icon box; header uses shared section header pattern (no orange label); "Browse all →" links to `/search`
-- **How It Works:** centered header with `HOW IT WORKS` orange label; step cards in 3-column desktop row
+- **How It Works:** centered header with `HOW IT WORKS` orange label; headline “List. Review. Match.”; step cards List → Review → Match in a 3-column desktop row
 - **Newsletter:** see `NewsletterSection` component (§6) — two-column split on `md+`; not homepage-only
 - **Operator Journal:** retains legacy `text-2xl` header until migrated
 
@@ -614,6 +617,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.56 | October 2026 | **Homepage phase-1 seller convert.** Hero lockup is the Black Diamond wordmark (no “Marketplace”). H1 “Machinery Deals Made Easy.” Sub and CTAs: primary “List your equipment” (`/auth/signup` or `/dashboard?new=true`), secondary “Browse equipment” (`/search`). First 100 strip in DM Mono on `#F7F8F9`. Homepage header hides “Sell With Us”. Below-fold order: How It Works (List → Review → Match), Featured, Browse by Industry. |
 | v2.55 | September 2026 | **Search + public SEO headings.** `/search` adds a page H1 (`clamp(28px, 4vw, 36px)` / bold / ink) and 14px ink-3 description under the filter bar. How It Works bottom CTA heading is `h2` (same visual scale as before). Footer Categories includes Forestry. |
 | v2.54 | September 2026 | **Related listings card size.** Product-page Related Listings uses `.listing-card-grid--related` (same 1/2/3-column breakpoints as Featured / Search / Seller) so cards match global listing card dimensions instead of the denser default 4–5 column grid. |
 | v2.53 | September 2026 | **Homepage hero title wrap.** Desktop (`≥1000px`): forced break before “Heavy Equipment.” with nowrap. Below 1000px: natural wrap only (no forced break) to avoid mobile overflow. |

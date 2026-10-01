@@ -15,7 +15,7 @@ export default function HeroListEquipmentLink() {
       className={HERO_CTA_PRIMARY}
       style={{ boxShadow: '0 6px 20px rgba(255,107,53,0.3)' }}
     >
-      List Your Equipment
+      List your equipment
     </Link>
   )
 }

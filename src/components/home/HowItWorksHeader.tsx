@@ -9,10 +9,10 @@ export default function HowItWorksHeader() {
         className="font-sans font-bold text-ink"
         style={{ fontSize: 'clamp(28px, 4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.1 }}
       >
-        List. Publish. Connect.
+        List. Review. Match.
       </h2>
       <p className="mt-4 font-sans text-ink-3 text-base max-w-2xl mx-auto leading-relaxed">
-        Three steps to move your equipment on the world&apos;s most intelligent heavy equipment marketplace.
+        List your equipment, we review it, and real buyers can find it.
       </p>
     </div>
   )

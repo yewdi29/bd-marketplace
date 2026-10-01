@@ -36,6 +36,21 @@ const S3_BORDER_TO_INQUIRY_MS = 1500
 const S3_INQUIRY_TO_HOLD_MS = 6500
 const HOLD_TO_IDLE_MS = 500
 
+const HIW_STEPS = {
+  list: {
+    title: 'List',
+    subtext: 'Tell our AI what you have in plain language. It builds a complete listing in seconds.',
+  },
+  review: {
+    title: 'Review',
+    subtext: 'We review the listing before buyers can see it.',
+  },
+  match: {
+    title: 'Match',
+    subtext: 'Real buyers reach you directly through your secure email. No phone number exposure.',
+  },
+} as const
+
 /** Step 1 phases only — c1 / s2_live / c2 are event-driven. */
 const S1_TIMELINE: { at: number; phase: Phase }[] = [
   { at: 0, phase: 's1_border' },
@@ -821,8 +836,8 @@ export default function HowItWorksSection() {
           <div className="hidden lg:flex items-start gap-0">
             <StepCard
               num="01"
-              title="Describe Your Equipment"
-              subtext="Tell our AI what you have in plain language. It builds a complete listing in seconds."
+              title={HIW_STEPS.list.title}
+              subtext={HIW_STEPS.list.subtext}
             >
               <Step1Mockup phase={phase} onListingFadeInStart={handleListingFadeInStart} />
             </StepCard>
@@ -836,8 +851,8 @@ export default function HowItWorksSection() {
 
             <StepCard
               num="02"
-              title="Go Live Worldwide"
-              subtext="Your listing reaches serious buyers across the globe the moment you hit publish."
+              title={HIW_STEPS.review.title}
+              subtext={HIW_STEPS.review.subtext}
             >
               <Step2Mockup phase={phase} loopId={loopId} />
             </StepCard>
@@ -851,8 +866,8 @@ export default function HowItWorksSection() {
 
             <StepCard
               num="03"
-              title="Connect and Close"
-              subtext="Verified buyers reach you directly through your secure email. No phone number exposure. Just real interest."
+              title={HIW_STEPS.match.title}
+              subtext={HIW_STEPS.match.subtext}
             >
               <Step3Mockup phase={phase} loopId={loopId} />
             </StepCard>
@@ -862,8 +877,8 @@ export default function HowItWorksSection() {
           <div className="flex lg:hidden flex-col">
             <StepCard
               num="01"
-              title="Describe Your Equipment"
-              subtext="Tell our AI what you have in plain language. It builds a complete listing in seconds."
+              title={HIW_STEPS.list.title}
+              subtext={HIW_STEPS.list.subtext}
             >
               <Step1Mockup
                 phase={activePhase}
@@ -881,8 +896,8 @@ export default function HowItWorksSection() {
 
             <StepCard
               num="02"
-              title="Go Live Worldwide"
-              subtext="Your listing reaches serious buyers across the globe the moment you hit publish."
+              title={HIW_STEPS.review.title}
+              subtext={HIW_STEPS.review.subtext}
             >
               <Step2Mockup
                 phase={activePhase}
@@ -901,8 +916,8 @@ export default function HowItWorksSection() {
 
             <StepCard
               num="03"
-              title="Connect and Close"
-              subtext="Verified buyers reach you directly through your secure email. No phone number exposure. Just real interest."
+              title={HIW_STEPS.match.title}
+              subtext={HIW_STEPS.match.subtext}
             >
               <Step3Mockup
                 phase={activePhase}
