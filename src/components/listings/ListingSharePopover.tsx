@@ -101,6 +101,21 @@ function LinkedInIcon() {
 
 // ─── Share options ────────────────────────────────────────────────────────────
 
+function openSharePopup(url: string, name: string) {
+  const width = 626
+  const height = 500
+  const left = Math.round(window.screenX + (window.outerWidth - width) / 2)
+  const top = Math.round(window.screenY + (window.outerHeight - height) / 2)
+  // Intentionally keep window.opener so Facebook can close this popup after post.
+  // <a target="_blank" rel="noopener"> opens a tab Facebook cannot close, which
+  // leaves their composer retrying Share in a freeze loop.
+  window.open(
+    url,
+    name,
+    `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`,
+  )
+}
+
 export function useListingShareOptions({
   listingUrl,
   listingTitle,
@@ -123,11 +138,15 @@ export function useListingShareOptions({
   const emailBody = encodeURIComponent(
     `${listingTitle}\n${listingPrice}${listingLocation ? `\n${listingLocation}` : ''}\n\n${listingUrl}`
   )
-  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(listingUrl)}&quote=${encodeURIComponent('Check out this equipment listing on Black Diamond Marketplace')}`
-  // NOTE: app_id is a placeholder — replace with a real Facebook App ID before launch.
-  const messengerUrl = `https://www.facebook.com/dialog/send?link=${encodeURIComponent(listingUrl)}&app_id=PLACEHOLDER_APP_ID&redirect_uri=${encodeURIComponent(listingUrl)}`
+  // Facebook's composer only accepts `u`. Extra params like `quote` hang the
+  // post step after the user clicks Share.
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(listingUrl)}`
+  const facebookAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim()
+  const messengerUrl = facebookAppId
+    ? `https://www.facebook.com/dialog/send?app_id=${encodeURIComponent(facebookAppId)}&link=${encodeURIComponent(listingUrl)}&redirect_uri=${encodeURIComponent(listingUrl)}`
+    : null
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${listingTitle} ${listingUrl}`)}`
-  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(listingUrl)}&text=${encodeURIComponent('Available on Black Diamond Marketplace')}`
+  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(listingUrl)}`
 
   const shareOptions: ShareOption[] = [
     {
@@ -146,14 +165,16 @@ export function useListingShareOptions({
       key: 'facebook',
       label: 'Facebook',
       icon: <FacebookIcon />,
-      href: facebookUrl,
+      onClick: () => openSharePopup(facebookUrl, 'facebook-share'),
     },
-    {
-      key: 'messenger',
-      label: 'Messenger',
-      icon: <MessengerIcon />,
-      href: messengerUrl,
-    },
+    ...(messengerUrl
+      ? [{
+          key: 'messenger',
+          label: 'Messenger',
+          icon: <MessengerIcon />,
+          onClick: () => openSharePopup(messengerUrl, 'messenger-share'),
+        } satisfies ShareOption]
+      : []),
     {
       key: 'whatsapp',
       label: 'WhatsApp',
@@ -208,6 +229,7 @@ export function SharePopoverPanel({
             type="button"
             onClick={() => {
               opt.onClick?.()
+              if (opt.key !== 'copy') onSelect?.()
             }}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-sans text-ink-2 hover:text-ink hover:bg-bg transition-colors text-left"
           >

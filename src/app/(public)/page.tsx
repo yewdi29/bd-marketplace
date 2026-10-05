@@ -127,10 +127,10 @@ export default function HomePage() {
                   marginBottom: '18px',
                 }}
               >
-                The Trusted Marketplace For
+                Machinery Deals
                 <br className="hidden min-[1000px]:inline" />
                 {' '}
-                <span className="min-[1000px]:whitespace-nowrap">Heavy Equipment.</span>
+                <span className="min-[1000px]:whitespace-nowrap">Made Easy.</span>
               </h1>
 
               <div

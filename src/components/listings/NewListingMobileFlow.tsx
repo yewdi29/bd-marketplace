@@ -140,6 +140,7 @@ export interface NewListingMobileFlowProps {
   handleDiscard: () => Promise<void>
   handleRemovePhoto: (id: string) => Promise<void>
   handleFileSelect: (files: FileList) => Promise<void>
+  step2Complete: boolean
   router: AppRouterInstance
 }
 
@@ -186,6 +187,7 @@ export default function NewListingMobileFlow({
   handleDiscard,
   handleRemovePhoto,
   handleFileSelect,
+  step2Complete,
   router,
 }: NewListingMobileFlowProps) {
   const [entered, setEntered] = useState(false)
@@ -295,6 +297,7 @@ export default function NewListingMobileFlow({
 
   const nextDisabled =
     (step === 1 && (generating || prompt.trim().length < 10)) ||
+    (step === 2 && !step2Complete) ||
     stepLoading
 
   const nextLabel =

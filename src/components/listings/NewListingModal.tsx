@@ -30,6 +30,7 @@ import {
   formatPriceNumberForInput,
   parsePriceInputValue,
 } from '@/lib/formatPrice'
+import { listingGenerateStep2Missing } from '@/lib/listings/listingGenerateStep2'
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -327,6 +328,36 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
 
   // ── Step 2: Save fields ─────────────────────────────────────────────────────
 
+  function step2MissingFields(): string[] {
+    return listingGenerateStep2Missing({
+      title: form.title,
+      condition: form.condition,
+      price: form.price,
+      industryId: taxonomy.industry_id,
+      categoryId: taxonomy.category_id,
+      countryId: taxonomy.country_id,
+      locationCity: taxonomy.location_city,
+      stateId: taxonomy.state_id,
+      countrySlug: taxonomyData.getCountrySlug(taxonomy.country_id),
+      needsSubdivision: taxonomyData.needsSubdivisionStep(taxonomy.country_id),
+    })
+  }
+
+  function validateStep2(): boolean {
+    const missing = step2MissingFields()
+    if (missing.length === 0) {
+      setPriceError('')
+      return true
+    }
+    setError(`Complete all required fields before continuing: ${missing.join(', ')}.`)
+    if (missing.includes('Price')) {
+      setPriceError('Price is required to continue.')
+    } else {
+      setPriceError('')
+    }
+    return false
+  }
+
   function validatePrice(): boolean {
     if (!form.price || parsePriceInputValue(form.price) <= 0) {
       setPriceError('Price is required to publish your listing.')
@@ -338,7 +369,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
 
   async function handleSaveFields() {
     if (!listingId) return
-    if (!validatePrice()) return
+    if (!validateStep2()) return
     setStepLoading(true)
     setError('')
 
@@ -550,6 +581,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
 
   const nextDisabled =
     (step === 1 && (generating || prompt.trim().length < 10)) ||
+    (step === 2 && step2MissingFields().length > 0) ||
     stepLoading
 
   const previewListing = useMemo((): ListingCardListing => {
@@ -627,6 +659,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         handleDiscard={handleDiscard}
         handleRemovePhoto={handleRemovePhoto}
         handleFileSelect={handleFileSelect}
+        step2Complete={step2MissingFields().length === 0}
         router={router}
       />
     )
