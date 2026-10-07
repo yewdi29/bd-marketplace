@@ -83,7 +83,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { data: listings },
     { data: sellers },
     { data: orgs },
-    { data: listingTaxonomyRows },
     taxonomy,
   ] = await Promise.all([
     supabase
@@ -92,7 +91,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .eq('status', 'published'),
     supabase
       .from('listings')
-      .select('slug, updated_at')
+      .select('slug, updated_at, industry_id, category_id, seller_id, organization_id')
       .eq('status', 'active')
       .not('slug', 'is', null),
     supabase
@@ -101,18 +100,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .not('company_slug', 'is', null),
     supabase
       .from('organizations')
-      .select('slug, updated_at')
+      .select('id, slug, updated_at')
       .not('slug', 'is', null),
-    supabase
-      .from('listings')
-      .select('industry_id, category_id')
-      .eq('status', 'active'),
     loadSearchTaxonomy(supabase),
   ])
 
   const { data: orgMembers } = await supabase
     .from('org_members')
-    .select('user_id')
+    .select('user_id, organization_id')
     .eq('status', 'active')
     .not('user_id', 'is', null)
 
@@ -120,11 +115,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     (orgMembers ?? []).map(m => m.user_id as string).filter(Boolean),
   )
 
+  const orgIdsWithActiveListings = new Set<string>()
+  const soloSellerIdsWithActiveListings = new Set<string>()
+  for (const row of listings ?? []) {
+    const organizationId = row.organization_id as string | null
+    const sellerId = row.seller_id as string | null
+    if (organizationId) orgIdsWithActiveListings.add(organizationId)
+    else if (sellerId) soloSellerIdsWithActiveListings.add(sellerId)
+  }
+
+  const orgIdsFromMemberSoloListings = new Set<string>()
+  for (const member of orgMembers ?? []) {
+    const userId = member.user_id as string | null
+    const organizationId = member.organization_id as string | null
+    if (userId && organizationId && soloSellerIdsWithActiveListings.has(userId)) {
+      orgIdsFromMemberSoloListings.add(organizationId)
+    }
+  }
+
   const industryIdsWithStock = new Set<string>()
   const categoryIdsWithStock = new Set<string>()
   const pairKeys = new Set<string>()
 
-  for (const row of listingTaxonomyRows ?? []) {
+  for (const row of listings ?? []) {
     const industryId = row.industry_id as string | null
     const categoryId = row.category_id as string | null
     if (industryId) industryIdsWithStock.add(industryId)
@@ -148,7 +161,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const sellerPages: MetadataRoute.Sitemap = [
     ...(orgs ?? [])
-      .filter(org => org.slug)
+      .filter(
+        org =>
+          Boolean(org.slug) &&
+          (orgIdsWithActiveListings.has(org.id) || orgIdsFromMemberSoloListings.has(org.id)),
+      )
       .map(org => ({
         url: sitemapLoc(`${PUBLIC_SITE_URL}/sellers/${org.slug}`),
         lastModified: new Date(org.updated_at ?? new Date()),
@@ -156,7 +173,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       })),
     ...(sellers ?? [])
-      .filter(seller => seller.company_slug && !orgMemberIds.has(seller.id))
+      .filter(
+        seller =>
+          Boolean(seller.company_slug) &&
+          !orgMemberIds.has(seller.id) &&
+          soloSellerIdsWithActiveListings.has(seller.id),
+      )
       .map(seller => ({
         url: sitemapLoc(`${PUBLIC_SITE_URL}/sellers/${seller.company_slug}`),
         lastModified: new Date(seller.updated_at ?? new Date()),

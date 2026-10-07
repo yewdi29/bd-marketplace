@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq('status', 'published')
     .single()
 
-  if (!data) return { title: 'Article Not Found' }
+  if (!data) notFound()
 
   const canonicalUrl = `${PUBLIC_SITE_URL}/journal/${slug}`
   const description = data.meta_description ?? data.excerpt ?? undefined
@@ -80,7 +80,7 @@ export default async function ArticlePage({ params }: Props) {
     .eq('status', 'published')
     .single()
 
-  if (!articleData) redirect('/journal')
+  if (!articleData) notFound()
 
   const article = articleData as Article
   const categoryLabel = formatCategory(article.category)

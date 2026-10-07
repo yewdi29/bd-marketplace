@@ -1,9 +1,10 @@
 import { Resend } from 'resend'
+import { PUBLIC_SITE_URL } from '@/lib/site'
 
 export const EMAIL_FROM = 'Black Diamond Marketplace <noreply@blackdiamondmkt.com>'
 
 /** Canonical production origin for links in outbound emails. */
-export const EMAIL_APP_URL = 'https://blackdiamondmkt.com'
+export const EMAIL_APP_URL = PUBLIC_SITE_URL
 
 export function getAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'

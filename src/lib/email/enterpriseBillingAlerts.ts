@@ -1,4 +1,5 @@
 import { sendEmail } from '@/lib/email/resendClient'
+import { PUBLIC_SITE_URL } from '@/lib/site'
 
 export interface EnterprisePaymentFailedAlertParams {
   organizationId: string
@@ -20,7 +21,7 @@ export async function sendEnterprisePaymentFailedAlert(
   }
 
   const amount = (params.amountDue / 100).toFixed(2)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://blackdiamondmkt.com'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? PUBLIC_SITE_URL
 
   await sendEmail({
     to: adminEmail,

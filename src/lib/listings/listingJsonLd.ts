@@ -65,43 +65,31 @@ export interface BuildListingProductJsonLdInput {
 /**
  * Product + Offer JSON-LD for /listings/[slug].
  *
- * Price-on-request pattern (when price is hidden / zero):
- * - Offer retained (url, availability, priceCurrency)
- * - numeric `price` omitted entirely
- * - `priceSpecification` with description "Price on request" and no amount fields
- *   (schema.org PriceSpecification; avoids contradicting visible "Contact for price")
+ * Contact-for-price (hidden / zero): omit `offers` entirely so Google does not
+ * see an Offer without a price. Numeric prices keep a standard Offer.
  */
 export function buildListingProductJsonLd(input: BuildListingProductJsonLdInput) {
   const contactForPrice = isContactForPriceListing(input.price, input.priceVisible)
   const imageUrls = sortedImageUrls(input.images)
   const itemCondition = mapListingItemCondition(input.condition)
 
-  const offer: Record<string, unknown> = {
-    '@type': 'Offer',
-    url: input.listingUrl,
-    priceCurrency: 'USD',
-    availability: input.isSold
-      ? 'https://schema.org/OutOfStock'
-      : 'https://schema.org/InStock',
-  }
-
-  if (contactForPrice) {
-    // Legitimate "price on request" signal — never emit a numeric price.
-    offer.priceSpecification = {
-      '@type': 'PriceSpecification',
-      priceCurrency: 'USD',
-      description: 'Price on request',
-    }
-  } else {
-    offer.price = input.price
-  }
-
   const product: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: input.title,
-    offers: offer,
     category: input.categoryLabel,
+  }
+
+  if (!contactForPrice) {
+    product.offers = {
+      '@type': 'Offer',
+      url: input.listingUrl,
+      priceCurrency: 'USD',
+      availability: input.isSold
+        ? 'https://schema.org/OutOfStock'
+        : 'https://schema.org/InStock',
+      price: input.price,
+    }
   }
 
   if (input.description) {
