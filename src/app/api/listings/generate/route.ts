@@ -6,162 +6,119 @@ import { loadLocationTaxonomy } from '@/lib/locationResolver'
 import { resolveAiTaxonomy } from '@/lib/listingTaxonomyUpdate'
 import { canManageListing } from '@/lib/listings/canManageListing'
 import { mergeListingSpecs, sanitizeAiSpecs } from '@/lib/listings/listingSpecs'
+import { buildSystemPrompt, wrapSellerInput } from '@/lib/listings/generatePrompt'
+import {
+  extractSaveListingToolInput,
+  formatZodError,
+  generatedListingSchema,
+  SAVE_LISTING_TOOL,
+  type GeneratedListing,
+} from '@/lib/listings/generateListingSchema'
+import {
+  checkGeneratedDescription,
+  stripPriceFromMetaAndTags,
+  trimSellerFallback,
+} from '@/lib/listings/checkGeneratedDescription'
 
-function buildSystemPrompt(taxonomy: {
-  industries: { name: string; slug: string }[]
-  categories: { name: string; slug: string; industrySlugs: string[] }[]
-  countries: { name: string; slug: string }[]
-  states: { name: string; code: string | null; countrySlug: string }[]
-}): string {
-  const industryList = taxonomy.industries
-    .map(i => `  - ${i.name} (slug: ${i.slug})`)
-    .join('\n')
+const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
+const MODEL = 'claude-sonnet-5'
+const MAX_TOKENS = 2048
 
-  const categoryList = taxonomy.categories
-    .map(c => `  - ${c.name} (slug: ${c.slug}; industries: ${c.industrySlugs.join(', ')})`)
-    .join('\n')
-
-  const countryList = taxonomy.countries
-    .map(c => `  - ${c.name} (slug: ${c.slug})`)
-    .join('\n')
-
-  const stateList = taxonomy.states
-    .slice(0, 80)
-    .map(s => `  - ${s.name}${s.code ? ` (${s.code})` : ''} — ${s.countrySlug}`)
-    .join('\n')
-
-  return `You are an expert equipment listing assistant for Black Diamond Marketplace, a premium B2B heavy equipment marketplace serving oil & gas, construction, mining, agriculture, and trucking.
-
-The user will describe a piece of equipment in plain language. Extract all relevant details and return them as a single valid JSON object. Return ONLY the raw JSON — no markdown, no explanation, no code fences.
-
-Use exactly these field names and value constraints:
-
-{
-  "title": "Equipment title — see TITLE RULES below for the exact required structure.",
-  "category": "Legacy oilfield category slug — one of: drilling_rig | drilling_rig_parts | drill_pipe | drill_collar | blowout_preventer | wellhead | pumping_unit | artificial_lift | wireline | coiled_tubing | completion_equipment | production_equipment | compressor | separator | tank | flowline | electrical | safety | rental_tools | other. Use only as fallback when industry_slug/category_slug cannot be determined.",
-  "industry_slug": "One of the industry slugs below, or null if you cannot confidently classify the equipment.",
-  "category_slug": "One of the category slugs below that belongs to the chosen industry, or null if you cannot confidently classify.",
-  "manufacturer": "Manufacturer or brand name, or null if unknown",
-  "model": "Model number or name, or null if unknown",
-  "year": 2012,
-  "condition": "One of exactly: new | like_new | good | fair | parts_only",
-  "price": 75000,
-  "price_unit": "One of exactly: total | per_foot | per_piece | per_ton | per_set | per_meter",
-  "country_slug": "One of: united-states | canada | mexico — infer from the location mentioned. Use null if no location is mentioned or you cannot determine the country confidently.",
-  "location_city": "City name, or null if not mentioned",
-  "location_state": "For United States: 2-letter state code (e.g. TX). For Canada: full province name (e.g. Alberta, Ontario). For Mexico: null. Null if not mentioned or uncertain.",
-  "description": "Public listing description — see DESCRIPTION RULES below.",
-  "meta_description": "Single sentence, 130–160 characters, SEO meta description using ONLY facts the seller provided.",
-  "tags": ["array", "of", "relevant", "keyword", "strings"],
-  "specs": {"Operating Weight": "78000 lbs"}
+type AnthropicMessageResponse = {
+  content: unknown
 }
 
-TITLE RULES:
-Build the title using this exact format:
-[Year or Size] [Brand/Manufacturer] [Equipment Type] — [3-word max descriptor]
+async function callSaveListing(
+  systemPrompt: string,
+  userMessage: string,
+): Promise<{ ok: true; listing: GeneratedListing } | { ok: false; status: number; error: string }> {
+  async function once(message: string): Promise<
+    { ok: true; listing: GeneratedListing } | { ok: false; retryHint?: string; error: string; status: number }
+  > {
+    let anthropicRes: Response
+    try {
+      anthropicRes = await fetch(ANTHROPIC_URL, {
+        method: 'POST',
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          system: systemPrompt,
+          tools: [SAVE_LISTING_TOOL],
+          tool_choice: { type: 'tool', name: 'save_listing' },
+          messages: [{ role: 'user', content: message }],
+        }),
+      })
+    } catch (err) {
+      console.error('Anthropic fetch failed:', err)
+      return { ok: false, status: 502, error: 'Could not reach the AI service. Please try again.' }
+    }
 
-Main title elements (before the dash):
-- Lead with year if known, or size/dimension if no year and size is the primary identifier (e.g. "2019", "42\"", "5½\"").
-- Follow with brand or manufacturer if known — omit entirely if unknown, never guess.
-- Follow with the standard industry equipment type name matching the category taxonomy below. This element is required.
-- Keep the full title under 60 characters where possible.
-- Never use filler words like "Heavy Duty", "High Quality", "Great Condition", or vague superlatives — every word must carry real informational value.
+    if (!anthropicRes.ok) {
+      const errText = await anthropicRes.text()
+      console.error('Anthropic API error:', anthropicRes.status, errText)
+      return { ok: false, status: 502, error: 'AI generation failed. Please try again.' }
+    }
 
-Descriptor rules (after the dash — omit the entire dash and descriptor if no meaningful one exists):
-- Maximum 3 words — never more.
-- Must describe exactly ONE of the following:
-  - Condition note: "Low Hours", "Fair Condition", "Needs Work", "Like New"
-  - Quantity: "255 Joints", "3 Units", "12 Sets"
-  - Single key spec: "4WD", "Extended Reach", "Tier 4", "Sealed Bearing"
-- Never use marketing language, adjectives like "excellent" or "great", or full sentences.
-- If no meaningful 3-word descriptor exists from the seller's description, omit the dash and descriptor entirely — do not force one.
+    let anthropicData: AnthropicMessageResponse
+    try {
+      anthropicData = await anthropicRes.json() as AnthropicMessageResponse
+    } catch (err) {
+      console.error('Failed to parse Anthropic response:', err)
+      return { ok: false, status: 502, error: 'Unexpected response from AI. Please try again.' }
+    }
 
-Correct examples:
-- 2019 Caterpillar 336 Excavator — Low Hours
-- 42" Pipe Racks — 255 Joints
-- 2018 Kenworth T800 Flatbed — Needs Engine
-- 5½" Drill Pipe — Sealed Bearing
-- 2015 Komatsu D65 Crawler Dozer — Tier 4
-- John Deere 8R Tractor (no descriptor if nothing meaningful to add)
+    const toolInput = extractSaveListingToolInput(anthropicData.content)
+    if (toolInput == null) {
+      return {
+        ok: false,
+        status: 502,
+        retryHint: 'Previous response did not call save_listing. Call save_listing with every required field.',
+        error: 'Could not parse AI response. Please try again.',
+      }
+    }
 
-Incorrect examples to avoid:
-- 2019 Caterpillar 336 Excavator — Enclosed Operator Cab with Hydraulic Raise System (descriptor too long)
-- High Quality Drill Pipe in Great Condition (no year/size, marketing language)
-- 2018 Kenworth T800 Heavy Duty Flatbed Truck — Excellent Condition Ready to Work (filler words, descriptor too long)
+    const parsed = generatedListingSchema.safeParse(toolInput)
+    if (!parsed.success) {
+      return {
+        ok: false,
+        status: 502,
+        retryHint: `Previous save_listing input failed validation: ${formatZodError(parsed.error)}. Call save_listing again with corrected fields.`,
+        error: 'Could not parse AI response. Please try again.',
+      }
+    }
 
-DESCRIPTION RULES:
-- Voice: equipment-first. The equipment itself is the subject of every sentence (e.g. "2012 Serva Coil Tubing Unit Trailer…", "Landing gear is functional…"). NEVER write first-person seller framing — ban phrases like "I'm selling…", "I have…", "I'm located…", "We're offering…", or any seller "I/we" voice.
-- NEVER write as an outside narrator either ("the seller is offering", "the owner states", company-name-as-author). Describe the equipment factually, in third-person equipment-subject convention used on professional equipment/vehicle listings.
-- Tone: strictly factual — like a professional spec sheet, never marketing copy. Ban persuasive/sales language (e.g. "delivers", "perfect for", "won't last", "amazing deal", "great opportunity", or any phrasing that argues why a buyer should want it). State only what the equipment is and has.
-- NEVER invent, embellish, or add any detail the seller did not actually provide — including general/typical knowledge about the equipment category. If the seller wrote "well maintained", output ONLY "well maintained" — do NOT invent maintenance schedules, service history, hour counts, or any other unstated specifics.
-- This zero-hallucination rule applies to EVERY category of detail: condition, hours, repairs, attachments, accessories, what's included, hauling/logistics, pricing context, and reason for selling.
-- Honesty on negatives: any negative or limiting fact the seller explicitly states (e.g. missing part/component, damage, needs work) MUST be included plainly and clearly — not omitted, not buried, not softened with spin. State it as directly as any positive fact.
-- Length is driven entirely by how much real seller-provided detail exists — no fixed word-count target, minimum, or maximum. Sparse input → short complete description. Detailed input → correspondingly longer coverage of all real facts. Never pad, never truncate genuine detail, never invent content to fill length.
-- Do NOT restate price/asking price in the description body — price belongs only in the dedicated "price" JSON field.
-- Optimize for SEO strictly by phrasing the seller's ACTUAL provided facts clearly and specifically (exact model numbers, grade/spec terminology, location). Never add invented specificity for SEO.
-- Attachments, accessories, included items, hauling, pickup, and logistics details belong in the description ONLY — never in specs.
+    return { ok: true, listing: parsed.data }
+  }
 
-Calibration example (sparse input → short honest output; do not pad):
-Seller input: "2012 Serva Coil Tubing Unit Trailer, missing reel. Cab is clean. Serial Number: 33344-RCT-16415. Injector Head Stand: Hydraulic Stand (F/ Injector Head). Hose Reels: (3) Hydraulic Injector Hose Reels. Landing gear works. Tires are highway ready. Asking $75k. Located in Houston, TX."
-Correct description field:
-"2012 Serva Coil Tubing Unit Trailer. Serial number 33344-RCT-16415.
+  const first = await once(userMessage)
+  if (first.ok) return first
+  if (!first.retryHint) return { ok: false, status: first.status, error: first.error }
 
-Equipped with a hydraulic stand for the injector head and three hydraulic injector hose reels. Landing gear is functional and tires are highway ready. Cab is clean.
-
-Unit is missing its reel.
-
-Located in Houston, TX."
-(Note: short is correct; missing reel stated plainly; no price restated; no first-person; no padding.)
-
-SPECS RULES:
-- The specs object is for genuine functional/technical measurements ONLY (e.g. weight, dimensions, capacity, horsepower, size/diameter, reach, lift capacity, engine tier).
-- NEVER put year, model, manufacturer, brand, condition, or category in specs — these have dedicated JSON fields above and appear separately on the listing page. Redundantly writing them into specs causes duplicate display.
-- Include a spec ONLY if the seller explicitly provided that technical detail. Do not infer or invent specs.
-- No narrative language, no attachments, no hauling/pickup mentions, no vague marketing phrases in specs.
-- If the seller provided no functional/technical specs, set specs to null or {}.
-
-LOCATION RULES:
-- If the seller mentions a US city/state (e.g. "Midland, Texas" or "Houston, TX"), set country_slug to united-states and location_state to the 2-letter code.
-- If the seller mentions a Canadian city/province (e.g. "Calgary, Alberta" or "Toronto, Ontario"), set country_slug to canada and location_state to the full province name.
-- If the seller mentions Mexico or a Mexican city without a province, set country_slug to mexico and leave location_state null.
-- If location is ambiguous or not mentioned, set country_slug, location_city, and location_state all to null — do NOT guess.
-
-INDUSTRY & CATEGORY RULES:
-- Classify equipment into the best matching industry_slug and category_slug from the lists below.
-- category_slug MUST belong to the chosen industry.
-- If you cannot confidently match any category, set both industry_slug and category_slug to null.
-
-INDUSTRIES:
-${industryList}
-
-CATEGORIES:
-${categoryList}
-
-COUNTRIES:
-${countryList}
-
-STATES & PROVINCES (sample — match mentioned locations against these):
-${stateList}`
+  const retry = await once(`${userMessage}\n\n${first.retryHint}`)
+  if (retry.ok) return retry
+  return { ok: false, status: 502, error: retry.error }
 }
 
-interface ClaudeGenerated {
-  title: string
-  category: string
-  industry_slug: string | null
-  category_slug: string | null
-  manufacturer: string | null
-  model: string | null
-  year: number | null
-  condition: string
-  price: number | null
-  price_unit: string | null
-  country_slug: string | null
-  location_city: string | null
-  location_state: string | null
-  description: string
-  meta_description: string
-  tags: string[]
-  specs: Record<string, string> | null
+function applyHiddenPrice(listing: GeneratedListing): GeneratedListing {
+  if (!listing.price_hidden_requested) return listing
+  const stripped = stripPriceFromMetaAndTags(listing.meta_description, listing.tags)
+  return {
+    ...listing,
+    meta_description: stripped.meta_description,
+    tags: stripped.tags,
+  }
+}
+
+function sanitizeGenerated(listing: GeneratedListing): GeneratedListing {
+  return {
+    ...listing,
+    specs: sanitizeAiSpecs(listing.specs),
+  }
 }
 
 // POST /api/listings/generate
@@ -208,7 +165,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Can only generate for draft listings' }, { status: 400 })
   }
 
-  // Build taxonomy-aware system prompt
   const [locationTaxonomy, industriesRes, categoriesRes] = await Promise.all([
     loadLocationTaxonomy(adminClient),
     adminClient.from('industries').select('name, slug').order('sort_order'),
@@ -250,58 +206,33 @@ export async function POST(request: NextRequest) {
     states: statesForPrompt,
   })
 
-  let anthropicRes: Response
-  try {
-    anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-5',
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-  } catch (err) {
-    console.error('Anthropic fetch failed:', err)
-    return NextResponse.json({ error: 'Could not reach the AI service. Please try again.' }, { status: 502 })
+  const wrapped = wrapSellerInput(prompt)
+  const generatedResult = await callSaveListing(systemPrompt, wrapped)
+  if (!generatedResult.ok) {
+    return NextResponse.json({ error: generatedResult.error }, { status: generatedResult.status })
   }
 
-  if (!anthropicRes.ok) {
-    const errText = await anthropicRes.text()
-    console.error('Anthropic API error:', anthropicRes.status, errText)
-    return NextResponse.json({ error: 'AI generation failed. Please try again.' }, { status: 502 })
-  }
+  let generated = sanitizeGenerated(generatedResult.listing)
 
-  let anthropicData: { content: { type: string; text: string }[] }
-  try {
-    anthropicData = await anthropicRes.json() as { content: { type: string; text: string }[] }
-  } catch (err) {
-    console.error('Failed to parse Anthropic response:', err)
-    return NextResponse.json({ error: 'Unexpected response from AI. Please try again.' }, { status: 502 })
-  }
-
-  const rawText = anthropicData.content?.[0]?.text?.trim() ?? ''
-
-  let generated: ClaudeGenerated
-  try {
-    generated = JSON.parse(rawText)
-  } catch {
-    try {
-      const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ?? rawText.match(/(\{[\s\S]*\})/)
-      if (!match) throw new Error('No JSON found in response')
-      generated = JSON.parse(match[1])
-    } catch {
-      console.error('Could not parse Claude response:', rawText)
-      return NextResponse.json({ error: 'Could not parse AI response. Please try again.' }, { status: 502 })
+  const preservation = checkGeneratedDescription(prompt, generated.description)
+  if (preservation.flagged) {
+    const issueList = preservation.issues.map(issue => `- ${issue}`).join('\n')
+    const retryHint =
+      `The previous description failed preservation checks:\n${issueList}\n` +
+      'Call save_listing again. Follow DESCRIPTION RULES: keep the seller\'s own text, voice, bullets, order, and do not add words they did not write.'
+    const retried = await callSaveListing(systemPrompt, `${wrapped}\n\n${retryHint}`)
+    if (retried.ok) {
+      generated = sanitizeGenerated(retried.listing)
+      const stillFlagged = checkGeneratedDescription(prompt, generated.description)
+      if (stillFlagged.flagged) {
+        generated = { ...generated, description: trimSellerFallback(prompt) }
+      }
+    } else {
+      generated = { ...generated, description: trimSellerFallback(prompt) }
     }
   }
 
-  generated.specs = sanitizeAiSpecs(generated.specs)
+  generated = applyHiddenPrice(generated)
 
   const resolvedTitle = generated.title || 'Untitled Draft'
   const taxonomy = await resolveAiTaxonomy(adminClient, {
@@ -319,6 +250,10 @@ export async function POST(request: NextRequest) {
     generated.specs,
   )
 
+  const priceVisible = generated.price != null && !generated.price_hidden_requested
+  // listings.price is NOT NULL; 0 is the draft unset sentinel when the seller stated no price.
+  const priceForDb = generated.price ?? 0
+
   const { error: updateError } = await adminClient
     .from('listings')
     .update({
@@ -332,10 +267,10 @@ export async function POST(request: NextRequest) {
       manufacturer: generated.manufacturer ?? null,
       model: generated.model ?? null,
       year: generated.year ?? null,
-      condition: generated.condition || 'good',
-      price: generated.price ?? 0,
+      condition: generated.condition ?? null,
+      price: priceForDb,
       price_unit: generated.price_unit ?? 'total',
-      price_visible: generated.price != null,
+      price_visible: priceVisible,
       location_city: taxonomy.location_city,
       location_state: taxonomy.location_state,
       description: generated.description ?? null,
@@ -355,7 +290,10 @@ export async function POST(request: NextRequest) {
     listing: {
       ...publicFields,
       specs: mergedSpecs,
-      price: generated.price ?? 0,
+      price: generated.price ?? null,
+      price_visible: priceVisible,
+      condition: generated.condition ?? null,
+      missing_info: generated.missing_info,
       category: taxonomy.legacyCategory,
       country_id: taxonomy.country_id,
       region_id: taxonomy.region_id,
