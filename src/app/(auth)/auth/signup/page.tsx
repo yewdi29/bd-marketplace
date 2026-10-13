@@ -319,6 +319,12 @@ function SignupForm() {
                 <span className="font-semibold text-ink">{email}</span>.
               </p>
 
+              <div className="rounded-[10px] border border-orange-bdr bg-orange-bg px-4 py-3" role="status">
+                <p className="text-sm font-sans text-ink">
+                  Check your spam inbox if you don't receive it within 30 seconds.
+                </p>
+              </div>
+
               <div>
                 <label htmlFor="otp_code" className="block text-sm font-sans font-medium text-ink mb-1.5">
                   Confirmation code
