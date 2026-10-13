@@ -1,7 +1,8 @@
 import { Resend } from 'resend'
 import { PUBLIC_SITE_URL } from '@/lib/site'
 
-export const EMAIL_FROM = 'Black Diamond Marketplace <noreply@blackdiamondmkt.com>'
+export const EMAIL_FROM = 'Black Diamond Marketplace <hello@blackdiamondmkt.com>'
+export const EMAIL_REPLY_TO = 'contact@blackdiamondmkt.com'
 
 /** Canonical production origin for links in outbound emails. */
 export const EMAIL_APP_URL = PUBLIC_SITE_URL
@@ -51,7 +52,7 @@ export async function sendEmail(opts: {
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
-    ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+    replyTo: opts.replyTo ?? EMAIL_REPLY_TO,
   })
 }
 

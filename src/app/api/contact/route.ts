@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { EMAIL_FROM, EMAIL_REPLY_TO } from '@/lib/email/resendClient'
 
 const SUBJECT_LABELS: Record<string, string> = {
   general: 'General Inquiry',
@@ -29,8 +30,9 @@ export async function POST(req: NextRequest) {
     if (apiKey) {
       const resend = new Resend(apiKey)
       await resend.emails.send({
-        from: 'noreply@blackdiamondmkt.com',
+        from: EMAIL_FROM,
         to: process.env.CONTACT_FORM_EMAIL!,
+        replyTo: EMAIL_REPLY_TO,
         subject: emailSubject,
         html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px;">

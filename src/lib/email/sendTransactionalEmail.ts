@@ -1,7 +1,7 @@
 import React, { type ReactElement } from 'react'
 import { render } from '@react-email/render'
 import { createServiceClient } from '@/lib/rigburrito/service'
-import { EMAIL_FROM, getResend } from './resendClient'
+import { EMAIL_FROM, EMAIL_REPLY_TO, getResend } from './resendClient'
 
 // Email templates under /emails often omit a React value import (type-only).
 // @react-email/render can execute classic JSX that expects global React.
@@ -57,7 +57,7 @@ export async function sendTransactionalEmail(
         to: params.recipientEmail,
         subject: params.subject,
         html,
-        ...(params.replyTo ? { reply_to: params.replyTo } : {}),
+        replyTo: params.replyTo ?? EMAIL_REPLY_TO,
       })
 
       if (error) {
