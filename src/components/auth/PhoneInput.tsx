@@ -214,10 +214,6 @@ export default function PhoneInput({
           className="min-w-0 flex-1 bg-white border border-[#D4D5D7] text-ink placeholder:text-ink-3 px-4 py-2.5 text-sm font-sans rounded-[10px] focus:outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors duration-150"
         />
       </div>
-
-      <p className="text-xs font-sans text-ink-3 leading-relaxed">
-        Your privacy matters to us. This is for internal use only and is never sold or shared.
-      </p>
     </div>
   )
 }

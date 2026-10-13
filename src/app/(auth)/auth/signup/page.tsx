@@ -65,7 +65,7 @@ function SignupForm() {
   useEffect(() => {
     if (companyNameFromQuery) setCompanyName(companyNameFromQuery)
   }, [companyNameFromQuery])
-  const [newsletter, setNewsletter] = useState(false)
+  const [newsletter, setNewsletter] = useState(true)
   const [otpCode, setOtpCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

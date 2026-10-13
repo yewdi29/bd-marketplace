@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: October 2026 — v2.59
+> Last updated: October 2026 — v2.60
 
 ---
 
@@ -615,6 +615,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.60 | October 2026 | **Signup newsletter default + phone helper.** Create account newsletter checkbox starts checked. Phone field no longer shows the “Your privacy matters…” helper line. |
 | v2.59 | October 2026 | **Shorter signup.** City, state, and country removed from create-account form and API (still optional in Account Settings). Company name on signup is optional. |
 | v2.58 | October 2026 | **Logged-out navbar CTA order.** Sign In (text) is left of the orange Sell With Us pill. |
 | v2.57 | October 2026 | **Button press + logged-out nav + hero subcopy.** All buttons/pill CTAs get a `scale: 0.97` active press. Logged-out navbar: orange “Sell With Us” pill, text “Sign In”. Hero subheader: “List your equipment for free or browse listings…”. |
