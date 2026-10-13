@@ -61,7 +61,7 @@ export async function sendSignupOtpEmail(opts: {
     recipientEmail: email,
     relatedEntityType: 'user',
     relatedEntityId: userId,
-    subject: 'Confirm your email — Black Diamond Marketplace',
+    subject: 'Your Black Diamond Marketplace verification code',
     react: createElement(AuthConfirmation, { otpCode }),
   })
 
