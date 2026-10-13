@@ -1,19 +1,19 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { canonicalUrl } from '@/lib/site'
+import { buildPageMetadata } from '@/lib/seo/pageMetadata'
 import SellerPortalLink from '@/components/SellerPortalLink'
 import CoreValuesAccordion from '@/components/about/CoreValuesAccordion'
 import WhyWeExistIcon from '@/components/about/WhyWeExistIcon'
 import MissionAsciiWave from '@/components/about/MissionAsciiWave'
 import NewWayFlowDiagram from '@/components/about/NewWayFlowDiagram'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'About Us',
   description:
-    'Black Diamond Marketplace is the trusted marketplace for heavy equipment — built for oil and gas, construction, mining, agriculture, and forestry with AI verification and human care.',
-  alternates: { canonical: canonicalUrl('/about') },
-}
+    'Black Diamond Marketplace is building the best way to buy and sell heavy equipment. Verified sellers. Real buyers. Deal in motion.',
+  path: '/about',
+})
 
 /** Shared vertical rhythm between About sections */
 const SECTION = 'py-12 md:py-16'
@@ -55,7 +55,7 @@ export default function AboutPage() {
                   margin: 0,
                 }}
               >
-                The Trusted Marketplace For Heavy Equipment
+                The Best Way to Buy and Sell Heavy Equipment.
               </h1>
               <p
                 className="font-sans text-white max-w-[640px] mt-5"
@@ -67,8 +67,7 @@ export default function AboutPage() {
                   opacity: 0.85,
                 }}
               >
-                Connecting Serious Buyers And Sellers With Verified Listings, AI-Backed Sourcing, And
-                Real Human Support — So Heavy Equipment Can Move At The Speed Of The Modern World.
+                Verified sellers. Real buyers. Deal in motion.
               </p>
             </div>
           </div>

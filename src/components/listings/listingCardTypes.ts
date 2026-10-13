@@ -9,7 +9,7 @@ export interface ListingCardListing {
   category_name?: string | null
   /** Nested taxonomy join from Supabase selects. */
   categories?: { name: string } | null
-  price: number
+  price: number | null
   price_unit: string
   price_visible: boolean | null
   location_city: string | null
@@ -33,7 +33,7 @@ export function toListingCardListing(input: {
   title: string
   category: string
   category_name?: string | null
-  price: number
+  price: number | null
   price_unit: string
   price_visible: boolean | null
   location_city: string | null

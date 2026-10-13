@@ -1,19 +1,13 @@
 import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
-import { canonicalUrl } from '@/lib/site'
+import { buildPageMetadata } from '@/lib/seo/pageMetadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'How It Works',
   description:
     'Buy and sell oilfield and heavy equipment on Black Diamond Marketplace. List in minutes, reach verified buyers, and connect without middlemen.',
-  alternates: { canonical: canonicalUrl('/how-it-works') },
-  openGraph: {
-    title: 'How It Works | Black Diamond Marketplace',
-    description:
-      'Buy and sell oilfield and heavy equipment on Black Diamond Marketplace. List in minutes, reach verified buyers, and connect without middlemen.',
-    url: canonicalUrl('/how-it-works'),
-  },
-}
+  path: '/how-it-works',
+})
 
 const FAQ_JSON_LD = {
   '@context': 'https://schema.org',

@@ -37,21 +37,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const admin = getAdminClient()
   const profile = await resolvePublicSellerBySlug(admin, slug)
 
-  if (!profile?.company_name) return { title: 'Seller Not Found' }
+  if (!profile) return { title: 'Seller Not Found' }
 
+  const displayName = profile.company_name ?? slug
   const location = [profile.city, profile.state].filter(Boolean).join(', ')
   const description = location
-    ? `Browse equipment listings from ${profile.company_name} on Black Diamond Marketplace — ${location}.`
-    : `Browse equipment listings from ${profile.company_name} on Black Diamond Marketplace.`
+    ? `Browse equipment listings from ${displayName} on Black Diamond Marketplace — ${location}.`
+    : `Browse equipment listings from ${displayName} on Black Diamond Marketplace.`
 
   const canonical = canonicalUrl(`/sellers/${slug}`)
 
   return {
-    title: profile.company_name,
+    title: displayName,
     description,
     alternates: { canonical },
     openGraph: {
-      title: profile.company_name,
+      title: displayName,
       description,
       url: canonical,
       images: profile.company_logo_url ? [{ url: profile.company_logo_url }] : [],
@@ -97,7 +98,7 @@ export default async function SellerProfilePage({ params }: Props) {
             <div className="flex items-center gap-5 min-w-0">
               <CompanyAvatar
                 logoUrl={profile.company_logo_url}
-                companyName={profile.company_name}
+                companyName={profile.company_name ?? slug}
                 size={112}
               />
 
@@ -107,7 +108,7 @@ export default async function SellerProfilePage({ params }: Props) {
                     className="font-sans font-bold text-ink leading-tight"
                     style={{ fontSize: '22px', letterSpacing: '-0.02em' }}
                   >
-                    {profile.company_name ?? 'Unknown Company'}
+                    {profile.company_name ?? slug}
                   </h1>
                   <BDVerifiedBadge plan={profile.plan} size="md" />
                 </div>

@@ -1,14 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { canonicalUrl } from '@/lib/site'
+import { companyLegalFooterLine } from '@/lib/companyInfo'
+import { buildPageMetadata } from '@/lib/seo/pageMetadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'Privacy Policy',
   description: 'How Black Diamond Marketplace collects, uses, and protects your information.',
-  alternates: { canonical: canonicalUrl('/privacy') },
-}
+  path: '/privacy',
+})
 
-const LAST_UPDATED = 'June 2026'
+const LAST_UPDATED = 'October 2026'
 
 export default function PrivacyPage() {
   return (
@@ -34,7 +35,7 @@ export default function PrivacyPage() {
             1. Introduction
           </h2>
           <p>
-            Black Diamond Marketplace is committed to protecting your privacy. This policy explains how we collect, use, and protect your information when you use our platform at blackdiamondmarketplace.com.
+            Black Diamond Marketplace is committed to protecting your privacy. This policy explains how we collect, use, and protect your information when you use our platform at blackdiamondmkt.com.
           </p>
         </section>
 
@@ -44,7 +45,7 @@ export default function PrivacyPage() {
           </h2>
           <p className="mb-4">We collect the following information when you use Black Diamond Marketplace:</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Account information:</strong> full name, email address, company name, phone number, city, state, and country when you create an account</li>
+            <li><strong>Account information:</strong> full name, email address, and phone number when you create an account; optional company name, city, state, and country in account settings</li>
             <li><strong>Listing information:</strong> equipment details, photos, pricing, and specifications that sellers submit when creating listings</li>
             <li><strong>Lead information:</strong> contact details submitted by buyers through listing inquiry forms including name, email, phone, and company</li>
             <li><strong>Usage data:</strong> pages visited, search queries, filter selections, and interactions with the platform collected via Google Analytics</li>
@@ -140,7 +141,7 @@ export default function PrivacyPage() {
             9. Children&rsquo;s Privacy
           </h2>
           <p>
-            Black Diamond Marketplace is intended for business professionals in the oil and gas industry. We do not knowingly collect personal information from anyone under the age of 18. If you believe a minor has provided us with personal information please contact us immediately.
+            Black Diamond Marketplace is intended for business professionals dealing in heavy equipment for the oil and gas, construction, mining, and trucking and trailer industries. We do not knowingly collect personal information from anyone under the age of 18. If you believe a minor has provided us with personal information please contact us immediately.
           </p>
         </section>
 
@@ -166,7 +167,7 @@ export default function PrivacyPage() {
               contact@blackdiamondmkt.com
             </a>
             <br />
-            Black Diamond Marketplace — Odessa, Texas
+            {companyLegalFooterLine() ?? 'Black Diamond Marketplace — Odessa, Texas'}
           </div>
         </section>
 

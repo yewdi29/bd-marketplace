@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { appendFileSync } from 'fs'
-import { join } from 'path'
 import { canManageListingMedia } from '@/lib/listings/canManageListingMedia'
 import {
   ACTIVE_LISTING_VIDEO_STATUSES,
@@ -21,17 +19,6 @@ function muxCorsOrigin(): string {
 
 function isDuplicatePositionError(message: string): boolean {
   return message.includes('listing_videos_listing_position_active_idx')
-}
-
-function debugLog(payload: Record<string, unknown>) {
-  try {
-    appendFileSync(
-      join(process.cwd(), '.cursor/debug-ddf04d.log'),
-      `${JSON.stringify({ sessionId: 'ddf04d', timestamp: Date.now(), ...payload })}\n`,
-    )
-  } catch {
-    // ignore logging failures
-  }
 }
 
 async function fetchUsedVideoPositions(
@@ -102,16 +89,6 @@ export async function POST(_request: NextRequest, { params }: Params) {
   const galleryPosition = await nextGalleryPosition(service, listingId)
 
   let position = nextAvailableVideoPosition(usedPositions)
-  debugLog({
-    location: 'upload-url/route.ts:pre-insert',
-    message: 'position assignment',
-    hypothesisId: 'B-C-E',
-    runId: 'post-fix-v2',
-    data: { listingId, usedPositions, chosenPosition: position, activeVideoCount: usedPositions.length },
-  })
-  // #region agent log
-  fetch('http://127.0.0.1:7549/ingest/70669dba-0168-46fd-8502-7486147bdfd7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ddf04d'},body:JSON.stringify({sessionId:'ddf04d',location:'upload-url/route.ts:pre-insert',message:'position assignment',data:{listingId,usedPositions,chosenPosition:position,activeVideoCount:usedPositions.length},timestamp:Date.now(),hypothesisId:'B-C-E',runId:'post-fix-v2'})}).catch(()=>{});
-  // #endregion
   if (position === null) {
     return NextResponse.json(
       { error: `Maximum of ${MAX_LISTING_VIDEOS} videos per listing` },
@@ -158,16 +135,6 @@ export async function POST(_request: NextRequest, { params }: Params) {
   }
 
   if (insertError || !videoRow) {
-    debugLog({
-      location: 'upload-url/route.ts:insert-error',
-      message: 'insert failed',
-      hypothesisId: 'B-C-E',
-      runId: 'post-fix-v2',
-      data: { listingId, position, error: insertError?.message ?? 'unknown', code: insertError?.code },
-    })
-    // #region agent log
-    fetch('http://127.0.0.1:7549/ingest/70669dba-0168-46fd-8502-7486147bdfd7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ddf04d'},body:JSON.stringify({sessionId:'ddf04d',location:'upload-url/route.ts:insert-error',message:'insert failed',data:{listingId,position,error:insertError?.message??'unknown',code:insertError?.code},timestamp:Date.now(),hypothesisId:'B-C-E',runId:'post-fix-v2'})}).catch(()=>{});
-    // #endregion
     const isCapViolation = insertError?.message.includes('more than 3 active videos')
     return NextResponse.json(
       {

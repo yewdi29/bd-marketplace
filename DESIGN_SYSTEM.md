@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: October 2026 — v2.56
+> Last updated: October 2026 — v2.59
 
 ---
 
@@ -207,7 +207,7 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 - Position: `fixed top-3 left-4 right-4` — floats 12px from top, 16px from sides (not flush to viewport edge)
 - Active nav link: white pill `bg-white shadow-card` with no border
 - Inactive nav link: `text-ink-2 hover:text-ink hover:bg-white/70` — transparent hover
-- Right side (logged out): ghost "Sign In" border-pill + orange "List Equipment" pill
+- Right side (logged out): text "Sign In" (`text-ink-2`, no fill) then orange "Sell With Us" pill
 - Right side (logged in, desktop ≥1024px): `ProfileDropdown` component (avatar pill → dropdown panel)
 - **Mobile/tablet (<1024px), homepage (`/`):** full wordmark logo + search icon button (opens `MobileSearchTakeover`) + hamburger/avatar trigger (opens `MobileMenu`)
 - **Mobile/tablet (<1024px), every other page:** icon-only logo (`/bd_logo-icon.svg`, 28px) + full-width inline search bar look-alike (`SearchBarTrigger` — tapping it also opens `MobileSearchTakeover`, it never accepts typed input itself) + the same hamburger/avatar trigger
@@ -247,6 +247,7 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 | `danger` | `red-600` | White | none | Destructive actions (not exposed in public UI) |
 
 - All buttons: `rounded-pill`, `font-bold`, `transition-all duration-200`
+- **Press / click:** `scale: 0.97` on `:active` for native `button`s, pill links (`a.rounded-pill`), and `.btn-press`. Uses the CSS `scale` property so it does not override existing `transform`. Honors `prefers-reduced-motion`.
 - Loading state: shows animated spinner SVG inline before label text
 - **There is no "secondary" (green) button variant in the component.** Green is badge-only.
 
@@ -614,6 +615,9 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.59 | October 2026 | **Shorter signup.** City, state, and country removed from create-account form and API (still optional in Account Settings). Company name on signup is optional. |
+| v2.58 | October 2026 | **Logged-out navbar CTA order.** Sign In (text) is left of the orange Sell With Us pill. |
+| v2.57 | October 2026 | **Button press + logged-out nav + hero subcopy.** All buttons/pill CTAs get a `scale: 0.97` active press. Logged-out navbar: orange “Sell With Us” pill, text “Sign In”. Hero subheader: “List your equipment for free or browse listings…”. |
 | v2.56 | October 2026 | **Homepage hero title.** H1 set to “Machinery Deals Made Easy.” Desktop (`≥1000px`): forced break before “Made Easy.” with nowrap. Below 1000px: natural wrap only. |
 | v2.55 | September 2026 | **Search + public SEO headings.** `/search` adds a page H1 (`clamp(28px, 4vw, 36px)` / bold / ink) and 14px ink-3 description under the filter bar. How It Works bottom CTA heading is `h2` (same visual scale as before). Footer Categories includes Forestry. |
 | v2.54 | September 2026 | **Related listings card size.** Product-page Related Listings uses `.listing-card-grid--related` (same 1/2/3-column breakpoints as Featured / Search / Seller) so cards match global listing card dimensions instead of the denser default 4–5 column grid. |

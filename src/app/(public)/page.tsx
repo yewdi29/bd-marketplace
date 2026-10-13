@@ -31,7 +31,7 @@ export const metadata: Metadata = {
         url: '/main-share-img.png',
         width: 1200,
         height: 630,
-        alt: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+        alt: 'Black Diamond Marketplace — Machinery Deals Made Easy.',
       },
     ],
   },
@@ -174,8 +174,7 @@ export default function HomePage() {
                   fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)',
                 }}
               >
-                List your equipment or browse listings from verified sellers across all industrial
-                sectors.
+                Create a free account, list your equipment, and get in front of real buyers.
               </p>
 
               <div className={HERO_CTA_ROW}>

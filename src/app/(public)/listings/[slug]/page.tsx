@@ -23,6 +23,10 @@ import {
 } from '@/lib/listings/publicVisibility'
 import { PUBLIC_SITE_URL } from '@/lib/site'
 import { buildListingBreadcrumbJsonLd, buildListingProductJsonLd } from '@/lib/listings/listingJsonLd'
+import {
+  PUBLIC_LISTING_DETAIL_SELECT,
+  PUBLIC_LISTING_SELECT,
+} from '@/lib/listings/publicListing'
 import { formatListingCategoryLabel } from '@/lib/categoryResolver'
 import { generateUniqueUserCompanySlug } from '@/lib/sellers/companySlug'
 import { resolveListingSellerDisplay } from '@/lib/sellers/publicSellerProfile'
@@ -112,7 +116,7 @@ export default async function ListingDetailPage({ params }: Props) {
   // Fetch listing + gallery media (RLS on listing_videos returns ready videos only)
   const { data: listing } = await supabase
     .from('listings')
-    .select('*, listing_images(*), listing_videos(*), countries(name, iso_code), categories(slug, name)')
+    .select(PUBLIC_LISTING_DETAIL_SELECT)
     .eq('slug', slug)
     .single()
 
@@ -120,7 +124,7 @@ export default async function ListingDetailPage({ params }: Props) {
 
   const isSold = listing.status === 'sold'
 
-  const l = listing as Listing & {
+  const l = listing as unknown as Listing & {
     price_visible?: boolean
     countries?: { name: string; iso_code: string } | null
     categories?: { slug: string; name: string } | null
@@ -170,7 +174,7 @@ export default async function ListingDetailPage({ params }: Props) {
   // Related listings (same category, limit 3)
   const { data: related } = await supabase
     .from('listings')
-    .select('*, listing_images(*), countries(name, iso_code), categories(name)')
+    .select(PUBLIC_LISTING_SELECT)
     .eq('category', l.category)
     .eq('status', 'active')
     .neq('id', l.id)
@@ -223,7 +227,7 @@ export default async function ListingDetailPage({ params }: Props) {
     ...functionalSpecs,
   ].filter((s): s is { label: string; value: string | number } => s !== null)
 
-  // JSON-LD Product schema (price-on-request when UI shows Contact for price)
+  // Product JSON-LD only when a visible price is shown; BreadcrumbList always.
   const jsonLd = buildListingProductJsonLd({
     title: l.title,
     description: l.description,
@@ -245,10 +249,12 @@ export default async function ListingDetailPage({ params }: Props) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
@@ -515,7 +521,7 @@ export default async function ListingDetailPage({ params }: Props) {
               Related Listings
             </p>
             <ListingCardGrid className="listing-card-grid--related">
-              {(related as ListingCardListing[]).map(rel => (
+              {(related as unknown as ListingCardListing[]).map(rel => (
                 <ListingCard key={rel.id} listing={rel} isLoggedIn={!!user} openInNewTab />
               ))}
             </ListingCardGrid>

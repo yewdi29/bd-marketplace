@@ -51,6 +51,7 @@
     "recharts": "^3.9.1",
     "remark-gfm": "^4.0.1",
     "resend": "^6.12.4",
+    "server-only": "^0.0.1",
     "stripe": "^22.2.0",
     "three": "^0.185.0",
     "topojson-client": "^3.1.0",

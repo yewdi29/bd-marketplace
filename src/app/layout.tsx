@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import Script from 'next/script'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { Inter } from 'next/font/google'
 import FeedbackWidget from '@/components/feedback/FeedbackWidget'
+import {
+  COMPANY,
+  companyTelephone,
+  socialUrls,
+} from '@/lib/companyInfo'
 import { PUBLIC_SITE_URL } from '@/lib/site'
 import './globals.css'
 
@@ -13,14 +17,32 @@ const inter = Inter({
   display: 'swap',
 })
 
-const organizationSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'Organization',
-  name: 'Black Diamond Marketplace',
-  url: PUBLIC_SITE_URL,
-  logo: `${PUBLIC_SITE_URL}/bd_logo-icon.svg`,
-  description: "The World's Heavy Equipment Marketplace",
-  sameAs: [],
+function organizationJsonLd(): Record<string, unknown> {
+  const schema: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Black Diamond Marketplace',
+    url: PUBLIC_SITE_URL,
+    logo: `${PUBLIC_SITE_URL}/bd_logo-icon.svg`,
+    description: 'Black Diamond Marketplace is building the best way to buy and sell heavy equipment.',
+  }
+
+  const sameAs = socialUrls()
+  if (sameAs.length > 0) schema.sameAs = sameAs
+  if (COMPANY.legalName) schema.legalName = COMPANY.legalName
+
+  const telephone = companyTelephone()
+  if (telephone) schema.telephone = telephone
+
+  const address: Record<string, string> = { '@type': 'PostalAddress' }
+  if (COMPANY.streetAddress) address.streetAddress = COMPANY.streetAddress
+  if (COMPANY.city) address.addressLocality = COMPANY.city
+  if (COMPANY.region) address.addressRegion = COMPANY.region
+  if (COMPANY.postalCode) address.postalCode = COMPANY.postalCode
+  if (COMPANY.country) address.addressCountry = COMPANY.country
+  if (Object.keys(address).length > 1) schema.address = address
+
+  return schema
 }
 
 const websiteSchema = {
@@ -86,7 +108,7 @@ export const metadata: Metadata = {
         url: '/main-share-img.png',
         width: 1200,
         height: 630,
-        alt: "Black Diamond Marketplace — The World's Heavy Equipment Marketplace",
+        alt: 'Black Diamond Marketplace — Machinery Deals Made Easy.',
       },
     ],
   },
@@ -105,16 +127,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-bg text-ink font-sans">
-        <Script
-          id="schema-organization"
+        <script
           type="application/ld+json"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
         />
-        <Script
-          id="schema-website"
+        <script
           type="application/ld+json"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         {children}

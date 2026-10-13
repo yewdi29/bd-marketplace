@@ -63,13 +63,7 @@ export default function ListingMediaSection({
   const [addingVideo, setAddingVideo] = useState(false)
 
   async function handleAddVideo(file: File) {
-    // #region agent log
-    fetch('http://127.0.0.1:7549/ingest/70669dba-0168-46fd-8502-7486147bdfd7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ddf04d'},body:JSON.stringify({sessionId:'ddf04d',location:'ListingMediaSection.tsx:handleAddVideo:entry',message:'handleAddVideo called',data:{fileName:file.name,fileType:file.type,addingVideoRef:addingVideoRef.current,canAddVideo,listingId},timestamp:Date.now(),hypothesisId:'A-D',runId:'post-fix'})}).catch(()=>{});
-    // #endregion
     if (!listingId || addingVideoRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7549/ingest/70669dba-0168-46fd-8502-7486147bdfd7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ddf04d'},body:JSON.stringify({sessionId:'ddf04d',location:'ListingMediaSection.tsx:handleAddVideo:guard',message:'handleAddVideo blocked by guard',data:{addingVideoRef:addingVideoRef.current,listingId:!!listingId},timestamp:Date.now(),hypothesisId:'A',runId:'post-fix'})}).catch(()=>{});
-      // #endregion
       return
     }
     addingVideoRef.current = true
@@ -77,9 +71,6 @@ export default function ListingMediaSection({
     onError?.('')
     try {
       const error = await onAddVideo(file)
-      // #region agent log
-      fetch('http://127.0.0.1:7549/ingest/70669dba-0168-46fd-8502-7486147bdfd7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ddf04d'},body:JSON.stringify({sessionId:'ddf04d',location:'ListingMediaSection.tsx:handleAddVideo:exit',message:'handleAddVideo finished',data:{fileName:file.name,error:error??null},timestamp:Date.now(),hypothesisId:'A-D',runId:'post-fix'})}).catch(()=>{});
-      // #endregion
       if (error) onError?.(error)
     } finally {
       addingVideoRef.current = false
@@ -102,10 +93,6 @@ export default function ListingMediaSection({
         photoFiles.push(file)
       }
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7549/ingest/70669dba-0168-46fd-8502-7486147bdfd7',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ddf04d'},body:JSON.stringify({sessionId:'ddf04d',location:'ListingMediaSection.tsx:handleMediaDrop',message:'media drop/input routed',data:{totalFiles:files.length,videoCount:videoFiles.length,photoCount:photoFiles.length,videoNames:videoFiles.map(f=>f.name),canAddVideo},timestamp:Date.now(),hypothesisId:'D',runId:'post-fix'})}).catch(()=>{});
-    // #endregion
-
     for (const file of videoFiles) {
       if (canAddVideo) await handleAddVideo(file)
     }

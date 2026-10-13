@@ -55,7 +55,7 @@ export async function loadDirectorySellerEntries(
       .not('slug', 'is', null),
     admin
       .from('users')
-      .select('id, company_name, company_logo_url, company_slug, city, state, plan')
+      .select('id, full_name, company_name, company_logo_url, company_slug, city, state, plan')
       .not('company_slug', 'is', null)
       .not('company_name', 'is', null),
     admin
@@ -160,7 +160,7 @@ export async function loadDirectorySellerEntries(
     .map(u => ({
       id: u.id,
       kind: 'user' as const,
-      company_name: u.company_name,
+      company_name: u.company_name ?? u.full_name,
       company_logo_url: u.company_logo_url,
       company_slug: u.company_slug,
       city: u.city,

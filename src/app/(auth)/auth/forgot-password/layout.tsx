@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import { buildPageMetadata } from '@/lib/seo/pageMetadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'Forgot Password',
-  robots: { index: false, follow: false },
-}
+  path: '/auth/forgot-password',
+  noindex: true,
+})
 
 export default function ForgotPasswordLayout({ children }: { children: React.ReactNode }) {
   return children

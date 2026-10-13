@@ -4,6 +4,12 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import SellerPortalLink from '@/components/SellerPortalLink'
+import {
+  COMPANY,
+  SOCIAL_LINKS,
+  companyTelHref,
+  formatCompanyAddress,
+} from '@/lib/companyInfo'
 
 const FOOTER_LINK_CLASS =
   'font-sans text-white/55 hover:text-white/90 transition-colors'
@@ -99,10 +105,10 @@ function DiamondMark() {
 }
 
 const SOCIALS = [
-  { label: 'Instagram', icon: <IconInstagram /> },
-  { label: 'LinkedIn',  icon: <IconLinkedin />  },
-  { label: 'Facebook',  icon: <IconFacebook />  },
-  { label: 'X',         icon: <IconX />         },
+  { key: 'instagram' as const, label: 'Instagram', icon: <IconInstagram /> },
+  { key: 'linkedin' as const, label: 'LinkedIn', icon: <IconLinkedin /> },
+  { key: 'facebook' as const, label: 'Facebook', icon: <IconFacebook /> },
+  { key: 'x' as const, label: 'X', icon: <IconX /> },
 ]
 
 function FooterNavLink({ link }: { link: FooterLink }) {
@@ -136,6 +142,10 @@ function SectionHeading({ children }: { children: ReactNode }) {
 
 export default function Footer() {
   const year = new Date().getFullYear()
+  const socials = SOCIALS.filter(social => SOCIAL_LINKS[social.key])
+  const address = formatCompanyAddress()
+  const telHref = companyTelHref()
+  const muted = { fontSize: '12px', color: 'rgba(255,255,255,0.35)' } as const
 
   return (
     <footer className="overflow-hidden" style={{ background: '#1A1D20' }}>
@@ -146,14 +156,34 @@ export default function Footer() {
 
           {/* All rights reserved — left, in line with link sections */}
           <div className="flex flex-col items-start gap-4 text-left shrink-0 lg:max-w-[280px]">
-            <div className="flex flex-wrap items-center gap-3">
-              <DiamondMark />
-              <p
-                className="font-sans m-0"
-                style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}
-              >
-                &copy; {year} Black Diamond Marketplace. All rights reserved.
-              </p>
+            <div className="flex flex-col items-start gap-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <DiamondMark />
+                <p
+                  className="font-sans m-0"
+                  style={muted}
+                >
+                  &copy; {year} Black Diamond Marketplace. All rights reserved.
+                </p>
+              </div>
+              {COMPANY.legalName && (
+                <p className="font-sans m-0" style={muted}>
+                  {COMPANY.legalName}
+                </p>
+              )}
+              {(address || COMPANY.phone) && (
+                <p className="font-sans m-0" style={muted}>
+                  {address}
+                  {address && COMPANY.phone ? ' · ' : null}
+                  {COMPANY.phone && telHref ? (
+                    <a href={telHref} className="hover:text-white/60 transition-colors">
+                      {COMPANY.phone}
+                    </a>
+                  ) : COMPANY.phone ? (
+                    COMPANY.phone
+                  ) : null}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -189,21 +219,25 @@ export default function Footer() {
               </div>
             ))}
 
-            <div>
-              <SectionHeading>Follow us</SectionHeading>
-              <div className="flex items-center gap-4">
-                {SOCIALS.map(social => (
-                  <a
-                    key={social.label}
-                    href="#"
-                    aria-label={social.label}
-                    className="text-white/35 hover:text-white/80 transition-colors"
-                  >
-                    {social.icon}
-                  </a>
-                ))}
+            {socials.length > 0 && (
+              <div>
+                <SectionHeading>Follow us</SectionHeading>
+                <div className="flex items-center gap-4">
+                  {socials.map(social => (
+                    <a
+                      key={social.label}
+                      href={SOCIAL_LINKS[social.key]!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={social.label}
+                      className="text-white/35 hover:text-white/80 transition-colors"
+                    >
+                      {social.icon}
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

@@ -1,19 +1,20 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
+  ENTERPRISE_TERMS_EFFECTIVE_LABEL,
   ENTERPRISE_TERMS_SECTION_ID,
-  ENTERPRISE_TERMS_VERSION,
 } from '@/lib/organizations/enterpriseTerms'
 
-import { canonicalUrl } from '@/lib/site'
+import { companyLegalFooterLine } from '@/lib/companyInfo'
+import { buildPageMetadata } from '@/lib/seo/pageMetadata'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'Terms of Service',
   description: 'The terms and conditions governing your use of Black Diamond Marketplace.',
-  alternates: { canonical: canonicalUrl('/terms') },
-}
+  path: '/terms',
+})
 
-const LAST_UPDATED = 'July 2026'
+const LAST_UPDATED = 'October 2026'
 
 export default function TermsPage() {
   return (
@@ -39,7 +40,7 @@ export default function TermsPage() {
             1. Acceptance of Terms
           </h2>
           <p>
-            By accessing or using Black Diamond Marketplace at blackdiamondmarketplace.com you agree to be bound by these Terms of Service. If you do not agree to these terms you may not use the platform. These terms apply to all visitors, buyers, sellers, and registered users of the platform.
+            By accessing or using Black Diamond Marketplace at blackdiamondmkt.com you agree to be bound by these Terms of Service. If you do not agree to these terms you may not use the platform. These terms apply to all visitors, buyers, sellers, and registered users of the platform.
           </p>
         </section>
 
@@ -48,7 +49,7 @@ export default function TermsPage() {
             2. Platform Description
           </h2>
           <p>
-            Black Diamond Marketplace is both a listing platform and a sales facilitator that connects buyers and sellers of heavy oil and gas equipment. We provide the technology and infrastructure for sellers to list equipment and for buyers to discover and inquire about that equipment. Black Diamond Marketplace does not take ownership, possession, or title to any equipment listed on the platform at any time.
+            Black Diamond Marketplace is both a listing platform and a sales facilitator that connects buyers and sellers of heavy equipment for the oil and gas, construction, mining, and trucking and trailer industries. We provide the technology and infrastructure for sellers to list equipment and for buyers to discover and inquire about that equipment. Black Diamond Marketplace does not take ownership, possession, or title to any equipment listed on the platform at any time.
           </p>
         </section>
 
@@ -119,9 +120,6 @@ export default function TermsPage() {
             detection of fraudulent inquiries, and sellers are solely responsible for exercising
             their own judgment and due diligence before proceeding with any transaction.
           </p>
-          <p className="mt-4 text-ink-3 text-xs">
-            [Draft — inquiry verification and risk-indicator disclaimers subject to attorney review.]
-          </p>
         </section>
 
         <section>
@@ -171,7 +169,7 @@ export default function TermsPage() {
           <h2 className="font-sans text-ink mb-3" style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.01em' }}>
             10. Enterprise Organizations
           </h2>
-          <p className="text-xs font-mono text-ink-3 mb-4">Enterprise terms version {ENTERPRISE_TERMS_VERSION}</p>
+          <p className="text-xs font-mono text-ink-3 mb-4">Enterprise terms effective {ENTERPRISE_TERMS_EFFECTIVE_LABEL}</p>
           <p className="mb-4">
             Enterprise organization accounts are sales-assisted and governed by this Section 10 in
             addition to the Terms of Service above. Organization Owners (and Managers explicitly
@@ -273,7 +271,7 @@ export default function TermsPage() {
               contact@blackdiamondmkt.com
             </a>
             <br />
-            Black Diamond Marketplace — Odessa, Texas
+            {companyLegalFooterLine() ?? 'Black Diamond Marketplace — Odessa, Texas'}
           </div>
         </section>
 

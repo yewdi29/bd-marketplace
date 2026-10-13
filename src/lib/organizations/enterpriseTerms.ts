@@ -1,6 +1,9 @@
 /** Version slug — bump when legal publishes new Enterprise terms (Section 10 of /terms). */
 export const ENTERPRISE_TERMS_VERSION = '2026-07-placeholder-v1'
 
+/** Public label for Section 10 — do not display ENTERPRISE_TERMS_VERSION on /terms. */
+export const ENTERPRISE_TERMS_EFFECTIVE_LABEL = 'July 2026'
+
 /** Anchor id on /terms Section 10 — Enterprise Organizations. */
 export const ENTERPRISE_TERMS_SECTION_ID = 'enterprise-organizations'
 

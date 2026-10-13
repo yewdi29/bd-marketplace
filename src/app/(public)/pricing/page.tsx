@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { canonicalUrl } from '@/lib/site'
+import { buildPageMetadata } from '@/lib/seo/pageMetadata'
 import PricingPageClient from './PricingPageClient'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: 'Pricing',
   description: 'Membership plans for equipment sellers — from Free to Enterprise teams.',
-  alternates: { canonical: canonicalUrl('/pricing') },
-}
+  path: '/pricing',
+})
 
 export default function PricingPage() {
   return <PricingPageClient />

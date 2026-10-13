@@ -561,7 +561,7 @@ export default function SettingsPage() {
                   ) : (
                     <CompanyAvatar
                       logoUrl={logoUrl}
-                      companyName={companyName || null}
+                      companyName={companyName || [firstName, lastName].filter(Boolean).join(' ') || null}
                       size={112}
                     />
                   )}

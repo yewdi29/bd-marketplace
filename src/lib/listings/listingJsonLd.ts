@@ -1,7 +1,7 @@
 /**
  * Listing detail Product / Offer JSON-LD builders.
- * Contact-for-price listings must never emit a numeric Offer.price
- * (matches visible UI + OG via formatPrice).
+ * Contact-for-price listings must not emit Product JSON-LD at all
+ * (no fake reviews/ratings, no $0 price).
  */
 
 import { PUBLIC_SITE_URL } from '@/lib/site'
@@ -65,11 +65,16 @@ export interface BuildListingProductJsonLdInput {
 /**
  * Product + Offer JSON-LD for /listings/[slug].
  *
- * Contact-for-price (hidden / zero): omit `offers` entirely so Google does not
- * see an Offer without a price. Numeric prices keep a standard Offer.
+ * Contact-for-price (hidden / zero): return null so the page emits no Product
+ * schema. Listings with a visible price keep Product + Offer.
  */
-export function buildListingProductJsonLd(input: BuildListingProductJsonLdInput) {
-  const contactForPrice = isContactForPriceListing(input.price, input.priceVisible)
+export function buildListingProductJsonLd(
+  input: BuildListingProductJsonLdInput,
+): Record<string, unknown> | null {
+  if (isContactForPriceListing(input.price, input.priceVisible)) {
+    return null
+  }
+
   const imageUrls = sortedImageUrls(input.images)
   const itemCondition = mapListingItemCondition(input.condition)
 
@@ -78,10 +83,7 @@ export function buildListingProductJsonLd(input: BuildListingProductJsonLdInput)
     '@type': 'Product',
     name: input.title,
     category: input.categoryLabel,
-  }
-
-  if (!contactForPrice) {
-    product.offers = {
+    offers: {
       '@type': 'Offer',
       url: input.listingUrl,
       priceCurrency: 'USD',
@@ -89,7 +91,7 @@ export function buildListingProductJsonLd(input: BuildListingProductJsonLdInput)
         ? 'https://schema.org/OutOfStock'
         : 'https://schema.org/InStock',
       price: input.price,
-    }
+    },
   }
 
   if (input.description) {

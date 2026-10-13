@@ -53,7 +53,7 @@ export function formatAdminTablePrice(price: number, priceUnit: string, priceVis
   return priceVisible ? amount : `[ ${amount} ]`
 }
 
-export function formatPrice(price: number, priceUnit: string, priceVisible: boolean): string {
+export function formatPrice(price: number | null, priceUnit: string, priceVisible: boolean): string {
   if (!priceVisible) return 'Contact for price'
   if (!price || price === 0) return 'Contact for price'
   return formatPriceAmount(price, priceUnit)

@@ -12,7 +12,7 @@ export default function HowItWorksHeader() {
         List. Publish. Connect.
       </h2>
       <p className="mt-4 font-sans text-ink-3 text-base max-w-2xl mx-auto leading-relaxed">
-        Three steps to move your equipment on the world&apos;s most intelligent heavy equipment marketplace.
+        Three steps to get your equipment in front of real buyers.
       </p>
     </div>
   )

@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import ListingCardLink from '@/components/listings/ListingCardLink'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingCardSkeleton from '@/components/listings/ListingCardSkeleton'
 import FilterBar from '@/components/marketplace/FilterBar'
-import type { Listing } from '@/lib/types/database'
+import type { ListingCardListing } from '@/components/listings/listingCardTypes'
+import { buildSearchQueryKey } from '@/lib/listings/publicSearchQueryKey'
 
 // ─── Skeleton cards ───────────────────────────────────────────────────────────
 
@@ -49,21 +50,34 @@ function getBrowserCoords(): Promise<{ lat: number; lng: number } | null> {
   })
 }
 
-function SearchContent({ heading }: { heading?: ReactNode }) {
+type SearchContentProps = {
+  heading?: ReactNode
+  initialListings: ListingCardListing[]
+  initialTotal: number
+  initialQueryKey: string
+}
+
+function SearchContent({
+  heading,
+  initialListings,
+  initialTotal,
+  initialQueryKey,
+}: SearchContentProps) {
   const searchParams = useSearchParams()
-  const [listings, setListings]     = useState<Listing[]>([])
-  const [total, setTotal]           = useState(0)
-  const [loading, setLoading]       = useState(true)
+  const [listings, setListings]     = useState<ListingCardListing[]>(initialListings)
+  const [total, setTotal]           = useState(initialTotal)
+  const [loading, setLoading]       = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [locationUnavailable, setLocationUnavailable] = useState(false)
+  const skippedInitialFetch = useRef(false)
 
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user))
   }, [])
 
-  const fetchListings = useCallback(async () => {
-    setLoading(true)
+  const fetchListings = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const params = new URLSearchParams()
       const q        = searchParams.get('q')
@@ -104,8 +118,21 @@ function SearchContent({ heading }: { heading?: ReactNode }) {
   }, [searchParams])
 
   useEffect(() => {
-    fetchListings()
-  }, [fetchListings])
+    const currentKey = buildSearchQueryKey(searchParams)
+    const sort = searchParams.get('sort')
+    const needsGeo = sort === 'closest' && !searchParams.get('lat') && !searchParams.get('lng')
+
+    if (!skippedInitialFetch.current && currentKey === initialQueryKey) {
+      skippedInitialFetch.current = true
+      if (needsGeo) {
+        void fetchListings({ silent: true })
+      }
+      return
+    }
+
+    skippedInitialFetch.current = true
+    void fetchListings()
+  }, [fetchListings, initialQueryKey, searchParams])
 
   return (
     <div className="page-shell py-8">
@@ -155,7 +182,17 @@ function SearchContent({ heading }: { heading?: ReactNode }) {
   )
 }
 
-export default function SearchPageClient({ children }: { children?: ReactNode }) {
+export default function SearchPageClient({
+  children,
+  initialListings,
+  initialTotal,
+  initialQueryKey,
+}: {
+  children?: ReactNode
+  initialListings: ListingCardListing[]
+  initialTotal: number
+  initialQueryKey: string
+}) {
   return (
     <div className="-mt-6">
       <Suspense fallback={<FilterBarFallback />}>
@@ -165,11 +202,32 @@ export default function SearchPageClient({ children }: { children?: ReactNode })
       <Suspense fallback={
         <div className="page-shell py-8">
           {children}
-          <div className="h-4 w-32 bg-[#F0F0F0] rounded-full mb-5 animate-pulse" />
-          <SkeletonGrid />
+          <p className="font-sans font-bold text-sm text-ink mb-5">
+            {`${initialTotal} ${initialTotal === 1 ? 'listing' : 'listings'} found`}
+          </p>
+          {initialListings.length > 0 ? (
+            <ListingCardGrid className="listing-card-grid--search">
+              {initialListings.map(listing => (
+                <ListingCardLink
+                  key={listing.id}
+                  listing={listing}
+                  isLoggedIn={false}
+                  initialSaved={false}
+                  openInNewTab
+                />
+              ))}
+            </ListingCardGrid>
+          ) : (
+            <SkeletonGrid />
+          )}
         </div>
       }>
-        <SearchContent heading={children} />
+        <SearchContent
+          heading={children}
+          initialListings={initialListings}
+          initialTotal={initialTotal}
+          initialQueryKey={initialQueryKey}
+        />
       </Suspense>
     </div>
   )

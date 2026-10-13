@@ -103,13 +103,13 @@ export default function HowItWorksPage() {
           className="font-sans text-white mx-auto"
           style={{ fontSize: '44px', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05, maxWidth: '720px' }}
         >
-          The simplest way to buy and sell oilfield equipment.
+          The simplest way to buy and sell heavy equipment.
         </h1>
         <p
           className="font-sans text-white mx-auto mt-5"
           style={{ opacity: 0.7, maxWidth: '600px', fontSize: '17px', lineHeight: 1.7 }}
         >
-          Whether you&rsquo;re moving iron or looking for it — Black Diamond connects you to the right people, fast.
+          Whether you&rsquo;re selling equipment or looking for it, Black Diamond gets you in front of the right people.
         </p>
       </section>
 
@@ -150,7 +150,7 @@ export default function HowItWorksPage() {
         >
           {activeTab === 'sellers'
             ? 'List your equipment in minutes.'
-            : 'Find the iron your operation needs.'}
+            : 'Find the equipment your operation needs.'}
         </h2>
 
         {/* Timeline steps */}

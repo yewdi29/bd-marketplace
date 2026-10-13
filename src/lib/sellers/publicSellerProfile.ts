@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Listing, MembershipPlan } from '@/lib/types/database'
+import { PUBLIC_LISTING_SELECT } from '@/lib/listings/publicListing'
 import { generateUniqueOrganizationSlug } from '@/lib/sellers/companySlug'
 
 export type PublicSellerKind = 'organization' | 'user'
@@ -18,7 +19,7 @@ export interface PublicSellerProfile {
   created_at: string
 }
 
-const LISTING_SELECT = '*, listing_images(*), countries(name, iso_code), categories(name)'
+const LISTING_SELECT = PUBLIC_LISTING_SELECT
 
 async function bestMemberPlan(
   admin: SupabaseClient,
@@ -122,7 +123,7 @@ export async function resolvePublicSellerBySlug(
 
   const { data: user } = await admin
     .from('users')
-    .select('id, company_name, company_logo_url, company_slug, city, state, country, plan, created_at')
+    .select('id, full_name, company_name, company_logo_url, company_slug, city, state, country, plan, created_at')
     .eq('company_slug', slug)
     .maybeSingle()
 
@@ -141,7 +142,7 @@ export async function resolvePublicSellerBySlug(
   return {
     kind: 'user',
     id: user.id,
-    company_name: user.company_name,
+    company_name: user.company_name ?? user.full_name,
     company_logo_url: user.company_logo_url,
     company_slug: user.company_slug,
     description: null,
@@ -202,13 +203,13 @@ export async function loadPublicSellerListings(
           .eq('status', 'sold')
           .order('updated_at', { ascending: false }),
       ])
-      activeExtra = (a ?? []) as Listing[]
-      soldExtra = (s ?? []) as Listing[]
+      activeExtra = (a ?? []) as unknown as Listing[]
+      soldExtra = (s ?? []) as unknown as Listing[]
     }
 
     return {
-      active: [...((activeByOrg ?? []) as Listing[]), ...activeExtra],
-      sold: [...((soldByOrg ?? []) as Listing[]), ...soldExtra],
+      active: [...((activeByOrg ?? []) as unknown as Listing[]), ...activeExtra],
+      sold: [...((soldByOrg ?? []) as unknown as Listing[]), ...soldExtra],
     }
   }
 
@@ -230,8 +231,8 @@ export async function loadPublicSellerListings(
   ])
 
   return {
-    active: (active ?? []) as Listing[],
-    sold: (sold ?? []) as Listing[],
+    active: (active ?? []) as unknown as Listing[],
+    sold: (sold ?? []) as unknown as Listing[],
   }
 }
 
@@ -270,7 +271,7 @@ export async function resolveListingSellerDisplay(
 
   const { data: seller } = await admin
     .from('users')
-    .select('company_name, company_logo_url, company_slug, plan, created_at')
+    .select('full_name, company_name, company_logo_url, company_slug, plan, created_at')
     .eq('id', listing.seller_id)
     .maybeSingle()
 
@@ -308,7 +309,7 @@ export async function resolveListingSellerDisplay(
   }
 
   return {
-    company_name: seller.company_name,
+    company_name: seller.company_name ?? seller.full_name,
     company_logo_url: seller.company_logo_url,
     company_slug: seller.company_slug,
     plan: seller.plan as MembershipPlan,

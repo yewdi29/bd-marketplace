@@ -7,7 +7,7 @@ import ListingCardLink from '@/components/listings/ListingCardLink'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import ListingCardSkeleton from '@/components/listings/ListingCardSkeleton'
 import FilterBar from '@/components/marketplace/FilterBar'
-import type { Listing } from '@/lib/types/database'
+import type { ListingCardListing } from '@/components/listings/listingCardTypes'
 
 // ─── Skeleton cards ───────────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ function FilterBarFallback() {
 
 function ListingsContent() {
   const searchParams = useSearchParams()
-  const [listings, setListings]   = useState<Listing[]>([])
+  const [listings, setListings]   = useState<ListingCardListing[]>([])
   const [total, setTotal]         = useState(0)
   const [loading, setLoading]     = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)

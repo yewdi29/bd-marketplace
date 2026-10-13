@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
+import { SHARE_IMAGE_PATH, SHARE_OG_IMAGES } from '@/lib/seo/pageMetadata'
 import { PUBLIC_SITE_URL } from '@/lib/site'
 import {
   countActiveListingsForFilters,
@@ -140,9 +141,18 @@ export async function buildSearchMetadata(params: {
       ? { index: false, follow: true }
       : { index: true, follow: true },
     openGraph: {
-      title: seo.title,
+      title: `${seo.title} | Black Diamond Marketplace`,
       description: seo.description,
       url: seo.canonical,
+      siteName: 'Black Diamond Marketplace',
+      type: 'website',
+      images: [...SHARE_OG_IMAGES],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: seo.title,
+      description: seo.description,
+      images: [SHARE_IMAGE_PATH],
     },
   }
 }

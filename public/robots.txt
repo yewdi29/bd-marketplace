@@ -1,7 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /dashboard/
-Disallow: /rigburrito/
 Disallow: /api/
 Disallow: /auth/
 

@@ -17,16 +17,6 @@ import {
   storeAuthRedirect,
 } from '@/lib/authRedirect'
 
-const COUNTRIES = [
-  'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'Colombia', 'Venezuela', 'Ecuador', 'Peru', 'Trinidad and Tobago',
-  'United Kingdom', 'Norway', 'Netherlands', 'Germany', 'France', 'Italy', 'Spain', 'Denmark', 'Romania', 'Poland',
-  'Russia', 'Kazakhstan', 'Azerbaijan', 'Turkmenistan', 'Uzbekistan',
-  'Saudi Arabia', 'United Arab Emirates', 'Qatar', 'Kuwait', 'Iraq', 'Iran', 'Oman', 'Bahrain', 'Yemen',
-  'Nigeria', 'Angola', 'Libya', 'Algeria', 'Egypt', 'Ghana', 'Mozambique', 'Congo', 'Gabon', 'Cameroon', 'Equatorial Guinea', 'South Sudan', 'Sudan',
-  'Australia', 'Indonesia', 'Malaysia', 'Papua New Guinea', 'India', 'China', 'Vietnam', 'Myanmar',
-  'Other',
-]
-
 const RESEND_COOLDOWN_SEC = 45
 
 export default function SignupPage() {
@@ -75,10 +65,7 @@ function SignupForm() {
   useEffect(() => {
     if (companyNameFromQuery) setCompanyName(companyNameFromQuery)
   }, [companyNameFromQuery])
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
-  const [country, setCountry] = useState('')
-  const [newsletter, setNewsletter] = useState(true)
+  const [newsletter, setNewsletter] = useState(false)
   const [otpCode, setOtpCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -93,10 +80,6 @@ function SignupForm() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    if (!companyName.trim()) {
-      setError('Company name is required.')
-      return
-    }
     if (!phone.trim()) {
       setError('Phone number is required.')
       return
@@ -117,10 +100,7 @@ function SignupForm() {
         email,
         password,
         fullName,
-        companyName,
-        city,
-        state,
-        country,
+        companyName: companyName.trim() || null,
         phone: phone.trim(),
       }),
     })
@@ -229,9 +209,6 @@ function SignupForm() {
     setResending(false)
   }
 
-  const selectClass =
-    'w-full px-4 py-2.5 text-[15px] font-sans text-ink bg-white border border-[#D4D5D7] rounded-[10px] outline-none focus:border-orange focus:ring-2 focus:ring-orange/20 transition-colors appearance-none cursor-pointer'
-
   return (
     <div className="min-h-[calc(100vh-82px)] flex items-center justify-center px-4 py-12 bg-bg">
       <div className="w-full max-w-md">
@@ -273,17 +250,21 @@ function SignupForm() {
                 required
                 autoComplete="name"
               />
-              <Input
-                id="company_name"
-                type="text"
-                label="Company Name"
-                placeholder="Permian Basin Drilling Co."
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-                required
-                autoComplete="organization"
-                readOnly={Boolean(companyNameFromQuery)}
-              />
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="company_name" className="text-sm font-sans font-medium text-ink">
+                  Company Name
+                  <span className="font-normal text-ink-3 ml-1.5" style={{ fontSize: '12px' }}>(optional)</span>
+                </label>
+                <Input
+                  id="company_name"
+                  type="text"
+                  placeholder="Permian Basin Drilling Co."
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  autoComplete="organization"
+                  readOnly={Boolean(companyNameFromQuery)}
+                />
+              </div>
               <Input
                 id="email"
                 type="email"
@@ -297,52 +278,6 @@ function SignupForm() {
               />
               <PhoneInput value={phone} onChange={setPhone} required />
               <PasswordStrengthField value={password} onChange={setPassword} />
-
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  id="city"
-                  type="text"
-                  label="City"
-                  placeholder="Houston"
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                  required
-                  autoComplete="address-level2"
-                />
-                <Input
-                  id="state"
-                  type="text"
-                  label="State / Province"
-                  placeholder="Texas"
-                  value={state}
-                  onChange={e => setState(e.target.value)}
-                  required
-                  autoComplete="address-level1"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="country" className="block text-sm font-semibold text-ink mb-1.5">
-                  Country <span className="text-orange">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    id="country"
-                    value={country}
-                    onChange={e => setCountry(e.target.value)}
-                    required
-                    className={selectClass}
-                  >
-                    <option value="" disabled>Select your country</option>
-                    {COUNTRIES.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
 
               <label className="flex items-start gap-3 cursor-pointer">
                 <input

@@ -12,9 +12,9 @@ function getAdminClient() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { email, password, fullName, companyName, city, state, country, phone } = body
+  const { email, password, fullName, companyName, phone } = body
 
-  if (!email || !password || !fullName || !city || !state || !country || !phone) {
+  if (!email || !password || !fullName || !phone) {
     return NextResponse.json({ error: 'All required fields must be filled in.' }, { status: 400 })
   }
 
@@ -51,11 +51,11 @@ export async function POST(request: NextRequest) {
     email_confirm: false,
     user_metadata: {
       full_name: fullName,
-      company_name: companyName ?? null,
-      city,
-      state,
-      country,
+      company_name: typeof companyName === 'string' ? companyName.trim() || null : null,
       phone: phoneTrimmed,
+      city: null,
+      state: null,
+      country: null,
       signup_ip_location: ip,
     },
   })
@@ -107,22 +107,21 @@ export async function POST(request: NextRequest) {
   if (userId) {
     try {
       const emailDomain = normalizedEmail.split('@')[1]?.toLowerCase() ?? null
+      const companyTrimmed =
+        typeof companyName === 'string' ? companyName.trim() || null : null
       const enrichment: Record<string, unknown> = {
         full_name: typeof fullName === 'string' ? fullName.trim() || null : null,
-        company_name: typeof companyName === 'string' ? companyName.trim() || null : null,
+        company_name: companyTrimmed,
         phone: phoneTrimmed,
-        city: typeof city === 'string' ? city.trim() || null : null,
-        state: typeof state === 'string' ? state.trim() || null : null,
-        country: typeof country === 'string' ? country.trim() || null : null,
         email_domain: emailDomain,
         updated_at: new Date().toISOString(),
       }
 
-      if (companyName) {
+      if (companyTrimmed) {
         const { data: duplicate } = await admin
           .from('users')
           .select('id')
-          .ilike('company_name', companyName.trim())
+          .ilike('company_name', companyTrimmed)
           .neq('id', userId)
           .maybeSingle()
 

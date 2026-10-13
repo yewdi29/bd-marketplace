@@ -74,6 +74,22 @@ select {
   color: var(--orange);
 }
 
+/* Pressed click — native buttons, pill links, and .btn-press. Uses the `scale`
+   property so it does not clobber existing `transform` (e.g. hover translate). */
+button:not(:disabled):active,
+.btn-press:active,
+a.rounded-pill:active {
+  scale: 0.97;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active,
+  .btn-press:active,
+  a.rounded-pill:active {
+    scale: 1;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -407,6 +423,9 @@ select {
 .glass-btn-orange:hover {
   background: rgba(255, 107, 53, 0.25);
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.25);
+}
+.glass-btn-orange:active {
+  scale: 0.97;
 }
 
 /* ─── Gallery action pills — listing detail page (Save / Share overlay) ─────── */
