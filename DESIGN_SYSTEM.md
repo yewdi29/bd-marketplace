@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: October 2026 — v2.61
+> Last updated: October 2026 — v2.62
 
 ---
 
@@ -333,7 +333,8 @@ box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 ### Info Banners
 - Same geometry as Error Banners: `rounded-[10px] px-4 py-3`
 - Container: `border-orange-bdr bg-orange-bg`
-- Text: `text-sm font-sans text-ink`
+- Text: `text-sm font-sans text-ink text-center`
+- Confirm-account spam notice bolds “Check your spam inbox”
 - Used in: Confirm your account OTP step (spam-inbox notice)
 
 ### Toast Notifications
@@ -621,6 +622,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.62 | October 2026 | **Confirm-account spam notice alignment.** Banner copy is center-aligned; “Check your spam inbox” is `font-bold`. |
 | v2.61 | October 2026 | **Confirm-account spam notice.** OTP step shows an orange info banner: “Check your spam inbox if you don't receive it within 30 seconds.” |
 | v2.60 | October 2026 | **Signup newsletter default + phone helper.** Create account newsletter checkbox starts checked. Phone field no longer shows the “Your privacy matters…” helper line. |
 | v2.59 | October 2026 | **Shorter signup.** City, state, and country removed from create-account form and API (still optional in Account Settings). Company name on signup is optional. |

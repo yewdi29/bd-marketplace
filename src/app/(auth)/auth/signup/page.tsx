@@ -320,8 +320,8 @@ function SignupForm() {
               </p>
 
               <div className="rounded-[10px] border border-orange-bdr bg-orange-bg px-4 py-3" role="status">
-                <p className="text-sm font-sans text-ink">
-                  Check your spam inbox if you don't receive it within 30 seconds.
+                <p className="text-sm font-sans text-ink text-center leading-relaxed">
+                  <span className="font-bold">Check your spam inbox</span> if you don't receive it within 30 seconds.
                 </p>
               </div>
 
