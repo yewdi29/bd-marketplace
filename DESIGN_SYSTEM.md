@@ -1,6 +1,6 @@
 # Black Diamond Marketplace — Design System
 > Single source of truth for all UI decisions. Read this before touching any component.
-> Last updated: October 2026 — v2.62
+> Last updated: October 2026 — v2.63
 
 ---
 
@@ -622,6 +622,7 @@ Header row layout: `flex items-end justify-between mb-6` when a side link is pre
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v2.63 | October 2026 | **Pricing toggle.** Removed the “2 MONTHS FREE ON ANNUAL” badge next to the monthly/annual toggle on `/pricing`. |
 | v2.62 | October 2026 | **Confirm-account spam notice alignment.** Banner copy is center-aligned; “Check your spam inbox” is `font-bold`. |
 | v2.61 | October 2026 | **Confirm-account spam notice.** OTP step shows an orange info banner: “Check your spam inbox if you don't receive it within 30 seconds.” |
 | v2.60 | October 2026 | **Signup newsletter default + phone helper.** Create account newsletter checkbox starts checked. Phone field no longer shows the “Your privacy matters…” helper line. |

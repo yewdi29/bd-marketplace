@@ -494,12 +494,15 @@ create policy "Admins can view all agent logs"
   on public.agent_logs for all using (public.is_admin());
 
 -- ============================================================
--- LISTING COUNT ENFORCEMENT (free plan = max 3)
+-- LISTING COUNT ENFORCEMENT (free plan = max 5)
 -- Enforced server-side in API route, this is a safety trigger
 -- ============================================================
 
 create or replace function public.check_listing_limit()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+as $function$
 declare
   listing_count int;
   user_plan     text;
@@ -515,11 +518,10 @@ begin
   case user_plan
     when 'starter'  then plan_limit := 15;
     when 'pro'      then plan_limit := 40;
-    when 'max'      then plan_limit := null;   -- unlimited
-    else                 plan_limit := 3;      -- free + unknown
+    when 'max'      then plan_limit := null;
+    else                 plan_limit := 5;
   end case;
 
-  -- Unlimited plans skip the check
   if plan_limit is null then
     return new;
   end if;
@@ -528,7 +530,7 @@ begin
   from public.listings
   where seller_id = new.seller_id
     and status = 'active'
-    and id != new.id;  -- exclude current row so updates are idempotent
+    and id != new.id;
 
   if listing_count >= plan_limit then
     raise exception
@@ -538,7 +540,7 @@ begin
 
   return new;
 end;
-$$ language plpgsql security definer;
+$function$;
 
 -- Fires on INSERT and UPDATE so publishing a draft also hits the check
 drop trigger if exists enforce_listing_limit on public.listings;

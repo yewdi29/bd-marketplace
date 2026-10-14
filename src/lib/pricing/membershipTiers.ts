@@ -1,3 +1,5 @@
+import { PLAN_LISTING_LIMITS } from '@/lib/planLimits'
+
 /** Shared membership tier copy — pricing page and in-app upgrade use the same lists. */
 
 export interface TierFeature {
@@ -20,7 +22,7 @@ export interface PaidMembershipTier {
 }
 
 export const FREE_TIER_FEATURES: TierFeature[] = [
-  { label: '3 active listings', included: true },
+  { label: `${PLAN_LISTING_LIMITS.free} active listings`, included: true },
   { label: 'AI listing generation', included: true },
   { label: 'Video upload', included: true },
   { label: 'BD Verified badge', included: false },

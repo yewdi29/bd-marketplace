@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import SellerPortalLink from '@/components/SellerPortalLink'
+import { PLAN_LISTING_LIMITS } from '@/lib/planLimits'
 
 const SELLERS_STEPS = [
   {
@@ -63,7 +64,7 @@ const FEATURES = [
 const FAQS = [
   {
     q: 'Is it free to create an account?',
-    a: 'Yes. Creating an account and browsing listings is completely free. Sellers on the free plan can post up to 3 listings at no cost.',
+    a: `Yes. Creating an account and browsing listings is completely free. Sellers on the free plan can post up to ${PLAN_LISTING_LIMITS.free} listings at no cost.`,
   },
   {
     q: 'How does the AI listing generation work?',

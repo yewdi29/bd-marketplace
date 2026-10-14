@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
+import { PLAN_LISTING_LIMITS } from '@/lib/planLimits'
 import { buildPageMetadata } from '@/lib/seo/pageMetadata'
 
 export const metadata: Metadata = buildPageMetadata({
@@ -18,7 +19,7 @@ const FAQ_JSON_LD = {
       name: 'Is it free to create an account?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes. Creating an account and browsing listings is completely free. Sellers on the free plan can post up to 3 listings at no cost.',
+        text: `Yes. Creating an account and browsing listings is completely free. Sellers on the free plan can post up to ${PLAN_LISTING_LIMITS.free} listings at no cost.`,
       },
     },
     {

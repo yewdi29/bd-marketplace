@@ -1,7 +1,7 @@
 import type { MembershipPlan } from '@/lib/types/database'
 
 export const PLAN_LISTING_LIMITS: Record<MembershipPlan, number> = {
-  free: 3,
+  free: 5,
   starter: 15,
   pro: 40,
   max: Infinity,

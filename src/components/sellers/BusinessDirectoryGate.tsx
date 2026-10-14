@@ -98,7 +98,7 @@ export default function BusinessDirectoryGate({ signedIn }: BusinessDirectoryGat
 
               <div className="flex flex-col items-stretch gap-3 w-full max-w-[280px] mx-auto">
                 <Link
-                  href="/dashboard/upgrade"
+                  href="/pricing"
                   className="inline-flex items-center justify-center px-8 py-3 text-sm font-bold text-white bg-orange rounded-pill hover:bg-orange-lt transition-colors shadow-orange-glow w-full"
                 >
                   View membership plans

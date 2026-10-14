@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import EnterpriseTierBlock from '@/components/pricing/EnterpriseTierBlock'
 import { PlanDiamondMark } from '@/components/ui/PlanBadge'
+import { PLAN_LISTING_LIMITS } from '@/lib/planLimits'
 import {
   FREE_TIER_FEATURES,
   PAID_MEMBERSHIP_TIERS,
@@ -15,39 +16,31 @@ type BillingCycle = 'monthly' | 'annual'
 function BillingToggle({ cycle, onChange }: { cycle: BillingCycle; onChange: (c: BillingCycle) => void }) {
   const isAnnual = cycle === 'annual'
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
-      <div className="flex items-center p-1 rounded-pill" style={{ background: '#EDEDEE', gap: '2px' }}>
-        <button
-          type="button"
-          onClick={() => onChange('monthly')}
-          className="px-5 py-2 text-sm font-sans font-semibold rounded-pill transition-all duration-200"
-          style={
-            !isAnnual
-              ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 2px 8px rgba(255,107,53,0.30)' }
-              : { background: 'transparent', color: '#9A9DA2' }
-          }
-        >
-          Monthly
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange('annual')}
-          className="px-5 py-2 text-sm font-sans font-semibold rounded-pill transition-all duration-200"
-          style={
-            isAnnual
-              ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 2px 8px rgba(255,107,53,0.30)' }
-              : { background: 'transparent', color: '#9A9DA2' }
-          }
-        >
-          Annual
-        </button>
-      </div>
-      <span
-        className="px-2.5 py-1 text-[10px] font-mono font-bold rounded-pill border"
-        style={{ background: '#F0FFF0', color: '#1A5C18', borderColor: '#C8F5C4' }}
+    <div className="flex items-center p-1 rounded-pill" style={{ background: '#EDEDEE', gap: '2px' }}>
+      <button
+        type="button"
+        onClick={() => onChange('monthly')}
+        className="px-5 py-2 text-sm font-sans font-semibold rounded-pill transition-all duration-200"
+        style={
+          !isAnnual
+            ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 2px 8px rgba(255,107,53,0.30)' }
+            : { background: 'transparent', color: '#9A9DA2' }
+        }
       >
-        2 MONTHS FREE ON ANNUAL
-      </span>
+        Monthly
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('annual')}
+        className="px-5 py-2 text-sm font-sans font-semibold rounded-pill transition-all duration-200"
+        style={
+          isAnnual
+            ? { background: '#FF6B35', color: '#FFFFFF', boxShadow: '0 2px 8px rgba(255,107,53,0.30)' }
+            : { background: 'transparent', color: '#9A9DA2' }
+        }
+      >
+        Annual
+      </button>
     </div>
   )
 }
@@ -102,7 +95,7 @@ export default function PricingPageClient() {
             className="inline-flex items-center px-3 py-1 text-[12px] font-mono font-bold rounded-pill border mb-5 w-fit"
             style={{ background: '#F4F4F5', color: '#4A4D52', borderColor: '#E8E9EA' }}
           >
-            3 listings
+            {PLAN_LISTING_LIMITS.free} listings
           </span>
           <div className="border-t border-[#F0F1F2] mb-5" />
           <ul className="space-y-3 mb-6 flex-1">

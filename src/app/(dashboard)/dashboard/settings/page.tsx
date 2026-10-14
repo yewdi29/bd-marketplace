@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import CompanyAvatar from '@/components/ui/CompanyAvatar'
 import { useRouter } from 'next/navigation'
 import type { MembershipPlan } from '@/lib/types/database'
+import { PLAN_LISTING_LIMITS } from '@/lib/planLimits'
 import PlanBadge, { EnterpriseBadge } from '@/components/ui/PlanBadge'
 import { DashboardSettingsShell } from '@/components/dashboard/DashboardSettingsShell'
 import PasswordStrengthField from '@/components/auth/PasswordStrengthField'
@@ -784,7 +785,7 @@ export default function SettingsPage() {
                         ? '40 active listings'
                         : plan === 'starter'
                           ? '15 active listings'
-                          : '3 active listings'}
+                          : `${PLAN_LISTING_LIMITS.free} active listings`}
                   </p>
                 </div>
               </div>
