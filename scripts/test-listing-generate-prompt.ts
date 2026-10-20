@@ -10,6 +10,7 @@ import { buildSystemPrompt, wrapSellerInput } from '../src/lib/listings/generate
 import {
   extractSaveListingToolInput,
   generatedListingSchema,
+  normalizeSaveListingToolInput,
   SAVE_LISTING_TOOL,
   type GeneratedListing,
 } from '../src/lib/listings/generateListingSchema'
@@ -187,6 +188,64 @@ function assertLocalFixtures(): CheckResult[] {
   })
   checks.push({ name: 'schema: missing_info max 5', pass: !tooManyMissing.success })
 
+  const drifted = normalizeSaveListingToolInput({
+    title: '5" Drill Pipe',
+    category: 'drill_pipe',
+    industry_slug: 'oil-and-gas',
+    category_slug: 'drill-pipe',
+    manufacturer: null,
+    model: '',
+    year: '2019',
+    condition: 'great condition',
+    price: '$85,000',
+    price_unit: 'per joint',
+    price_hidden_requested: 'false',
+    price_terms: 'OBO',
+    quantity: 200,
+    hours: null,
+    country_slug: 'united-states',
+    location_city: 'Odessa',
+    location_state: 'TX',
+    description: 'Selling drill pipe.',
+    meta_description: 'Drill pipe for sale.',
+    tags: 'drill pipe, Odessa',
+    specs: [
+      { name: 'Size', value: '5' },
+      { name: 'Range', value: 'Range 2' },
+    ],
+    missing_info: ['Grade', 'Weight', 'Connection', 'Wall', 'Upset', 'extra'],
+  })
+  const driftedParsed = generatedListingSchema.safeParse(drifted)
+  checks.push({
+    name: 'normalize: coerces string year/price and specs',
+    pass: driftedParsed.success
+      && driftedParsed.data.year === 2019
+      && driftedParsed.data.price === 85000
+      && driftedParsed.data.condition === 'good'
+      && driftedParsed.data.price_unit === 'per_piece'
+      && driftedParsed.data.specs?.Size === '5'
+      && driftedParsed.data.missing_info.length === 5
+      && driftedParsed.data.quantity === '200',
+    detail: driftedParsed.success ? JSON.stringify(driftedParsed.data) : driftedParsed.error.message,
+  })
+
+  const objectSpecs = generatedListingSchema.safeParse(
+    normalizeSaveListingToolInput({
+      ...(driftedParsed.success ? driftedParsed.data : {}),
+      specs: { Size: 5, Range: 'Range 2' },
+    }),
+  )
+  checks.push({
+    name: 'normalize: object specs map still accepted',
+    pass: objectSpecs.success && objectSpecs.data.specs?.Size === '5',
+    detail: objectSpecs.success ? JSON.stringify(objectSpecs.data.specs) : objectSpecs.error.message,
+  })
+
+  checks.push({
+    name: 'tool schema enables strict mode',
+    pass: (SAVE_LISTING_TOOL as { strict?: boolean }).strict === true,
+  })
+
   return checks
 }
 
@@ -281,7 +340,7 @@ async function generateOnce(seller: string): Promise<GeneratedListing> {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-5',
-      max_tokens: 2048,
+      max_tokens: 8192,
       system: SYSTEM,
       tools: [SAVE_LISTING_TOOL],
       tool_choice: { type: 'tool', name: 'save_listing' },
@@ -295,7 +354,7 @@ async function generateOnce(seller: string): Promise<GeneratedListing> {
 
   const data = await res.json() as { content: unknown }
   const input = extractSaveListingToolInput(data.content)
-  const parsed = generatedListingSchema.safeParse(input)
+  const parsed = generatedListingSchema.safeParse(normalizeSaveListingToolInput(input))
   if (!parsed.success) {
     throw new Error(`Zod failed: ${parsed.error.message}`)
   }
