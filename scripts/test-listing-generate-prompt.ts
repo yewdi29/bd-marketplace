@@ -242,8 +242,8 @@ function assertLocalFixtures(): CheckResult[] {
   })
 
   checks.push({
-    name: 'tool schema enables strict mode',
-    pass: (SAVE_LISTING_TOOL as { strict?: boolean }).strict === true,
+    name: 'tool schema does not use strict mode',
+    pass: (SAVE_LISTING_TOOL as { strict?: boolean }).strict !== true,
   })
 
   return checks
