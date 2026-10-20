@@ -73,7 +73,6 @@ export default function ListingTaxonomyFields({ values, onChange, required = fal
     )
   }
 
-  const countrySlug = taxonomy.getCountrySlug(values.country_id)
   const showSubdivision = values.country_id && taxonomy.needsSubdivisionStep(values.country_id)
   // Region is backend-only (AI / state-derived) — never shown as a user control.
   const subdivisionOptions = showSubdivision
@@ -135,18 +134,8 @@ export default function ListingTaxonomyFields({ values, onChange, required = fal
         </SelectWrapper>
       </FormField>
 
-      {/* City + State/Province */}
-      <div className={showSubdivision ? 'grid grid-cols-2 gap-4' : ''}>
-        <FormField label="City" required={required && countrySlug !== 'mexico'}>
-          <input
-            type="text"
-            value={values.location_city}
-            onChange={e => update({ location_city: e.target.value })}
-            className={inputCls}
-            placeholder={countrySlug === 'mexico' ? 'Optional' : 'e.g. Midland'}
-          />
-        </FormField>
-
+      {/* State/Province, then City */}
+      <div className={showSubdivision && values.state_id ? 'grid grid-cols-2 gap-4' : ''}>
         {showSubdivision && (
           <FormField label={taxonomy.subdivisionLabel(values.country_id)} required={required}>
             <SelectWrapper>
@@ -165,12 +154,36 @@ export default function ListingTaxonomyFields({ values, onChange, required = fal
             </SelectWrapper>
           </FormField>
         )}
+
+        {values.state_id && (
+          <FormField label="City" optional>
+            <SelectWrapper>
+              <select
+                value={values.city_id}
+                onChange={e => update({ city_id: e.target.value })}
+                className={selectCls}
+              >
+                <option value="">Select city</option>
+                {taxonomy.citiesForState(values.state_id).map(city => (
+                  <option key={city.id} value={city.id}>{city.name}</option>
+                ))}
+                <option value="other">Other</option>
+              </select>
+            </SelectWrapper>
+          </FormField>
+        )}
       </div>
 
-      {countrySlug === 'mexico' && values.country_id && (
-        <p className="text-xs text-ink-3 -mt-2">
-          Mexico is saved as the full location — no state or province required.
-        </p>
+      {values.city_id === 'other' && (
+        <FormField label="City" optional>
+          <input
+            type="text"
+            value={values.location_city}
+            onChange={e => update({ location_city: e.target.value })}
+            className={inputCls}
+            placeholder="Enter city"
+          />
+        </FormField>
       )}
     </div>
   )

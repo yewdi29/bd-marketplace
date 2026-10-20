@@ -10,6 +10,7 @@ export interface ResolvedLocation {
   country_id: string | null
   region_id: string | null
   state_id: string | null
+  city_id: string | null
   location_city: string | null
   location_state: string | null
 }
@@ -21,6 +22,13 @@ interface StateRow {
   region_id: string
   name: string
   code: string | null
+}
+
+interface CityRow {
+  id: string
+  state_id: string
+  name: string
+  slug: string
 }
 
 const COUNTRY_ALIASES: Record<string, string> = {
@@ -38,7 +46,13 @@ function normalizeSlug(value: string): string {
 }
 
 function normalizeText(value: string): string {
-  return value.trim().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ')
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ')
 }
 
 function resolveCountrySlug(raw: string | null | undefined): string | null {
@@ -77,26 +91,59 @@ function matchState(
   return null
 }
 
+async function loadAllCities(client: LocationLookupClient): Promise<CityRow[]> {
+  const pageSize = 1000
+  const rows: CityRow[] = []
+  let from = 0
+  while (true) {
+    const { data, error } = await client
+      .from('cities')
+      .select('id, state_id, name, slug')
+      .range(from, from + pageSize - 1)
+    if (error) break
+    const page = (data ?? []) as CityRow[]
+    rows.push(...page)
+    if (page.length < pageSize) break
+    from += pageSize
+  }
+  return rows
+}
+
 export async function loadLocationTaxonomy(client: LocationLookupClient): Promise<{
   countries: CountryRow[]
   regions: RegionRow[]
   states: StateRow[]
+  cities: CityRow[]
 }> {
-  const [{ data: countries }, { data: regions }, { data: states }] = await Promise.all([
+  const [{ data: countries }, { data: regions }, { data: states }, cities] = await Promise.all([
     client.from('countries').select('id, slug, name'),
     client.from('regions').select('id, country_id, slug, name'),
     client.from('states').select('id, region_id, name, code'),
+    loadAllCities(client),
   ])
 
   return {
     countries: (countries ?? []) as CountryRow[],
     regions: (regions ?? []) as RegionRow[],
     states: (states ?? []) as StateRow[],
+    cities,
   }
 }
 
+function matchCity(cities: CityRow[], stateId: string, cityText: string | null | undefined): CityRow | null {
+  const raw = cityText?.trim()
+  if (!raw || !stateId) return null
+  const norm = normalizeText(raw)
+  const inState = cities.filter(c => c.state_id === stateId)
+  return (
+    inState.find(c => normalizeText(c.name) === norm)
+    ?? inState.find(c => c.slug === norm.replace(/\s+/g, '-'))
+    ?? null
+  )
+}
+
 export function resolveLocationFromTaxonomy(
-  taxonomy: { countries: CountryRow[]; regions: RegionRow[]; states: StateRow[] },
+  taxonomy: { countries: CountryRow[]; regions: RegionRow[]; states: StateRow[]; cities?: CityRow[] },
   input: {
     country_slug?: string | null
     location_city?: string | null
@@ -107,6 +154,7 @@ export function resolveLocationFromTaxonomy(
     country_id: null,
     region_id: null,
     state_id: null,
+    city_id: null,
     location_city: input.location_city?.trim() || null,
     location_state: input.location_state?.trim() || null,
   }
@@ -117,23 +165,24 @@ export function resolveLocationFromTaxonomy(
   const country = taxonomy.countries.find(c => c.slug === countrySlug)
   if (!country) return empty
 
-  // Mexico — country alone is a complete location
-  if (countrySlug === 'mexico') {
-    return {
-      country_id: country.id,
-      region_id: null,
-      state_id: null,
-      location_city: input.location_city?.trim() || null,
-      location_state: null,
-    }
-  }
-
   const countryRegions = taxonomy.regions.filter(r => r.country_id === country.id)
   const countryStates = taxonomy.states.filter(s =>
     countryRegions.some(r => r.id === s.region_id)
   )
 
-  const matchedState = matchState(countryStates, input.location_state, input.location_city)
+  let cityText = input.location_city?.trim() || null
+  let matchedState = matchState(countryStates, input.location_state, null)
+  if (!matchedState && cityText) {
+    const norm = normalizeText(cityText)
+    const exactState = countryStates.find(s =>
+      normalizeText(s.name) === norm
+      || (s.code != null && s.code.toUpperCase() === cityText!.toUpperCase())
+    )
+    if (exactState) {
+      matchedState = exactState
+      cityText = null
+    }
+  }
   if (!matchedState) {
     return {
       ...empty,
@@ -143,12 +192,14 @@ export function resolveLocationFromTaxonomy(
   }
 
   const region = taxonomy.regions.find(r => r.id === matchedState.region_id) ?? null
+  const matchedCity = matchCity(taxonomy.cities ?? [], matchedState.id, cityText)
 
   return {
     country_id: country.id,
     region_id: region?.id ?? null,
     state_id: matchedState.id,
-    location_city: input.location_city?.trim() || null,
+    city_id: matchedCity?.id ?? null,
+    location_city: matchedCity?.name ?? cityText,
     location_state: matchedState.code ?? matchedState.name,
   }
 }
@@ -167,11 +218,12 @@ export async function resolveLocationIds(
 
 /** Sync FK fields when the seller picks IDs directly in the form. */
 export function resolveLocationFromIds(
-  taxonomy: { countries: CountryRow[]; regions: RegionRow[]; states: StateRow[] },
+  taxonomy: { countries: CountryRow[]; regions: RegionRow[]; states: StateRow[]; cities?: CityRow[] },
   input: {
     country_id?: string | null
     region_id?: string | null
     state_id?: string | null
+    city_id?: string | null
     location_city?: string | null
   },
 ): ResolvedLocation {
@@ -181,16 +233,7 @@ export function resolveLocationFromIds(
       country_id: null,
       region_id: null,
       state_id: null,
-      location_city: input.location_city?.trim() || null,
-      location_state: null,
-    }
-  }
-
-  if (country.slug === 'mexico') {
-    return {
-      country_id: country.id,
-      region_id: null,
-      state_id: null,
+      city_id: null,
       location_city: input.location_city?.trim() || null,
       location_state: null,
     }
@@ -201,20 +244,28 @@ export function resolveLocationFromIds(
     ? taxonomy.regions.find(r => r.id === state.region_id) ?? null
     : taxonomy.regions.find(r => r.id === input.region_id && r.country_id === country.id) ?? null
 
+  const cities = taxonomy.cities ?? []
+  let city: CityRow | null = null
+  if (input.city_id && input.city_id !== 'other') {
+    city = cities.find(c => c.id === input.city_id && (!state || c.state_id === state.id)) ?? null
+  } else if (input.city_id !== 'other' && state) {
+    city = matchCity(cities, state.id, input.location_city)
+  }
+
   return {
     country_id: country.id,
     region_id: region?.id ?? null,
     state_id: state?.id ?? null,
-    location_city: input.location_city?.trim() || null,
+    city_id: city?.id ?? null,
+    location_city: city?.name ?? (input.location_city?.trim() || null),
     location_state: state ? (state.code ?? state.name) : null,
   }
 }
 
 export function countryHasSubdivisions(
-  countrySlug: string | null | undefined,
+  _countrySlug: string | null | undefined,
   statesForCountry: StateRow[],
 ): boolean {
-  if (!countrySlug || countrySlug === 'mexico') return false
   return statesForCountry.length > 0
 }
 

@@ -23,13 +23,7 @@ import type { GalleryItem } from '@/lib/listings/listingGallery'
 import type { ListingVideoSlot } from '@/lib/listings/listingVideoUploadClient'
 import { formatPriceInputValue, parsePriceInputValue } from '@/lib/formatPrice'
 
-const CONDITIONS = [
-  { value: 'new', label: 'New' },
-  { value: 'like_new', label: 'Like New' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'parts_only', label: 'Parts Only' },
-]
+import { LISTING_CONDITION_OPTIONS } from '@/lib/listings/conditions'
 
 const PRICE_UNITS = [
   { value: 'total', label: 'Total Price' },
@@ -551,7 +545,7 @@ export default function NewListingMobileFlow({
                     className={selectCls}
                   >
                     <option value="">Select condition</option>
-                    {CONDITIONS.map(c => (
+                    {LISTING_CONDITION_OPTIONS.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>

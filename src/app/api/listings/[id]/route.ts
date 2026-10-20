@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     'title', 'category', 'manufacturer', 'model', 'year', 'condition',
     'price', 'price_unit', 'price_visible', 'price_negotiable',
     'location_city', 'location_state',
-    'country_id', 'region_id', 'state_id',
+    'country_id', 'region_id', 'state_id', 'city_id',
     'industry_id', 'category_id',
     'description', 'tags', 'specs', 'video_url', 'status',
   ]

@@ -1,4 +1,5 @@
 import { parsePriceInputValue } from '@/lib/formatPrice'
+import { listingLocationMissingLabels } from '@/lib/listings/locationRequirements'
 
 export function listingGenerateStep2Missing(input: {
   title: string
@@ -7,10 +8,9 @@ export function listingGenerateStep2Missing(input: {
   industryId: string
   categoryId: string
   countryId: string
-  locationCity: string
   stateId: string
   countrySlug: string | null
-  needsSubdivision: boolean
+  countryHasSubdivisions: boolean
 }): string[] {
   const missing: string[] = []
   const title = input.title.trim()
@@ -18,11 +18,14 @@ export function listingGenerateStep2Missing(input: {
   if (!input.condition) missing.push('Condition')
   if (!input.industryId) missing.push('Industry')
   if (!input.categoryId) missing.push('Category')
-  if (!input.countryId) missing.push('Country')
-  if (input.countrySlug !== 'mexico' && !input.locationCity.trim()) missing.push('City')
-  if (input.needsSubdivision && !input.stateId) {
-    missing.push(input.countrySlug === 'canada' ? 'Province' : 'State')
-  }
+  missing.push(
+    ...listingLocationMissingLabels({
+      countryId: input.countryId,
+      stateId: input.stateId,
+      countrySlug: input.countrySlug,
+      countryHasSubdivisions: input.countryHasSubdivisions,
+    }),
+  )
   if (!input.price || parsePriceInputValue(input.price) <= 0) missing.push('Price')
   return missing
 }

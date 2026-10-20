@@ -23,7 +23,6 @@ export function buildSystemPrompt(taxonomy: GeneratePromptTaxonomy): string {
     .join('\n')
 
   const stateList = taxonomy.states
-    .slice(0, 80)
     .map(s => `  - ${s.name}${s.code ? ` (${s.code})` : ''} — ${s.countrySlug}`)
     .join('\n')
 
@@ -43,16 +42,16 @@ Use exactly these field names and value constraints:
   "manufacturer": "string manufacturer or brand name, or null if unknown",
   "model": "string model number or name, or null if unknown",
   "year": "integer 4-digit year, or null if not stated",
-  "condition": "new | like_new | good | fair | parts_only | null",
+  "condition": "new | like_new | great | good | fair | poor | rebuilt | null",
   "price": "number asking price, or null if not stated",
   "price_unit": "total | per_foot | per_piece | per_ton | per_set | per_meter | null",
   "price_hidden_requested": "boolean — true if the seller says call/contact for price or price on request",
   "price_terms": "string such as OBO, or null",
   "quantity": "string quantity as stated, or null",
   "hours": "string hours as stated, or null",
-  "country_slug": "One of: united-states | canada | mexico — infer from the location mentioned. Use null if no location is mentioned or you cannot determine the country confidently.",
-  "location_city": "City name, or null if not mentioned",
-  "location_state": "For United States: 2-letter state code (e.g. TX). For Canada: full province name (e.g. Alberta, Ontario). For Mexico: null. Null if not mentioned or uncertain.",
+  "country_slug": "One of the country slugs listed under COUNTRIES. Use null if no location is mentioned or you cannot determine the country confidently.",
+  "location_city": "City name only if the seller named a city, or null if not mentioned. Do not copy a state or province name into this field.",
+  "location_state": "State, province, or department from the STATES list — US 2-letter code (e.g. TX) or the subdivision name (e.g. Alberta, Jalisco). Null if not mentioned.",
   "description": "Public listing description — see DESCRIPTION RULES below.",
   "meta_description": "plain one-sentence summary using only stated facts; no price if price_hidden_requested",
   "tags": ["array", "of", "relevant", "keyword", "strings"],
@@ -104,7 +103,7 @@ The description is the seller's own text, preserved. Do not rewrite it.
 
 FIELD EXTRACTION
 Separately, extract everything stated into the structured fields and specs (size, range, band/inspection class, grade, quantity, price, price_unit, price_terms like OBO, location, condition).
-- Map condition only from the seller's words ("great condition" -> good, "like new" -> like_new, "needs work" -> fair, "parts only" -> parts_only). If not stated, condition = null. Never guess any field.
+- Map condition only from the seller's words: excellent -> great; like new -> like_new; brand new/unused -> new; rebuilt/remanufactured/overhauled/refurbished -> rebuilt; parts only/for parts/non-running -> poor; needs work -> fair. Do not collapse great to good or poor to fair. If not stated, condition = null. Never guess any field.
 - If the seller says call/contact for price or price on request, set price_hidden_requested = true.
 
 Example
@@ -126,7 +125,7 @@ Description output:
 - Great condition
 - Asking $85 per joint, OBO
 - Located in Odessa"
-Extracted: title "5\\" Drill Pipe — 200 Joints", condition good, price 85, price_unit per_piece, price_terms "OBO", quantity "200 joints", specs [{"name":"Size","value":"5\\""},{"name":"Range","value":"Range 2"},{"name":"Inspection Class","value":"Yellow Band"}], location_city Odessa, location_state TX, country united-states.
+Extracted: title "5\\" Drill Pipe — 200 Joints", condition great, price 85, price_unit per_piece, price_terms "OBO", quantity "200 joints", specs [{"name":"Size","value":"5\\""},{"name":"Range","value":"Range 2"},{"name":"Inspection Class","value":"Yellow Band"}], location_city Odessa, location_state TX, country united-states.
 
 SPECS RULES:
 - specs must be null or an array of {"name","value"} string pairs for genuine functional/technical measurements ONLY (e.g. weight, dimensions, capacity, horsepower, size/diameter, reach, lift capacity, engine tier).
@@ -136,9 +135,11 @@ SPECS RULES:
 - If the seller provided no functional/technical specs, set specs to null.
 
 LOCATION RULES:
+- country_slug must be one of the COUNTRIES slugs below, or null. Do not invent a country.
 - If the seller mentions a US city/state (e.g. "Midland, Texas" or "Houston, TX"), set country_slug to united-states and location_state to the 2-letter code.
-- If the seller mentions a Canadian city/province (e.g. "Calgary, Alberta" or "Toronto, Ontario"), set country_slug to canada and location_state to the full province name.
-- If the seller mentions Mexico or a Mexican city without a province, set country_slug to mexico and leave location_state null.
+- If the seller mentions a Canadian city/province (e.g. "Calgary, Alberta"), set country_slug to canada and location_state to the province name.
+- If the seller mentions a Mexican state (e.g. "Jalisco", "Nuevo León"), set country_slug to mexico and location_state to that state name. Set location_city only when they also name a city.
+- For any other seeded country, set country_slug and location_state from the lists when the seller names them.
 - If location is ambiguous or not mentioned, set country_slug, location_city, and location_state all to null — do NOT guess.
 
 INDUSTRY & CATEGORY RULES:

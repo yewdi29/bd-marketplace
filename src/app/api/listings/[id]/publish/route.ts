@@ -10,6 +10,10 @@ import {
   isAtActiveListingLimit,
   markListingLimitReachedOnce,
 } from '@/lib/organizations/listingLimits'
+import {
+  isListingLocationComplete,
+  resolveCountryLocationRequirements,
+} from '@/lib/listings/locationRequirements'
 
 function slugify(text: string): string {
   return text
@@ -80,15 +84,20 @@ export async function PATCH(
   // Validate required fields before going live
   type CountryEmbed = { slug: string } | { slug: string }[] | null
   const countryEmbed = listing.countries as CountryEmbed
-  const countrySlug = Array.isArray(countryEmbed)
+  const countrySlugFromJoin = Array.isArray(countryEmbed)
     ? countryEmbed[0]?.slug ?? null
     : countryEmbed?.slug ?? null
+  const { countrySlug, countryHasSubdivisions } = await resolveCountryLocationRequirements(
+    adminClient,
+    listing.country_id,
+  )
   const hasCategory = !!(listing.category_id || (listing.category && listing.category !== 'other'))
-  const hasLocation = (() => {
-    if (!listing.country_id) return false
-    if (countrySlug === 'mexico') return true
-    return !!(listing.location_city && listing.state_id)
-  })()
+  const hasLocation = isListingLocationComplete({
+    countryId: listing.country_id,
+    stateId: listing.state_id,
+    countrySlug: countrySlug ?? countrySlugFromJoin,
+    countryHasSubdivisions,
+  })
 
   if (
     !listing.title || listing.title === 'Untitled Draft' ||

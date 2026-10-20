@@ -5,6 +5,7 @@ import type { Listing } from '@/lib/types/database'
 import ListingCardLink from '@/components/listings/ListingCardLink'
 import ListingCardGrid from '@/components/listings/ListingCardGrid'
 import { toListingCardListing, type ListingCardListing } from '@/components/listings/listingCardTypes'
+import { listingDisplayCity } from '@/lib/listings/listingLocationDisplay'
 import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ function toSellerListingCard(listing: SellerListing): ListingCardListing {
     price: listing.price,
     price_unit: listing.price_unit,
     price_visible: listing.price_visible,
-    location_city: listing.location_city,
+    location_city: listingDisplayCity(listing),
     location_state: listing.location_state,
     created_at: listing.created_at,
     listing_images: listing.listing_images,

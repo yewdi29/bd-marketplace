@@ -34,7 +34,31 @@ interface ListingRow {
   latitude: number | null
   longitude: number | null
   states: { latitude: number | null; longitude: number | null } | null
+  cities:
+    | { name?: string | null; latitude: number | null; longitude: number | null }
+    | { name?: string | null; latitude: number | null; longitude: number | null }[]
+    | null
   [key: string]: unknown
+}
+
+function cityCoords(row: ListingRow): { latitude: number | null; longitude: number | null } | null {
+  const city = Array.isArray(row.cities) ? row.cities[0] : row.cities
+  if (!city || city.latitude == null || city.longitude == null) return null
+  return city
+}
+
+function listingCoords(row: ListingRow): { lat: number; lng: number } | null {
+  if (row.latitude != null && row.longitude != null) {
+    return { lat: row.latitude, lng: row.longitude }
+  }
+  const city = cityCoords(row)
+  if (city?.latitude != null && city.longitude != null) {
+    return { lat: city.latitude, lng: city.longitude }
+  }
+  if (row.states?.latitude != null && row.states.longitude != null) {
+    return { lat: row.states.latitude, lng: row.states.longitude }
+  }
+  return null
 }
 
 export type QueryPublicListingsParams = {
@@ -178,20 +202,16 @@ export async function queryPublicListings(
     const withoutCoords: ListingRow[] = []
 
     for (const row of rows) {
-      const rowLat = row.latitude ?? row.states?.latitude ?? null
-      const rowLng = row.longitude ?? row.states?.longitude ?? null
-      if (rowLat != null && rowLng != null) withCoords.push(row)
+      if (listingCoords(row)) withCoords.push(row)
       else withoutCoords.push(row)
     }
 
     withCoords.sort((a, b) => {
-      const aLat = a.latitude ?? a.states!.latitude!
-      const aLng = a.longitude ?? a.states!.longitude!
-      const bLat = b.latitude ?? b.states!.latitude!
-      const bLng = b.longitude ?? b.states!.longitude!
+      const aCoords = listingCoords(a)!
+      const bCoords = listingCoords(b)!
       return (
-        haversineMiles(userCoords!.lat, userCoords!.lng, aLat, aLng) -
-        haversineMiles(userCoords!.lat, userCoords!.lng, bLat, bLng)
+        haversineMiles(userCoords!.lat, userCoords!.lng, aCoords.lat, aCoords.lng) -
+        haversineMiles(userCoords!.lat, userCoords!.lng, bCoords.lat, bCoords.lng)
       )
     })
 

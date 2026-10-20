@@ -28,6 +28,14 @@ export interface TaxonomyState {
   code: string | null
 }
 
+export interface TaxonomyCity {
+  id: string
+  state_id: string
+  name: string
+  slug: string
+  sort_order: number
+}
+
 export interface TaxonomyIndustry {
   id: string
   name: string
@@ -48,6 +56,7 @@ export interface ListingTaxonomyFormValues {
   state_id: string
   industry_id: string
   category_id: string
+  city_id: string
   location_city: string
   location_state: string
 }
@@ -58,6 +67,7 @@ export const EMPTY_TAXONOMY_VALUES: ListingTaxonomyFormValues = {
   state_id: '',
   industry_id: '',
   category_id: '',
+  city_id: '',
   location_city: '',
   location_state: '',
 }
@@ -67,25 +77,47 @@ export function useListingTaxonomy() {
   const [countries, setCountries] = useState<TaxonomyCountry[]>([])
   const [regions, setRegions] = useState<TaxonomyRegion[]>([])
   const [states, setStates] = useState<TaxonomyState[]>([])
+  const [cities, setCities] = useState<TaxonomyCity[]>([])
   const [industries, setIndustries] = useState<TaxonomyIndustry[]>([])
   const [categories, setCategories] = useState<TaxonomyCategory[]>([])
 
   useEffect(() => {
     const supabase = createClient()
 
+    async function loadCities(): Promise<TaxonomyCity[]> {
+      const pageSize = 1000
+      const rows: TaxonomyCity[] = []
+      let from = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('cities')
+          .select('id, state_id, name, slug, sort_order')
+          .order('name')
+          .range(from, from + pageSize - 1)
+        if (error) break
+        const page = (data ?? []) as TaxonomyCity[]
+        rows.push(...page)
+        if (page.length < pageSize) break
+        from += pageSize
+      }
+      return rows
+    }
+
     Promise.all([
       supabase.from('countries').select('id, name, slug, iso_code').order('name'),
       supabase.from('regions').select('id, country_id, name, slug').order('name'),
       supabase.from('states').select('id, region_id, name, code').order('name'),
+      loadCities(),
       supabase.from('industries').select('id, name, slug, sort_order').order('sort_order'),
       supabase
         .from('categories')
         .select('id, name, slug, category_industries(industry_id)')
         .order('name'),
-    ]).then(([countriesRes, regionsRes, statesRes, industriesRes, categoriesRes]) => {
+    ]).then(([countriesRes, regionsRes, statesRes, cityRows, industriesRes, categoriesRes]) => {
       setCountries((countriesRes.data ?? []) as TaxonomyCountry[])
       setRegions((regionsRes.data ?? []) as TaxonomyRegion[])
       setStates((statesRes.data ?? []) as TaxonomyState[])
+      setCities(cityRows)
 
       setIndustries((industriesRes.data ?? []) as TaxonomyIndustry[])
 
@@ -120,6 +152,14 @@ export function useListingTaxonomy() {
     return states.filter(s => regionIds.has(s.region_id))
   }
 
+  function citiesForState(stateId: string): TaxonomyCity[] {
+    if (!stateId) return []
+    return cities
+      .filter(c => c.state_id === stateId)
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
+
   function statesForRegion(regionId: string): TaxonomyState[] {
     return states.filter(s => s.region_id === regionId)
   }
@@ -149,11 +189,13 @@ export function useListingTaxonomy() {
     countries,
     regions,
     states,
+    cities,
     industries,
     categories,
     getCountrySlug,
     regionsForCountry,
     statesForCountry,
+    citiesForState,
     statesForRegion,
     categoriesForIndustry,
     needsRegionStep,
@@ -174,11 +216,15 @@ export function applyTaxonomyChange(
     next.region_id = ''
     next.state_id = ''
     next.location_state = ''
+    next.city_id = ''
+    next.location_city = ''
   }
 
   if ('region_id' in patch && patch.region_id !== prev.region_id) {
     next.state_id = ''
     next.location_state = ''
+    next.city_id = ''
+    next.location_city = ''
   }
 
   if ('state_id' in patch && patch.state_id !== prev.state_id) {
@@ -186,6 +232,17 @@ export function applyTaxonomyChange(
     next.location_state = state ? (state.code ?? state.name) : ''
     // Region is not user-editable — derive it from the selected state.
     next.region_id = state?.region_id ?? ''
+    next.city_id = ''
+    next.location_city = ''
+  }
+
+  if ('city_id' in patch && patch.city_id !== prev.city_id) {
+    if (!next.city_id || next.city_id === 'other') {
+      next.location_city = next.city_id === 'other' ? '' : next.location_city
+    } else {
+      const city = taxonomy.cities.find(c => c.id === next.city_id)
+      next.location_city = city?.name ?? ''
+    }
   }
 
   if ('industry_id' in patch && patch.industry_id !== prev.industry_id) {

@@ -22,6 +22,7 @@ export async function applyTaxonomyFieldsToUpdates(
     'country_id' in fields ||
     'region_id' in fields ||
     'state_id' in fields ||
+    'city_id' in fields ||
     'location_city' in fields
 
   if (hasLocationFields) {
@@ -30,11 +31,13 @@ export async function applyTaxonomyFieldsToUpdates(
       country_id: emptyToNull(fields.country_id) as string | null,
       region_id: emptyToNull(fields.region_id) as string | null,
       state_id: emptyToNull(fields.state_id) as string | null,
+      city_id: fields.city_id === 'other' ? 'other' : (emptyToNull(fields.city_id) as string | null),
       location_city: fields.location_city as string | null | undefined,
     })
     updates.country_id = resolved.country_id
     updates.region_id = resolved.region_id
     updates.state_id = resolved.state_id
+    updates.city_id = resolved.city_id
     updates.location_city = resolved.location_city
     updates.location_state = resolved.location_state
   }
@@ -73,6 +76,7 @@ export async function resolveAiTaxonomy(
   country_id: string | null
   region_id: string | null
   state_id: string | null
+  city_id: string | null
   location_city: string | null
   location_state: string | null
   industry_id: string | null

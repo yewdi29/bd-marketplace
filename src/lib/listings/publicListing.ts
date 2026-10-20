@@ -1,14 +1,16 @@
 import 'server-only'
 
+import { listingDisplayCity } from '@/lib/listings/listingLocationDisplay'
+
 export const PUBLIC_LISTING_SELECT =
-  'id, slug, title, category, price, price_unit, price_visible, location_city, location_state, created_at, listing_images(url, is_primary, alt_text, sort_order), countries(name, iso_code), categories(name)'
+  'id, slug, title, category, price, price_unit, price_visible, location_city, location_state, created_at, listing_images(url, is_primary, alt_text, sort_order), countries(name, iso_code), categories(name), cities(name, latitude, longitude)'
 
 export const PUBLIC_LISTING_SELECT_WITH_COORDS =
   `${PUBLIC_LISTING_SELECT}, latitude, longitude, states(latitude, longitude)`
 
 /** /listings/[slug] — public-safe columns only (no AI/moderation fields). */
 export const PUBLIC_LISTING_DETAIL_SELECT =
-  'id, slug, title, description, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, tags, specs, status, seller_id, organization_id, created_at, listing_images(id, url, is_primary, alt_text, sort_order, gallery_position), listing_videos(id, mux_playback_id, status, duration_seconds, gallery_position, position), countries(name, iso_code), categories(slug, name)'
+  'id, slug, title, description, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, tags, specs, status, seller_id, organization_id, created_at, listing_images(id, url, is_primary, alt_text, sort_order, gallery_position), listing_videos(id, mux_playback_id, status, duration_seconds, gallery_position, position), countries(name, iso_code), categories(slug, name), cities(name)'
 
 export type PublicListing = {
   id: string
@@ -51,6 +53,7 @@ type PublicListingRow = {
     | { name: string; iso_code: string | null }[]
     | null
   categories?: { name: string } | { name: string }[] | null
+  cities?: { name: string } | { name: string }[] | null
 }
 
 function firstRel<T>(value: T | T[] | null | undefined): T | null {
@@ -90,7 +93,7 @@ export function toPublicListing(
     price,
     price_unit: source.price_unit ?? 'total',
     price_visible: priceVisible,
-    location_city: source.location_city ?? null,
+    location_city: listingDisplayCity(source),
     location_state: source.location_state ?? null,
     created_at: source.created_at,
     listing_images,

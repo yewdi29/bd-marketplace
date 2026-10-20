@@ -31,14 +31,7 @@ import {
   parsePriceInputValue,
 } from '@/lib/formatPrice'
 import { listingGenerateStep2Missing } from '@/lib/listings/listingGenerateStep2'
-
-const CONDITIONS = [
-  { value: 'new', label: 'New' },
-  { value: 'like_new', label: 'Like New' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'parts_only', label: 'Parts Only' },
-]
+import { LISTING_CONDITION_OPTIONS } from '@/lib/listings/conditions'
 
 const PRICE_UNITS = [
   { value: 'total', label: 'Total Price' },
@@ -283,6 +276,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
             state_id?: string | null
             industry_id?: string | null
             category_id?: string | null
+            city_id?: string | null
             location_city?: string | null
             location_state?: string | null
           }>
@@ -314,6 +308,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
         state_id: l.state_id ?? '',
         industry_id: l.industry_id ?? '',
         category_id: l.category_id ?? '',
+        city_id: l.city_id ? l.city_id : (l.location_city ? 'other' : ''),
         location_city: l.location_city ?? '',
         location_state: l.location_state ?? '',
       })
@@ -336,10 +331,9 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
       industryId: taxonomy.industry_id,
       categoryId: taxonomy.category_id,
       countryId: taxonomy.country_id,
-      locationCity: taxonomy.location_city,
       stateId: taxonomy.state_id,
       countrySlug: taxonomyData.getCountrySlug(taxonomy.country_id),
-      needsSubdivision: taxonomyData.needsSubdivisionStep(taxonomy.country_id),
+      countryHasSubdivisions: taxonomyData.needsSubdivisionStep(taxonomy.country_id),
     })
   }
 
@@ -826,7 +820,7 @@ export default function NewListingModal({ onClose, onSuccess, onDraftRemoved, re
                     className={selectCls}
                   >
                     <option value="">Select condition</option>
-                    {CONDITIONS.map(c => (
+                    {LISTING_CONDITION_OPTIONS.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>

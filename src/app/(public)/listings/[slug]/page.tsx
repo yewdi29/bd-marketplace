@@ -27,19 +27,13 @@ import {
   PUBLIC_LISTING_DETAIL_SELECT,
   PUBLIC_LISTING_SELECT,
 } from '@/lib/listings/publicListing'
+import { listingDisplayCity } from '@/lib/listings/listingLocationDisplay'
 import { formatListingCategoryLabel } from '@/lib/categoryResolver'
 import { generateUniqueUserCompanySlug } from '@/lib/sellers/companySlug'
 import { resolveListingSellerDisplay } from '@/lib/sellers/publicSellerProfile'
+import { listingConditionLabel } from '@/lib/listings/conditions'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const CONDITION_LABELS: Record<string, string> = {
-  new: 'New',
-  like_new: 'Like New',
-  good: 'Good',
-  fair: 'Fair',
-  parts_only: 'Parts Only',
-}
 
 function listingCategorySearchHref(listing: {
   category: string
@@ -52,7 +46,7 @@ function listingCategorySearchHref(listing: {
 }
 
 function condLabel(val: string) {
-  return CONDITION_LABELS[val] ?? val.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  return listingConditionLabel(val)
 }
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
@@ -207,8 +201,9 @@ export default async function ListingDetailPage({ params }: Props) {
     : formatPrice(l.price, l.price_unit ?? 'total', priceVisible)
 
   const listingUrl = `${PUBLIC_SITE_URL}/listings/${slug}`
-  const listingLocation = [l.location_city, l.location_state, l.countries?.name].filter(Boolean).join(', ') || null
-  const hasLocationPill = Boolean(l.location_city || l.location_state || l.countries?.name)
+  const displayCity = listingDisplayCity(l as { location_city?: string | null; cities?: { name: string } | { name: string }[] | null })
+  const listingLocation = [displayCity, l.location_state, l.countries?.name].filter(Boolean).join(', ') || null
+  const hasLocationPill = Boolean(displayCity || l.location_state || l.countries?.name)
 
   const categoryDisplayLabel = formatListingCategoryLabel(l.category, l.categories?.name)
   const categorySearchHref = listingCategorySearchHref(l)
@@ -348,7 +343,7 @@ export default async function ListingDetailPage({ params }: Props) {
             {hasLocationPill && (
               <div className="mb-5">
                 <ListingLocationPill
-                  locationCity={l.location_city}
+                  locationCity={displayCity}
                   locationState={l.location_state}
                   countryName={l.countries?.name}
                   countryIsoCode={l.countries?.iso_code}

@@ -1,6 +1,7 @@
 import { z } from 'zod'
+import { LISTING_CONDITION_VALUES } from '@/lib/listings/conditions'
 
-const CONDITION_VALUES = ['new', 'like_new', 'good', 'fair', 'parts_only'] as const
+const CONDITION_VALUES = LISTING_CONDITION_VALUES
 const PRICE_UNIT_VALUES = ['total', 'per_foot', 'per_piece', 'per_ton', 'per_set', 'per_meter'] as const
 
 type ConditionValue = (typeof CONDITION_VALUES)[number]
@@ -38,17 +39,26 @@ export type GeneratedListing = z.infer<typeof generatedListingSchema>
 
 const CONDITION_ALIASES: Record<string, ConditionValue> = {
   new: 'new',
+  'brand new': 'new',
+  unused: 'new',
   like_new: 'like_new',
   'like new': 'like_new',
   likenew: 'like_new',
+  great: 'great',
+  excellent: 'great',
   good: 'good',
-  great: 'good',
-  excellent: 'good',
   fair: 'fair',
-  poor: 'fair',
-  parts_only: 'parts_only',
-  'parts only': 'parts_only',
-  partsonly: 'parts_only',
+  'needs work': 'fair',
+  poor: 'poor',
+  parts_only: 'poor',
+  'parts only': 'poor',
+  partsonly: 'poor',
+  'for parts': 'poor',
+  'non running': 'poor',
+  rebuilt: 'rebuilt',
+  remanufactured: 'rebuilt',
+  overhauled: 'rebuilt',
+  refurbished: 'rebuilt',
 }
 
 const PRICE_UNIT_ALIASES: Record<string, PriceUnitValue> = {
@@ -265,7 +275,7 @@ export const saveListingInputSchema = {
     condition: {
       type: ['string', 'null'],
       enum: [...CONDITION_VALUES, null],
-      description: 'new | like_new | good | fair | parts_only | null',
+      description: 'new | like_new | great | good | fair | poor | rebuilt | null',
     },
     price: { type: ['number', 'null'], description: 'Numeric asking price, or null if not stated' },
     price_unit: {

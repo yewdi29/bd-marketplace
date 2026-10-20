@@ -5,6 +5,7 @@ import HomeSectionHeader from '@/components/home/HomeSectionHeader'
 import { getAuthUser } from '@/lib/supabase/auth-server'
 import { createClient } from '@/lib/supabase/server'
 import type { MembershipPlan } from '@/lib/types/database'
+import { listingDisplayCity } from '@/lib/listings/listingLocationDisplay'
 
 const TIER_WEIGHT: Record<MembershipPlan, number> = {
   max:     4,
@@ -68,6 +69,7 @@ function toFeaturedListing(row: {
   listing_images?: ListingCardListing['listing_images']
   countries?: { name: string; iso_code: string | null } | { name: string; iso_code: string | null }[] | null
   categories?: { name: string } | { name: string }[] | null
+  cities?: { name: string } | { name: string }[] | null
 }): ListingCardListing {
   const countries = Array.isArray(row.countries) ? row.countries[0] ?? null : row.countries ?? null
   const categories = Array.isArray(row.categories) ? row.categories[0] ?? null : row.categories ?? null
@@ -81,7 +83,7 @@ function toFeaturedListing(row: {
     price: row.price,
     price_unit: row.price_unit,
     price_visible: row.price_visible,
-    location_city: row.location_city,
+    location_city: listingDisplayCity(row),
     location_state: row.location_state,
     created_at: row.created_at,
     listing_images: row.listing_images,
@@ -112,7 +114,7 @@ export default async function FeaturedEquipmentSection() {
     const { data: eligibleListings } = await adminClient
       .from('listings')
       .select(
-        'id, title, category, price, price_unit, price_visible, status, slug, seller_id, created_at, location_city, location_state, listing_images(url, is_primary, alt_text, sort_order), countries(name, iso_code), categories(name)',
+        'id, title, category, price, price_unit, price_visible, status, slug, seller_id, created_at, location_city, location_state, listing_images(url, is_primary, alt_text, sort_order), countries(name, iso_code), categories(name), cities(name)',
       )
       .eq('status', 'active')
       .order('created_at', { ascending: false })

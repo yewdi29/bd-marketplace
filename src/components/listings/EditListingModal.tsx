@@ -18,16 +18,10 @@ import {
   useListingTaxonomy,
   type ListingTaxonomyFormValues,
 } from '@/hooks/useListingTaxonomy'
+import { isListingLocationComplete } from '@/lib/listings/locationRequirements'
+import { LISTING_CONDITION_OPTIONS } from '@/lib/listings/conditions'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const CONDITIONS = [
-  { value: 'new', label: 'New' },
-  { value: 'like_new', label: 'Like New' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'parts_only', label: 'Parts Only' },
-]
 
 const PRICE_UNITS = [
   { value: 'total', label: 'Total Price' },
@@ -113,7 +107,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
     async function fetchListing() {
       const { data, error: fetchError } = await supabase
         .from('listings')
-        .select('title, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, description, status, country_id, region_id, state_id, industry_id, category_id, listing_images(id, url, sort_order, is_primary, gallery_position)')
+        .select('title, category, manufacturer, model, year, condition, price, price_unit, price_visible, location_city, location_state, description, status, country_id, region_id, state_id, city_id, industry_id, category_id, listing_images(id, url, sort_order, is_primary, gallery_position)')
         .eq('id', listingId)
         .single()
 
@@ -141,6 +135,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
         state_id: data.state_id ?? '',
         industry_id: data.industry_id ?? '',
         category_id: data.category_id ?? '',
+        city_id: data.city_id ? data.city_id : (data.location_city ? 'other' : ''),
         location_city: data.location_city ?? '',
         location_state: data.location_state ?? '',
       })
@@ -343,10 +338,12 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const countrySlug = taxonomyData.getCountrySlug(taxonomy.country_id)
-  const hasLocation = !!(
-    taxonomy.country_id &&
-    (countrySlug === 'mexico' || (taxonomy.location_city && taxonomy.state_id))
-  )
+  const hasLocation = isListingLocationComplete({
+    countryId: taxonomy.country_id,
+    stateId: taxonomy.state_id,
+    countrySlug,
+    countryHasSubdivisions: taxonomyData.needsSubdivisionStep(taxonomy.country_id),
+  })
 
   const canPublish = !!(
     form &&
@@ -487,7 +484,7 @@ export default function EditListingModal({ listingId, onClose, onSaved }: Props)
                     className={selectCls}
                   >
                     <option value="">Select condition</option>
-                    {CONDITIONS.map(c => (
+                    {LISTING_CONDITION_OPTIONS.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>

@@ -30,11 +30,13 @@ export function mapListingItemCondition(
   switch (condition) {
     case 'new':
       return 'https://schema.org/NewCondition'
-    case 'parts_only':
-      return 'https://schema.org/DamagedCondition'
+    case 'rebuilt':
+      return 'https://schema.org/RefurbishedCondition'
     case 'like_new':
+    case 'great':
     case 'good':
     case 'fair':
+    case 'poor':
       return 'https://schema.org/UsedCondition'
     default:
       return 'https://schema.org/UsedCondition'

@@ -19,13 +19,7 @@ import {
 
 const MAX_PHOTOS = MAX_LISTING_PHOTOS
 
-const CONDITIONS = [
-  { value: 'new', label: 'New' },
-  { value: 'like_new', label: 'Like New' },
-  { value: 'good', label: 'Good' },
-  { value: 'fair', label: 'Fair' },
-  { value: 'parts_only', label: 'Parts Only' },
-]
+import { LISTING_CONDITION_OPTIONS } from '@/lib/listings/conditions'
 
 const PRICE_UNITS = [
   { value: 'total', label: 'Total Price' },
@@ -339,7 +333,7 @@ export default function EditListingMobileFlow({
                       className={selectCls}
                     >
                       <option value="">Select condition</option>
-                      {CONDITIONS.map(c => (
+                      {LISTING_CONDITION_OPTIONS.map(c => (
                         <option key={c.value} value={c.value}>{c.label}</option>
                       ))}
                     </select>

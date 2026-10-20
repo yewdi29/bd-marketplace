@@ -119,6 +119,7 @@ export interface Listing {
   price_unit: string
   price_negotiable: boolean
   price_visible: boolean
+  city_id: string | null
   location_city: string | null
   location_state: string | null
   tags: string[] | null
