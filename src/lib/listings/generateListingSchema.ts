@@ -243,8 +243,9 @@ export function normalizeSaveListingToolInput(input: unknown): unknown {
 
 /**
  * JSON Schema for Anthropic tool-use `save_listing` input.
- * Specs use a fixed [{name,value}] array so `strict: true` is allowed
- * (free-form object additionalProperties are rejected by strict mode).
+ * Specs are [{name,value}] pairs. Strict mode is intentionally off: this schema
+ * has too many nullable unions for Anthropic's grammar compiler (400
+ * "Schema is too complex"). Drift is handled by normalizeSaveListingToolInput.
  */
 export const saveListingInputSchema = {
   type: 'object',
@@ -263,13 +264,13 @@ export const saveListingInputSchema = {
     year: { type: ['integer', 'null'], description: '4-digit year, or null if not stated' },
     condition: {
       type: ['string', 'null'],
-      enum: [...CONDITION_VALUES],
+      enum: [...CONDITION_VALUES, null],
       description: 'new | like_new | good | fair | parts_only | null',
     },
     price: { type: ['number', 'null'], description: 'Numeric asking price, or null if not stated' },
     price_unit: {
       type: ['string', 'null'],
-      enum: [...PRICE_UNIT_VALUES],
+      enum: [...PRICE_UNIT_VALUES, null],
     },
     price_hidden_requested: {
       type: 'boolean',
@@ -337,7 +338,6 @@ export const SAVE_LISTING_TOOL = {
   name: 'save_listing',
   description:
     'Save the extracted listing fields and the preserved seller description. Use null for any field the seller did not state. Never invent values.',
-  strict: true,
   input_schema: saveListingInputSchema,
 }
 
