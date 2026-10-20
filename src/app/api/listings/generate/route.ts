@@ -11,6 +11,7 @@ import {
   extractSaveListingToolInput,
   formatZodError,
   generatedListingSchema,
+  normalizeSaveListingToolInput,
   SAVE_LISTING_TOOL,
   type GeneratedListing,
 } from '@/lib/listings/generateListingSchema'
@@ -22,10 +23,12 @@ import {
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL = 'claude-sonnet-5'
-const MAX_TOKENS = 2048
+// Seller description is preserved verbatim inside the tool payload; keep headroom.
+const MAX_TOKENS = 8192
 
 type AnthropicMessageResponse = {
   content: unknown
+  stop_reason?: string | null
 }
 
 async function callSaveListing(
@@ -74,16 +77,34 @@ async function callSaveListing(
 
     const toolInput = extractSaveListingToolInput(anthropicData.content)
     if (toolInput == null) {
+      const blockTypes = Array.isArray(anthropicData.content)
+        ? anthropicData.content.map(block =>
+            block && typeof block === 'object' ? (block as { type?: string }).type : typeof block,
+          )
+        : typeof anthropicData.content
+      console.error('AI listing generate: missing save_listing tool_use', {
+        stop_reason: anthropicData.stop_reason ?? null,
+        blockTypes,
+      })
+      const truncated = anthropicData.stop_reason === 'max_tokens'
       return {
         ok: false,
         status: 502,
-        retryHint: 'Previous response did not call save_listing. Call save_listing with every required field.',
+        retryHint: truncated
+          ? 'Previous response was truncated. Call save_listing again with a complete, shorter description if needed, and every required field.'
+          : 'Previous response did not call save_listing. Call save_listing with every required field.',
         error: 'Could not parse AI response. Please try again.',
       }
     }
 
-    const parsed = generatedListingSchema.safeParse(toolInput)
+    const normalized = normalizeSaveListingToolInput(toolInput)
+    const parsed = generatedListingSchema.safeParse(normalized)
     if (!parsed.success) {
+      console.error('AI listing generate: Zod validation failed', {
+        stop_reason: anthropicData.stop_reason ?? null,
+        issues: formatZodError(parsed.error),
+        rawKeys: toolInput && typeof toolInput === 'object' ? Object.keys(toolInput as object) : [],
+      })
       return {
         ok: false,
         status: 502,

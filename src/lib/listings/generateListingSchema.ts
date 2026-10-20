@@ -3,6 +3,9 @@ import { z } from 'zod'
 const CONDITION_VALUES = ['new', 'like_new', 'good', 'fair', 'parts_only'] as const
 const PRICE_UNIT_VALUES = ['total', 'per_foot', 'per_piece', 'per_ton', 'per_set', 'per_meter'] as const
 
+type ConditionValue = (typeof CONDITION_VALUES)[number]
+type PriceUnitValue = (typeof PRICE_UNIT_VALUES)[number]
+
 const nullableString = z.string().nullable()
 const nullableNumber = z.number().nullable()
 
@@ -32,6 +35,180 @@ export const generatedListingSchema = z.object({
 })
 
 export type GeneratedListing = z.infer<typeof generatedListingSchema>
+
+const CONDITION_ALIASES: Record<string, ConditionValue> = {
+  new: 'new',
+  like_new: 'like_new',
+  'like new': 'like_new',
+  likenew: 'like_new',
+  good: 'good',
+  great: 'good',
+  excellent: 'good',
+  fair: 'fair',
+  poor: 'fair',
+  parts_only: 'parts_only',
+  'parts only': 'parts_only',
+  partsonly: 'parts_only',
+}
+
+const PRICE_UNIT_ALIASES: Record<string, PriceUnitValue> = {
+  total: 'total',
+  each: 'per_piece',
+  ea: 'per_piece',
+  piece: 'per_piece',
+  per_piece: 'per_piece',
+  'per piece': 'per_piece',
+  joint: 'per_piece',
+  per_joint: 'per_piece',
+  'per joint': 'per_piece',
+  foot: 'per_foot',
+  per_foot: 'per_foot',
+  'per foot': 'per_foot',
+  ft: 'per_foot',
+  ton: 'per_ton',
+  per_ton: 'per_ton',
+  'per ton': 'per_ton',
+  set: 'per_set',
+  per_set: 'per_set',
+  'per set': 'per_set',
+  meter: 'per_meter',
+  per_meter: 'per_meter',
+  'per meter': 'per_meter',
+  m: 'per_meter',
+}
+
+function asNullableString(value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed || trimmed.toLowerCase() === 'null') return null
+    return trimmed
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return null
+}
+
+function asNullableNumber(value: unknown): number | null {
+  if (value == null || value === '') return null
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase()
+    if (!trimmed || trimmed === 'null' || trimmed === 'n/a' || trimmed === 'na') return null
+    const cleaned = trimmed.replace(/[$,\s]/g, '').replace(/usd$/i, '')
+    const parsed = Number(cleaned)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function asNullableYear(value: unknown): number | null {
+  const num = asNullableNumber(value)
+  if (num == null) return null
+  const year = Math.trunc(num)
+  if (year < 1900 || year > 2100) return null
+  return year
+}
+
+function asBoolean(value: unknown, fallback = false): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase()
+    if (['true', '1', 'yes', 'y'].includes(trimmed)) return true
+    if (['false', '0', 'no', 'n', ''].includes(trimmed)) return false
+  }
+  return fallback
+}
+
+function asStringArray(value: unknown, maxItems?: number): string[] {
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === 'string' && value.trim()
+      ? value.split(/[,;]/).map(part => part.trim())
+      : []
+  const cleaned = raw
+    .map(item => (item == null ? '' : String(item).trim()))
+    .filter(Boolean)
+  return maxItems != null ? cleaned.slice(0, maxItems) : cleaned
+}
+
+function asSpecs(value: unknown): Record<string, string> | null {
+  if (value == null || value === '') return null
+  if (typeof value !== 'object' || Array.isArray(value)) return null
+  const out: Record<string, string> = {}
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    const k = String(key).trim()
+    if (!k) continue
+    if (raw == null) continue
+    const v = String(raw).trim()
+    if (!v || v.toLowerCase() === 'null') continue
+    out[k] = v
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
+function asCondition(value: unknown): ConditionValue | null {
+  const text = asNullableString(value)
+  if (!text) return null
+  const normalized = text.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (CONDITION_ALIASES[normalized]) return CONDITION_ALIASES[normalized]
+  const compact = normalized.replace(/\s+/g, '_')
+  if (CONDITION_ALIASES[compact]) return CONDITION_ALIASES[compact]
+  // "great condition" / "like new condition"
+  for (const [alias, mapped] of Object.entries(CONDITION_ALIASES)) {
+    if (normalized.includes(alias)) return mapped
+  }
+  return null
+}
+
+function asPriceUnit(value: unknown): PriceUnitValue | null {
+  const text = asNullableString(value)
+  if (!text) return null
+  const normalized = text.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (PRICE_UNIT_ALIASES[normalized]) return PRICE_UNIT_ALIASES[normalized]
+  const compact = normalized.replace(/\s+/g, '_')
+  if (PRICE_UNIT_ALIASES[compact]) return PRICE_UNIT_ALIASES[compact]
+  for (const [alias, mapped] of Object.entries(PRICE_UNIT_ALIASES)) {
+    if (normalized.includes(alias)) return mapped
+  }
+  return null
+}
+
+/**
+ * Coerce common Anthropic tool-use shape drift before Zod.
+ * Without `strict: true` (blocked here by free-form specs), the model often
+ * returns year/price as strings, numeric specs values, or near-enum labels.
+ */
+export function normalizeSaveListingToolInput(input: unknown): unknown {
+  if (input == null || typeof input !== 'object' || Array.isArray(input)) return input
+  const raw = input as Record<string, unknown>
+
+  return {
+    ...raw,
+    title: asNullableString(raw.title) ?? '',
+    category: asNullableString(raw.category) ?? 'other',
+    industry_slug: asNullableString(raw.industry_slug),
+    category_slug: asNullableString(raw.category_slug),
+    manufacturer: asNullableString(raw.manufacturer),
+    model: asNullableString(raw.model),
+    year: asNullableYear(raw.year),
+    condition: asCondition(raw.condition),
+    price: asNullableNumber(raw.price),
+    price_unit: asPriceUnit(raw.price_unit),
+    price_hidden_requested: asBoolean(raw.price_hidden_requested, false),
+    price_terms: asNullableString(raw.price_terms),
+    quantity: asNullableString(raw.quantity),
+    hours: asNullableString(raw.hours),
+    country_slug: asNullableString(raw.country_slug),
+    location_city: asNullableString(raw.location_city),
+    location_state: asNullableString(raw.location_state),
+    description: asNullableString(raw.description) ?? '',
+    meta_description: asNullableString(raw.meta_description) ?? '',
+    tags: asStringArray(raw.tags),
+    specs: asSpecs(raw.specs),
+    missing_info: asStringArray(raw.missing_info, 5),
+  }
+}
 
 /** JSON Schema for Anthropic tool-use `save_listing` input. */
 export const saveListingInputSchema = {
@@ -82,7 +259,6 @@ export const saveListingInputSchema = {
     },
     missing_info: {
       type: 'array',
-      maxItems: 5,
       items: { type: 'string' },
       description: 'Up to 5 unstated spec names, e.g. Grade, Weight per foot, Connection type',
     },
@@ -118,6 +294,9 @@ export const SAVE_LISTING_TOOL = {
   description:
     'Save the extracted listing fields and the preserved seller description. Use null for any field the seller did not state. Never invent values.',
   input_schema: saveListingInputSchema,
+  // Note: Anthropic `strict: true` is not enabled — free-form `specs` needs
+  // additionalProperties beyond `false`, which strict mode rejects. We normalize
+  // + Zod-validate tool input instead.
 }
 
 export function formatZodError(error: z.ZodError): string {
