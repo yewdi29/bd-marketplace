@@ -209,7 +209,10 @@ function assertLocalFixtures(): CheckResult[] {
     description: 'Selling drill pipe.',
     meta_description: 'Drill pipe for sale.',
     tags: 'drill pipe, Odessa',
-    specs: { Size: 5, Range: 'Range 2', empty: null },
+    specs: [
+      { name: 'Size', value: '5' },
+      { name: 'Range', value: 'Range 2' },
+    ],
     missing_info: ['Grade', 'Weight', 'Connection', 'Wall', 'Upset', 'extra'],
   })
   const driftedParsed = generatedListingSchema.safeParse(drifted)
@@ -224,6 +227,23 @@ function assertLocalFixtures(): CheckResult[] {
       && driftedParsed.data.missing_info.length === 5
       && driftedParsed.data.quantity === '200',
     detail: driftedParsed.success ? JSON.stringify(driftedParsed.data) : driftedParsed.error.message,
+  })
+
+  const objectSpecs = generatedListingSchema.safeParse(
+    normalizeSaveListingToolInput({
+      ...(driftedParsed.success ? driftedParsed.data : {}),
+      specs: { Size: 5, Range: 'Range 2' },
+    }),
+  )
+  checks.push({
+    name: 'normalize: object specs map still accepted',
+    pass: objectSpecs.success && objectSpecs.data.specs?.Size === '5',
+    detail: objectSpecs.success ? JSON.stringify(objectSpecs.data.specs) : objectSpecs.error.message,
+  })
+
+  checks.push({
+    name: 'tool schema enables strict mode',
+    pass: (SAVE_LISTING_TOOL as { strict?: boolean }).strict === true,
   })
 
   return checks

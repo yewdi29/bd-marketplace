@@ -86,9 +86,28 @@ const cases: Case[] = [
           quantity: 200,
           model: '',
           tags: 'excavator, Midland',
-          specs: { Hours: 4200, Size: 5 },
+          specs: [
+            { name: 'Hours', value: '4200' },
+            { name: 'Size', value: '5' },
+          ],
           missing_info: ['a', 'b', 'c', 'd', 'e', 'f'],
         },
+      },
+    ],
+  },
+  {
+    name: 'drift: stringified tool input JSON',
+    expectOk: true,
+    content: [
+      {
+        type: 'tool_use',
+        name: 'save_listing',
+        id: '1',
+        input: JSON.stringify({
+          ...baseFields,
+          year: '2019',
+          price: '185000',
+        }),
       },
     ],
   },

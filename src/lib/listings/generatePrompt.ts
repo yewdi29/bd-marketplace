@@ -56,7 +56,7 @@ Use exactly these field names and value constraints:
   "description": "Public listing description — see DESCRIPTION RULES below.",
   "meta_description": "plain one-sentence summary using only stated facts; no price if price_hidden_requested",
   "tags": ["array", "of", "relevant", "keyword", "strings"],
-  "specs": "object mapping stated technical spec names to values, or null if none",
+  "specs": "array of {name,value} technical specs, or null if none — e.g. [{\"name\":\"Size\",\"value\":\"5\\\"\"}]",
   "missing_info": "array of up to 5 unstated spec names (e.g. Grade, Weight per foot, Connection type)"
 }
 
@@ -126,14 +126,14 @@ Description output:
 - Great condition
 - Asking $85 per joint, OBO
 - Located in Odessa"
-Extracted: title "5\\" Drill Pipe — 200 Joints", condition good, price 85, price_unit per_piece, price_terms "OBO", quantity "200 joints", specs {"Size":"5\\"","Range":"Range 2","Inspection Class":"Yellow Band"}, location_city Odessa, location_state TX, country united-states.
+Extracted: title "5\\" Drill Pipe — 200 Joints", condition good, price 85, price_unit per_piece, price_terms "OBO", quantity "200 joints", specs [{"name":"Size","value":"5\\""},{"name":"Range","value":"Range 2"},{"name":"Inspection Class","value":"Yellow Band"}], location_city Odessa, location_state TX, country united-states.
 
 SPECS RULES:
-- The specs object is for genuine functional/technical measurements ONLY (e.g. weight, dimensions, capacity, horsepower, size/diameter, reach, lift capacity, engine tier).
+- specs must be null or an array of {"name","value"} string pairs for genuine functional/technical measurements ONLY (e.g. weight, dimensions, capacity, horsepower, size/diameter, reach, lift capacity, engine tier).
 - NEVER put year, model, manufacturer, brand, condition, or category in specs — these have dedicated JSON fields above and appear separately on the listing page. Redundantly writing them into specs causes duplicate display.
 - Include a spec ONLY if the seller explicitly provided that technical detail. Do not infer or invent specs.
 - No narrative language, no attachments, no hauling/pickup mentions, no vague marketing phrases in specs.
-- If the seller provided no functional/technical specs, set specs to null or {}.
+- If the seller provided no functional/technical specs, set specs to null.
 
 LOCATION RULES:
 - If the seller mentions a US city/state (e.g. "Midland, Texas" or "Houston, TX"), set country_slug to united-states and location_state to the 2-letter code.

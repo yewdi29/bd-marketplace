@@ -132,9 +132,24 @@ function asStringArray(value: unknown, maxItems?: number): string[] {
   return maxItems != null ? cleaned.slice(0, maxItems) : cleaned
 }
 
+/** Accept object map or strict-mode [{name,value}] array from the tool. */
 function asSpecs(value: unknown): Record<string, string> | null {
   if (value == null || value === '') return null
-  if (typeof value !== 'object' || Array.isArray(value)) return null
+
+  if (Array.isArray(value)) {
+    const out: Record<string, string> = {}
+    for (const item of value) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) continue
+      const row = item as Record<string, unknown>
+      const name = asNullableString(row.name ?? row.key)
+      const val = asNullableString(row.value)
+      if (!name || !val) continue
+      out[name] = val
+    }
+    return Object.keys(out).length > 0 ? out : null
+  }
+
+  if (typeof value !== 'object') return null
   const out: Record<string, string> = {}
   for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
     const k = String(key).trim()
@@ -154,7 +169,6 @@ function asCondition(value: unknown): ConditionValue | null {
   if (CONDITION_ALIASES[normalized]) return CONDITION_ALIASES[normalized]
   const compact = normalized.replace(/\s+/g, '_')
   if (CONDITION_ALIASES[compact]) return CONDITION_ALIASES[compact]
-  // "great condition" / "like new condition"
   for (const [alias, mapped] of Object.entries(CONDITION_ALIASES)) {
     if (normalized.includes(alias)) return mapped
   }
@@ -174,14 +188,31 @@ function asPriceUnit(value: unknown): PriceUnitValue | null {
   return null
 }
 
+function parseJsonObject(value: unknown): Record<string, unknown> | null {
+  if (value != null && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('{')) return null
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    if (parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
 /**
  * Coerce common Anthropic tool-use shape drift before Zod.
- * Without `strict: true` (blocked here by free-form specs), the model often
- * returns year/price as strings, numeric specs values, or near-enum labels.
+ * Also maps strict-mode specs [{name,value}] into a string record.
  */
 export function normalizeSaveListingToolInput(input: unknown): unknown {
-  if (input == null || typeof input !== 'object' || Array.isArray(input)) return input
-  const raw = input as Record<string, unknown>
+  const raw = parseJsonObject(input)
+  if (!raw) return input
 
   return {
     ...raw,
@@ -210,7 +241,11 @@ export function normalizeSaveListingToolInput(input: unknown): unknown {
   }
 }
 
-/** JSON Schema for Anthropic tool-use `save_listing` input. */
+/**
+ * JSON Schema for Anthropic tool-use `save_listing` input.
+ * Specs use a fixed [{name,value}] array so `strict: true` is allowed
+ * (free-form object additionalProperties are rejected by strict mode).
+ */
 export const saveListingInputSchema = {
   type: 'object',
   additionalProperties: false,
@@ -228,13 +263,13 @@ export const saveListingInputSchema = {
     year: { type: ['integer', 'null'], description: '4-digit year, or null if not stated' },
     condition: {
       type: ['string', 'null'],
-      enum: [...CONDITION_VALUES, null],
+      enum: [...CONDITION_VALUES],
       description: 'new | like_new | good | fair | parts_only | null',
     },
     price: { type: ['number', 'null'], description: 'Numeric asking price, or null if not stated' },
     price_unit: {
       type: ['string', 'null'],
-      enum: [...PRICE_UNIT_VALUES, null],
+      enum: [...PRICE_UNIT_VALUES],
     },
     price_hidden_requested: {
       type: 'boolean',
@@ -253,9 +288,18 @@ export const saveListingInputSchema = {
     },
     tags: { type: 'array', items: { type: 'string' } },
     specs: {
-      type: ['object', 'null'],
-      additionalProperties: { type: 'string' },
-      description: 'Stated technical spec names to values, or null if none',
+      type: ['array', 'null'],
+      description:
+        'Stated technical specs as {name,value} pairs, or null if none. Example: [{"name":"Size","value":"5\\""},{"name":"Range","value":"Range 2"}]',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string' },
+          value: { type: 'string' },
+        },
+        required: ['name', 'value'],
+      },
     },
     missing_info: {
       type: 'array',
@@ -293,18 +337,23 @@ export const SAVE_LISTING_TOOL = {
   name: 'save_listing',
   description:
     'Save the extracted listing fields and the preserved seller description. Use null for any field the seller did not state. Never invent values.',
+  strict: true,
   input_schema: saveListingInputSchema,
-  // Note: Anthropic `strict: true` is not enabled — free-form `specs` needs
-  // additionalProperties beyond `false`, which strict mode rejects. We normalize
-  // + Zod-validate tool input instead.
 }
 
 export function formatZodError(error: z.ZodError): string {
   return error.issues.map(issue => `${issue.path.join('.') || '(root)'}: ${issue.message}`).join('; ')
 }
 
+function looksLikeListingFields(value: unknown): value is Record<string, unknown> {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) return false
+  const obj = value as Record<string, unknown>
+  return typeof obj.title === 'string' || typeof obj.description === 'string'
+}
+
 export function extractSaveListingToolInput(content: unknown): unknown {
   if (!Array.isArray(content)) return null
+
   for (const block of content) {
     if (
       typeof block === 'object' &&
@@ -312,8 +361,31 @@ export function extractSaveListingToolInput(content: unknown): unknown {
       (block as { type?: string }).type === 'tool_use' &&
       (block as { name?: string }).name === 'save_listing'
     ) {
-      return (block as { input?: unknown }).input ?? null
+      const rawInput = (block as { input?: unknown }).input
+      if (rawInput == null) return null
+      if (typeof rawInput === 'string') {
+        return parseJsonObject(rawInput)
+      }
+      return rawInput
     }
   }
+
+  // Fallback if the model returns JSON text instead of tool_use.
+  for (const block of content) {
+    if (
+      typeof block === 'object' &&
+      block !== null &&
+      (block as { type?: string }).type === 'text' &&
+      typeof (block as { text?: unknown }).text === 'string'
+    ) {
+      const text = (block as { text: string }).text.trim()
+      const start = text.indexOf('{')
+      const end = text.lastIndexOf('}')
+      if (start === -1 || end <= start) continue
+      const parsed = parseJsonObject(text.slice(start, end + 1))
+      if (parsed && looksLikeListingFields(parsed)) return parsed
+    }
+  }
+
   return null
 }
